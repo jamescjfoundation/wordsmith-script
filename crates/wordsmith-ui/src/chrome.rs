@@ -105,9 +105,9 @@ pub fn status_bar(ed: &mut Editor, ui: &mut Ui) {
     egui::Panel::bottom("status").show(ui, |ui| {
         ui.horizontal(|ui| {
             let scenes = wordsmith_script::scenes(&ed.session.doc).len();
-            let layout = ed.session.layout();
-            let page = layout.caret(&ed.session.sel.focus).map_or(1, |c| c.page + 1);
-            ui.label(format!("Page {page} of {}", layout.pages.len()));
+            let pag = ed.paginated();
+            let page = pag.to_output(&ed.session.sel.focus).and_then(|at| pag.layout.caret(&at)).map_or(1, |c| c.page + 1);
+            ui.label(format!("Page {page} of {}", pag.layout.pages.len()));
             ui.separator();
             ui.label(format!("{scenes} scene{}", if scenes == 1 { "" } else { "s" }));
             if !ed.message.is_empty() {

@@ -152,3 +152,60 @@ fn about_carries_the_credit() {
     assert!(text.starts_with("Wordsmith Script "));
     assert!(text.contains(crate::UPSTREAM_CREDIT));
 }
+
+/// A script of `scenes` scenes, about half a page each.
+fn long_script(scenes: usize) -> wordsmith_doc::Document {
+    let mut doc = wordsmith_script::new_script();
+    let mut body = Vec::new();
+    for n in 0..scenes {
+        let mut push = |e: &str, t: String| body.push(wordsmith_doc::para_block(wordsmith_script::template::paragraph(e, &t)));
+        push("SceneHeading", format!("INT. ROOM {n} - DAY"));
+        push("Action", "The light is low and the room is quiet. Somebody has left the radio on, very softly.".into());
+        for k in 0..4 {
+            push("Character", if k % 2 == 0 { "ANNA".into() } else { "BOB".into() });
+            push("Dialogue", "I keep thinking we missed something obvious. Tell me again what you saw.".into());
+        }
+        push("Transition", "CUT TO:".into());
+    }
+    doc.body = body;
+    doc
+}
+
+#[test]
+fn the_page_view_shows_the_paginated_script() {
+    let ctx = ctx();
+    let mut ed = Editor::new(wordsmith_script::session_for(long_script(6)));
+    ed.session.registry = std::sync::Arc::new(crate::registry());
+    frame(&ctx, &mut ed, vec![]);
+    let pag = ed.paginated();
+    assert!(pag.pages.len() >= 3, "{} pages", pag.pages.len());
+    assert!(pag.matches_plan);
+    // The caret at the end of the script shows on the last page.
+    ed.run("caret.docEnd", json!({}));
+    let at = pag.to_output(&ed.session.sel.focus).unwrap();
+    assert_eq!(pag.layout.caret(&at).map(|c| c.page), Some(pag.pages.len() - 1));
+}
+
+/// Typing in a 150-page script: one frame with a typed character, which runs the command,
+/// paginates again and draws the visible pages. The kickoff asks for the number to be recorded
+/// (docs/performance.md).
+#[test]
+#[ignore = "timing, run with --release -- --ignored --nocapture"]
+fn typing_in_a_150_page_script() {
+    let ctx = ctx();
+    let mut ed = Editor::new(wordsmith_script::session_for(long_script(300)));
+    ed.session.registry = std::sync::Arc::new(crate::registry());
+    ed.mac = false;
+    frame(&ctx, &mut ed, vec![]);
+    let pages = ed.paginated().pages.len();
+    ed.run("caret.docEnd", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    let mut times = Vec::new();
+    for _ in 0..20 {
+        let t = std::time::Instant::now();
+        frame(&ctx, &mut ed, vec![text("x")]);
+        times.push(t.elapsed());
+    }
+    times.sort();
+    eprintln!("typing, {pages} pages: median {:?}, worst {:?} per keystroke frame", times[times.len() / 2], times[times.len() - 1]);
+}
