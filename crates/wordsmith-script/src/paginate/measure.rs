@@ -85,6 +85,101 @@ pub fn measure(doc: &Document, layout: &DocLayout) -> Vec<Measured> {
     out
 }
 
+/// Lines of each paragraph, kept between paginations: an edit lays out only the paragraphs it
+/// changed. Keyed by the paragraph's revision and a fingerprint of the styles and page width.
+#[derive(Default)]
+pub struct MeasureCache {
+    lines: std::collections::HashMap<(u64, u64), (Vec<(usize, usize)>, Vec<f32>)>,
+    /// The styles the entries were made with, and their fingerprint.
+    env: Option<(Arc<wordsmith_doc::StyleSheet>, u64)>,
+}
+
+/// Most paragraphs kept; past this the cache starts over. Bounds memory on huge scripts.
+const MAX_CACHED: usize = 200_000;
+
+impl MeasureCache {
+    fn env(&mut self, doc: &Document) -> u64 {
+        use std::hash::{Hash, Hasher};
+        if let Some((styles, key)) = &self.env
+            && Arc::ptr_eq(styles, &doc.styles)
+        {
+            return *key;
+        }
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        serde_json::to_string(&*doc.styles).unwrap_or_default().hash(&mut h);
+        text_width(doc).to_bits().hash(&mut h);
+        let key = h.finish();
+        self.env = Some((doc.styles.clone(), key));
+        key
+    }
+}
+
+/// The body text column's width, points.
+fn text_width(doc: &Document) -> f32 {
+    let s = &doc.last_section;
+    (s.page_w - s.margin_left - s.margin_right).max(1.0)
+}
+
+/// [`measure`] without laying out the whole script: each paragraph is laid out on its own (it
+/// does not depend on where it lands), through `cache`.
+pub fn measure_cached(doc: &Document, cache: &mut MeasureCache) -> Vec<Measured> {
+    let env_key = cache.env(doc);
+    if cache.lines.len() > MAX_CACHED {
+        cache.lines.clear();
+    }
+    let elements = Elements::of_doc(doc);
+    let fields = wordsmith_layout::FieldCtx::default();
+    let width = text_width(doc);
+    let Some(blocks) = doc.story(StoryRef::Body) else { return Vec::new() };
+    let mut out = Vec::with_capacity(blocks.len());
+    for (i, block) in blocks.iter().enumerate() {
+        let Some(p) = block.as_para() else { continue };
+        let def = elements.of_para(p);
+        let rules = def.paginate_as.as_deref().and_then(|id| elements.get(id)).map_or(def.kind, |d| d.kind);
+        let (lines, heights) = cache
+            .lines
+            .entry((p.rev, env_key))
+            .or_insert_with(|| {
+                let env = wordsmith_layout::para::ParaEnv {
+                    doc,
+                    width,
+                    label: None,
+                    fields: &fields,
+                    show_hidden: false,
+                    field_codes: false,
+                    hide_deleted: Default::default(),
+                    table: None,
+                    proofing: None,
+                    typing_word: None,
+                    numeral: Default::default(),
+                    exclusions: &[],
+                    eq_number: 0,
+                    read_line_spacing: None,
+                    grid: Default::default(),
+                    fit_objects: false,
+                    fitted: &[],
+                };
+                let pl = wordsmith_layout::para::layout_para(p, &env);
+                (line_ranges(&pl), pl.lines.iter().map(|l| l.height).collect())
+            })
+            .clone();
+        let (lines, heights) = if lines.is_empty() { (vec![(0, 0)], vec![crate::template::LINE]) } else { (lines, heights) };
+        let rp = doc.styles.resolve_para(&p.props);
+        out.push(Measured {
+            block: i,
+            rules,
+            kind: def.kind,
+            text: p.text.clone(),
+            lines,
+            heights,
+            space_before: rp.space_before,
+            keep_next: rp.keep_next,
+            page_break_before: rp.page_break_before,
+        });
+    }
+    out
+}
+
 /// A print-view layout of `doc`.
 pub fn print_layout(doc: &Document, cache: &mut LayoutCache) -> Arc<DocLayout> {
     Arc::new(wordsmith_layout::layout(doc, cache, &LayoutOptions { view: ViewMode::Print, ..Default::default() }))

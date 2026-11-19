@@ -3,11 +3,13 @@
 //! click and menu choice turned into a command run through the session's registry.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use egui::{Color32, Event, Pos2, Rect, Sense, Stroke, TextureHandle, TextureOptions, Ui, pos2, vec2};
 use serde_json::{Value, json};
 use wordsmith_doc::StoryRef;
 use wordsmith_engine::Session;
+use wordsmith_script::paginate::Paginated;
 use wordsmith_script::{ElementKind, Elements};
 
 use crate::dialogs::{Palette, RecoveryPrompt, SettingsDialog};
@@ -43,6 +45,10 @@ pub struct Editor {
     pub message: String,
     /// Text a copy or cut asked to put on the clipboard.
     clipboard: Option<String>,
+    /// Pagination, kept between edits so only changed paragraphs are measured again.
+    paginator: wordsmith_script::paginate::Paginator,
+    /// The paginated script for the session's current revision.
+    paginated: Option<(u64, Arc<Paginated>)>,
 }
 
 impl Editor {
@@ -59,6 +65,8 @@ impl Editor {
             scroll_to_caret: true,
             message: String::new(),
             clipboard: None,
+            paginator: Default::default(),
+            paginated: None,
         }
     }
 
@@ -149,9 +157,29 @@ impl Editor {
         }
     }
 
+    /// The paginated script for the current revision, paginating again after an edit.
+    pub fn paginated(&mut self) -> Arc<Paginated> {
+        let rev = self.session.rev();
+        if let Some((r, p)) = &self.paginated
+            && *r == rev
+        {
+            return p.clone();
+        }
+        let p = Arc::new(self.paginator.paginate(&self.session.doc));
+        self.paginated = Some((rev, p.clone()));
+        p
+    }
+
     /// A page's texture at `scale` pixels per document point, drawn again when the document or
     /// scale changed.
-    fn texture(&mut self, ctx: &egui::Context, index: usize, page: &wordsmith_layout::Page, scale: f32) -> TextureHandle {
+    fn texture(
+        &mut self,
+        ctx: &egui::Context,
+        doc: &wordsmith_doc::Document,
+        index: usize,
+        page: &wordsmith_layout::Page,
+        scale: f32,
+    ) -> TextureHandle {
         let rev = self.session.rev();
         let bits = scale.to_bits();
         if let Some(t) = self.pages.get(&index)
@@ -161,7 +189,7 @@ impl Editor {
             return t.texture.clone();
         }
         let opts = wordsmith_render::RenderOptions::default();
-        let r = wordsmith_render::render_page(&self.session.doc, page, scale, &opts);
+        let r = wordsmith_render::render_page(doc, page, scale, &opts);
         let image = egui::ColorImage::from_rgba_premultiplied([r.width as usize, r.height as usize], &r.pixels);
         let texture = match self.pages.remove(&index) {
             Some(mut t) => {
@@ -174,9 +202,12 @@ impl Editor {
         texture
     }
 
-    /// The pages, caret and selection, with mouse handling.
+    /// The pages, caret and selection, with mouse handling. The pages are the paginated script
+    /// (with its (MORE) and (CONT'D) lines and page numbers); the caret and clicks map to the
+    /// script itself.
     pub fn page_view(&mut self, ui: &mut Ui) {
-        let layout = self.session.layout();
+        let pag = self.paginated();
+        let layout = pag.layout.clone();
         let zoom = self.zoom;
         let ppp = ui.ctx().pixels_per_point();
         let widest = layout.pages.iter().map(|p| p.w).fold(0.0f32, f32::max) * zoom;
@@ -204,7 +235,7 @@ impl Editor {
         for (i, page) in layout.pages.iter().enumerate() {
             let Some(rect) = origins.get(i).copied() else { continue };
             if ui.is_rect_visible(rect) {
-                let tex = self.texture(ui.ctx(), i, page, zoom * ppp);
+                let tex = self.texture(ui.ctx(), &pag.doc, i, page, zoom * ppp);
                 painter.image(tex.id(), rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
             } else {
                 painter.rect_filled(rect, 0.0, Color32::WHITE);
@@ -215,7 +246,8 @@ impl Editor {
         // Selection, then the caret.
         if !self.session.sel.is_collapsed() {
             let (a, b) = self.session.sel.ordered();
-            for (page, r) in layout.selection_rects(&self.session.doc, &a, &b, 0) {
+            let (a, b) = (pag.to_output(&a).unwrap_or(a), pag.to_output(&b).unwrap_or(b));
+            for (page, r) in layout.selection_rects(&pag.doc, &a, &b, 0) {
                 if let Some(min) = to_screen(page, r.x, r.y) {
                     painter.rect_filled(
                         Rect::from_min_size(min, vec2(r.w * zoom, r.h * zoom)),
@@ -226,7 +258,7 @@ impl Editor {
             }
         }
         let mut caret_rect = None;
-        if let Some(c) = layout.caret(&self.session.sel.focus)
+        if let Some(c) = pag.to_output(&self.session.sel.focus).and_then(|at| layout.caret(&at))
             && let Some(top) = to_screen(c.page, c.x, c.top)
         {
             let r = Rect::from_min_size(top, vec2(1.5, c.height * zoom));
@@ -245,7 +277,7 @@ impl Editor {
             let page = origins.iter().position(|r| r.contains(p)).or_else(|| nearest_page(&origins, p))?;
             let r = origins.get(page)?;
             let (x, y) = ((p.x - r.min.x) / zoom, (p.y - r.min.y) / zoom);
-            layout.hit(page, x, y, StoryRef::Body).and_then(|pos| serde_json::to_value(pos).ok())
+            layout.hit(page, x, y, StoryRef::Body).and_then(|pos| pag.to_source(&pos)).and_then(|pos| serde_json::to_value(pos).ok())
         };
         if let Some(p) = response.interact_pointer_pos() {
             let shift = ui.input(|i| i.modifiers.shift);
