@@ -44,6 +44,7 @@ fn open(s: &mut Session, what: &str) -> Result<Value, CmdError> {
 pub fn ui_specs() -> Vec<CommandSpec> {
     vec![
         CommandSpec::new("view.commandPalette", "Command Palette", "View", |s, _| open(s, "palette")).key("Mod+Shift+P").pure(),
+        CommandSpec::new("view.find", "Find and Replace…", "Edit", |s, _| open(s, "find")).key("Mod+F").pure(),
         CommandSpec::new("view.elementSettings", "Element Settings…", "Format › Elements", |s, _| open(s, "elementSettings")).pure(),
         CommandSpec::new("help.about", "About Wordsmith Script", "Help", |s, _| open(s, "about")).pure(),
         CommandSpec::new("file.exportPdfAs", "Export PDF…", "File", |s, _| open(s, "exportPdf")).key("Mod+Shift+E").pure(),

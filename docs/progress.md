@@ -19,3 +19,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m2/golden | Fountain reader; three public-domain photoplays as golden scripts (page breaks and PDF text); more/continued settings commands; M2 complete; 1,616 tests pass |
 | 2026-11-19 | m3/autocomplete | Six autocomplete lists, learning, rebuild, editing, options, suggestion list in the editor; 1,626 tests pass |
 | 2026-11-19 | m3/spelling | Spelling (Moby list) skipping character names, intros and capitals; underlines and right-click fixes; 1,632 tests pass |
+| 2026-11-19 | m3/find | Find and replace (case, whole word, one-step Replace All), find bar with highlights; 1,636 tests pass |
