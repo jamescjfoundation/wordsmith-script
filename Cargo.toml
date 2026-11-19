@@ -9,6 +9,8 @@ members = [
     "crates/wordsmith-render",
     "crates/wordsmith-pdf",
     "crates/wordsmith-engine",
+    "crates/wordsmith-control-key",
+    "crates/wordsmith-mcp",
     # Ours
     "crates/wordsmith-script",
     "crates/wordsmith-format",
@@ -26,6 +28,8 @@ default-members = [
     "crates/wordsmith-render",
     "crates/wordsmith-pdf",
     "crates/wordsmith-engine",
+    "crates/wordsmith-control-key",
+    "crates/wordsmith-mcp",
     "crates/wordsmith-script",
     "crates/wordsmith-format",
     "crates/wordsmith-ui",
@@ -49,6 +53,8 @@ wordsmith-layout = { path = "crates/wordsmith-layout" }
 wordsmith-render = { path = "crates/wordsmith-render" }
 wordsmith-pdf = { path = "crates/wordsmith-pdf" }
 wordsmith-engine = { path = "crates/wordsmith-engine" }
+wordsmith-control-key = { path = "crates/wordsmith-control-key" }
+wordsmith-mcp = { path = "crates/wordsmith-mcp" }
 # Internal: ours
 wordsmith-script = { path = "crates/wordsmith-script" }
 wordsmith-format = { path = "crates/wordsmith-format" }
@@ -63,6 +69,7 @@ craft-metafile = { git = "https://github.com/storytold/craft-libs", rev = "93dac
 craft-image-codecs = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 craft-tiff = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 craft-pdf = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0", default-features = false, features = ["write"] }
+craft-mcp-server = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 craft-zip = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 
 # Foundation (versions as WordCraft pins them)

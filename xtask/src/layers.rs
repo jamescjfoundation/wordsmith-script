@@ -20,8 +20,9 @@ pub const LAYERS: &[(&str, u8)] = &[
     ("wordsmith-render", 2),
     // Output that only needs layout
     ("wordsmith-pdf", 3),
-    // Engine: session, undo, command registry, recovery
+    // Engine: session, undo, command registry, recovery; the control-port key file
     ("wordsmith-engine", 4),
+    ("wordsmith-control-key", 4),
     // Screenplay rules
     ("wordsmith-script", 5),
     // Files that need screenplay elements (native format, Fountain)
