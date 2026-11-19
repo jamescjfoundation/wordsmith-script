@@ -12,3 +12,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m1/elements | Element registry, screenplay template, scene index, Courier Prime bundled and measured; 1,551 tests pass |
 | 2026-11-19 | m1/typing | Typing, Return, Tab with separators, change element with Mod+0..9, casing, caret and selection commands; 1,568 tests pass |
 | 2026-11-19 | m1/element-settings | Element settings, custom elements, font for all, Dialogue-then-Character option, scene-heading settings; 1,576 tests pass |
+| 2026-11-19 | m1/editor | Desktop editor on egui 0.36: page view, keyboard and mouse through the registry, element selector, palette, element settings dialog, crash recovery; M1 complete; 1,587 tests pass |
