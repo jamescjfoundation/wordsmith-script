@@ -11,6 +11,7 @@ use wordsmith_engine::{CmdResult, CommandSpec, Registry, Session, cmd::pos_json}
 pub mod autocomplete;
 pub mod caret;
 pub mod element;
+pub mod find;
 pub mod settings;
 pub mod spelling;
 pub mod text;
@@ -58,6 +59,7 @@ pub fn specs() -> Vec<CommandSpec> {
     all.extend(crate::paginate::specs());
     all.extend(autocomplete::specs());
     all.extend(spelling::specs());
+    all.extend(find::specs());
     all
 }
 
