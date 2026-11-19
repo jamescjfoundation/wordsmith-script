@@ -14,8 +14,9 @@ Date: 2026-11-19
   with `--locked`.
 - **Lints.** The six panicking lints and `unsafe_code` are set once as
   workspace lints, and every crate root also states them as attributes so the
-  rule is visible in the code. `cargo xtask lint-roots` checks the
-  attributes; clippy enforces them. `clippy.toml` lets tests unwrap and
+  rule is visible in the code. Since the WordCraft copy (0005), the six
+  panicking lints live only in the crate-root attributes. `cargo xtask
+  lint-roots` checks the attributes; clippy enforces them. `clippy.toml` lets tests unwrap and
   panic.
 - **wasm.** The gate builds `wordsmith-web` for `wasm32-unknown-unknown`.
   It is a compile check only in v0.1.
