@@ -242,3 +242,46 @@ fn export_pdf_asks_for_a_path_and_writes_the_file() {
     assert!(std::fs::read(&target).unwrap().starts_with(b"%PDF-"), "{}", ed.message);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn suggestions_show_and_tab_or_enter_accepts_but_typing_ignores() {
+    let ctx = ctx();
+    let mut ed = editor();
+    ed.session.run("autocomplete.add", &json!({"list": "characters", "term": "BOB"})).unwrap();
+    frame(&ctx, &mut ed, vec![key(Key::Num3, cmd()), text("b")]);
+    assert_eq!(ed.suggestions.as_ref().map(|s| s.candidates.clone()), Some(vec!["BOB".to_string()]));
+    // Typing on narrows to nothing: the list goes, the typed text stays.
+    frame(&ctx, &mut ed, vec![text("x")]);
+    assert!(ed.suggestions.is_none());
+    assert_eq!(lines(&ed)[0], l("Character", "BX"));
+    // Back to "B": Enter accepts instead of starting a new paragraph.
+    frame(&ctx, &mut ed, vec![key(Key::Backspace, Modifiers::NONE)]);
+    assert!(ed.suggestions.is_some());
+    frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE)]);
+    assert_eq!(lines(&ed), vec![l("Character", "BOB")]);
+    // Escape hides it; Enter then is Return again.
+    frame(
+        &ctx,
+        &mut ed,
+        vec![key(Key::Enter, Modifiers::NONE), text("Hi."), key(Key::Enter, Modifiers::NONE), key(Key::Tab, Modifiers::NONE), text("b")],
+    );
+    assert!(ed.suggestions.is_some());
+    frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE)]);
+    assert!(ed.suggestions.is_none());
+    frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE)]);
+    assert_eq!(lines(&ed).last(), Some(&l("Dialogue", "")), "Return after the Character");
+    assert_eq!(lines(&ed)[lines(&ed).len() - 2], l("Character", "B"));
+}
+
+#[test]
+fn up_and_down_move_through_suggestions() {
+    let ctx = ctx();
+    let mut ed = editor();
+    for n in ["ANNA", "ABE", "ALEX"] {
+        ed.session.run("autocomplete.add", &json!({"list": "characters", "term": n})).unwrap();
+    }
+    frame(&ctx, &mut ed, vec![key(Key::Num3, cmd()), text("a")]);
+    assert_eq!(ed.suggestions.as_ref().map(|s| s.candidates.len()), Some(3));
+    frame(&ctx, &mut ed, vec![key(Key::ArrowDown, Modifiers::NONE), key(Key::ArrowDown, Modifiers::NONE), key(Key::Tab, Modifiers::NONE)]);
+    assert_eq!(lines(&ed)[0], l("Character", "ANNA"), "third alphabetically: ABE, ALEX, ANNA");
+}

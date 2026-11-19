@@ -88,6 +88,9 @@ fn return_key(s: &mut Session) -> Result<(), CmdError> {
         at.off = para.len();
     }
     let at_end = at.off >= para.len();
+    // The paragraph being left teaches the autocomplete lists its names and places.
+    let left = para.clone();
+    crate::autocomplete::learn(&mut s.doc, &left);
     let next_id = s.doc.styles.get(&element.id).and_then(|st| st.next.clone()).filter(|n| elements.get(n).is_some()).unwrap_or(element.id.clone());
     let new = s.doc.split_paragraph(&at)?;
     s.sel = Selection::caret(new.clone());
@@ -114,6 +117,22 @@ pub fn tab(s: &mut Session, _: &Value) -> CmdResult {
     let blank = text.trim().is_empty();
     if element.kind == ElementKind::SceneHeading && !blank {
         scene_heading_tab(s, &at, &text)?;
+        return sel_result(s);
+    }
+    if element.kind == ElementKind::Character
+        && !blank
+        && !text.contains('(')
+        && at.off >= text.trim_end().len()
+        && crate::autocomplete::Autocomplete::of_doc(&s.doc).tab_inserts_extension
+    {
+        // Tab after a name starts its extension (SPEC option): "ANNA (".
+        let para = s.doc.para_mut(at.story, &at.path)?;
+        let len = para.text.trim_end().len();
+        let tail = para.len();
+        para.delete(len, tail)?;
+        para.insert_text(len, " (", &CharProps::default())?;
+        para.touch();
+        s.sel = Selection::caret(Pos { off: len + 2, ..at.clone() });
         return sel_result(s);
     }
     let Some(target) = element.tab.clone() else { return sel_result(s) };

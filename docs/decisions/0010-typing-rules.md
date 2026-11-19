@@ -18,8 +18,10 @@ These are the details it does not settle, decided here.
 **Tab**
 - Tab changes the caret paragraph's element to the Tab target, whether or not
   it has text (SPEC: "Tab changes the current paragraph's type").
-- Character's Tab acts only on a blank line (SPEC). On a Character with text
-  it does nothing in M1; M3 uses it to accept a suggestion.
+- Character's Tab acts only on a blank line (SPEC). On a Character with a
+  name, Tab starts its extension, " (", offering the extensions list (SPEC
+  option, on by default since M3; with it off, Tab there does nothing). When
+  a suggestion is showing, Tab accepts it instead (decision 0015).
 - In a Scene Heading with text, Tab acts only at the end of the heading:
   - after a known intro ("int", "EXT."), it writes the intro in capitals
     followed by the intro separator ("INT. ");

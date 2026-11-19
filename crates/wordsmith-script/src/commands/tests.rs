@@ -117,6 +117,8 @@ fn tab_follows_the_table() {
 #[test]
 fn character_tab_switches_only_on_a_blank_line() {
     let mut s = new_session();
+    // With the autocomplete option off; with it on, Tab after a name starts an extension (M3).
+    s.run("autocomplete.configure", &json!({"tabInsertsExtension": false})).unwrap();
     run(&mut s, "element.character");
     typ(&mut s, "bob");
     run(&mut s, "text.tab");

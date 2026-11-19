@@ -8,6 +8,7 @@ use std::sync::Arc;
 use serde_json::{Value, json};
 use wordsmith_engine::{CmdResult, CommandSpec, Registry, Session, cmd::pos_json};
 
+pub mod autocomplete;
 pub mod caret;
 pub mod element;
 pub mod settings;
@@ -54,6 +55,7 @@ pub fn specs() -> Vec<CommandSpec> {
     all.extend(caret::specs());
     all.extend(crate::export::specs());
     all.extend(crate::paginate::specs());
+    all.extend(autocomplete::specs());
     all
 }
 
