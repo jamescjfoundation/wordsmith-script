@@ -348,3 +348,21 @@ fn inspect_reports_paragraphs_scenes_and_the_current_element() {
     assert_eq!(lines(&s), vec![l("SceneHeading", "")]);
     assert!(!s.can_undo());
 }
+
+#[test]
+fn clicks_place_the_caret_and_select_words() {
+    let mut s = new_session();
+    run(&mut s, "element.action");
+    typ(&mut s, "Hello brave world.");
+    let pos = |off: usize| json!({"story": "body", "path": [0], "off": off});
+    s.run("caret.to", &json!({"pos": pos(6)})).unwrap();
+    assert_eq!(caret_off(&s), 6);
+    s.run("caret.to", &json!({"pos": pos(11), "extend": true})).unwrap();
+    assert_eq!(s.selected_text(), "brave");
+    s.run("select.wordAt", &json!({"pos": pos(14)})).unwrap();
+    assert_eq!(s.selected_text(), "world");
+    // A position past the end is clamped; garbage is refused.
+    s.run("caret.to", &json!({"pos": {"story": "body", "path": [99], "off": 9999}})).unwrap();
+    assert!(s.sel.is_collapsed());
+    assert!(matches!(s.run("caret.to", &json!({"pos": "nowhere"})), Err(CmdError::Params(_))));
+}
