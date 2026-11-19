@@ -16,3 +16,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m2/paginate | Screenplay paginator: keep rules, sentence splits, (MORE)/(CONT'D), automatic CONT'D, scene CONTINUED option, page numbers; layout agrees with every plan; 150 pages in 73-99 ms; 1,602 tests pass |
 | 2026-11-19 | m2/page-view | Page view shows the paginated script; incremental repagination; typing at 150 pages 14.5 ms median per keystroke frame; 1,604 tests pass |
 | 2026-11-19 | m2/pdf | PDF export with selectable text from the page view's layout; printing via CUPS lp (Windows: system viewer) instead of craft-print; Export PDF dialog; 1,609 tests pass |
+| 2026-11-19 | m2/golden | Fountain reader; three public-domain photoplays as golden scripts (page breaks and PDF text); more/continued settings commands; M2 complete; 1,616 tests pass |

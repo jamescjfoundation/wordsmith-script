@@ -4521,6 +4521,11 @@ dependencies = [
 name = "wordsmith-format"
 version = "0.1.0-dev"
 dependencies = [
+ "hayro-cmap",
+ "hayro-interpret",
+ "hayro-syntax",
+ "kurbo",
+ "wordsmith-doc",
  "wordsmith-script",
 ]
 
