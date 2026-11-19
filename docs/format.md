@@ -1,0 +1,75 @@
+# The Wordsmith Script file format (`.wss`)
+
+Format version 1. A `.wss` file is UTF-8 plain text made to be read by people,
+compared with `diff`, and kept in version control. Every script setting lives
+in the file: element definitions, autocomplete lists, scene-heading
+separators, more-and-continued texts, and (as later milestones add them)
+title page, notes, revisions, page locks, scene numbers, outline and story
+board.
+
+## Layout
+
+```
+Wordsmith Script 1
+=== settings ===
+{
+  "appData": { ... },
+  "core": { "title": "...", ... },
+  "page": { "pageW": 612.0, "pageH": 792.0, "marginTop": 72.0, ... },
+  "styles": { ... }
+}
+=== script ===
+@SceneHeading
+INT. KITCHEN - NIGHT
+
+@Action
+Rain *hammers* the window.
+
+@Character
+ANNA
+```
+
+1. **First line:** `Wordsmith Script` and the format version.
+2. **Settings:** the line `=== settings ===`, then one JSON object,
+   pretty-printed with every object's keys in alphabetical order, so a changed
+   setting is a small, readable diff:
+   - `page`: page size and margins, in points;
+   - `styles`: the paragraph style of every element (font, size, bold, italic,
+     underline, indents, alignment, line spacing, space before, next element,
+     start new page, keep rules) and the document defaults;
+   - `core`: title and other document properties;
+   - `appData`: the script's own data by key: `wordsmith.elements` (element
+     registry), `wordsmith.sceneHeading`, `wordsmith.autocomplete`,
+     `wordsmith.moresContinueds`, `wordsmith.spelling`, and later keys.
+   Every field is optional; what is missing comes from the screenplay
+   template.
+3. **Script:** the line `=== script ===`, then each paragraph in order:
+   - a line `@ElementId`, optionally followed by attributes separated by
+     spaces (`page-break`: the paragraph starts a new page);
+   - its text, one line per manual line break; a line holding only `\`
+     stands for an empty line inside the paragraph;
+   - a blank line.
+   An empty paragraph is its `@` line and the blank line. A paragraph whose
+   element the file does not define reads as General.
+
+## Text
+
+- `**` toggles bold, `*` italic and `_` underline, so `**Bold** and
+  *italic*` mean what they look like. Each marker toggles only its own style.
+- `\` escapes the next character: `\*`, `\_`, `\\`. A text line that would
+  start with `@` or `=` is written with a `\` in front.
+- Inline pictures and fields are not part of a script and are not written.
+
+## Versions and migrations
+
+Each format change gets a new version number and a migration step from the
+version before, so every older file stays readable. A file from a newer
+version is refused with a message naming both versions. Version 1 is the
+first; `crates/wordsmith-format/tests/fixtures/v1-short.wss` is a stored
+version-1 file that the tests read on every build.
+
+## Limits
+
+A file over 64 MB, a settings part over 16 MB, or more than 500,000
+paragraphs is refused. A damaged file is refused with the reason; it never
+opens half-read.
