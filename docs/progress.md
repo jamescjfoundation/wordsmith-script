@@ -6,3 +6,4 @@ One line per merge to `main`, newest last.
 | --- | --- | --- |
 | 2026-11-19 | bootstrap/skeleton | Workspace skeleton, licenses, NOTICE, ATTRIBUTION, UPSTREAM, `cargo xtask ci` gate, CI workflow, decisions 0001-0003 |
 | 2026-11-19 | bootstrap/wordcraft-copy | Copied WordCraft geom, doc, fonts, layout, render, pdf (6ef13b2) as wordsmith-*; craft-libs pinned to 93dac78c; Zlib, Unicode-3.0, IJG allowed as reviewed exceptions; 1,460 tests pass, 4 ignored for missing build inputs |
+| 2026-11-19 | bootstrap/engine | wordsmith-engine trimmed from WordCraft's engine (session, undo, registry, recovery, file access); 1,502 tests pass |
