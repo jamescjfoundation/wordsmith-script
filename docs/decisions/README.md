@@ -17,3 +17,4 @@ what would make us revisit it.
 | [0009](0009-element-model.md) | The element model and its defaults |
 | [0010](0010-typing-rules.md) | Typing rules the spec leaves open |
 | [0011](0011-editor.md) | The M1 editor |
+| [0012](0012-pagination.md) | Screenplay pagination |
