@@ -11,6 +11,24 @@ cover it.
   starts 12 pt below the margin). Screenplay convention drops it there; it is
   a pagination rule, so it is M2's.
 
+## M1: done, with these gaps
+
+M1's spec items (element table, Return and Tab tables, separators, change
+element and Mod+0 to Mod+9, casing, Dialogue-then-Character option, element
+settings, custom elements, font for all, undo of all of it) are built and
+tested. Left open:
+
+- Saving and opening files: M4. Crash recovery is the only persistence until
+  then.
+- Normal and speed views, typewriter scrolling, focus mode, dark theme: M3.
+  The M1 editor shows the print layout.
+- IME (input method) composition safeguards were cut from the engine
+  (decision 0006); egui's own text events work, but composing text is not
+  protected the way WordCraft protected it.
+- Shift+Tab, Page Up/Down and word deletion (Alt+Backspace) are not assigned.
+- The editor's look was not checked automatically; headless tests cover its
+  behavior.
+
 ## Not started
 
 Everything in M1 to M8 not marked done in `docs/progress.md`. Each milestone plan in `docs/plans/` breaks its part
