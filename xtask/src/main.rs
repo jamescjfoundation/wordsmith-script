@@ -6,14 +6,7 @@
 //! wasm build. Each task can also be run on its own.
 
 #![forbid(unsafe_code)]
-#![deny(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::unimplemented,
-    clippy::todo,
-    clippy::unreachable
-)]
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 mod layers;
 mod spdx;
@@ -26,20 +19,11 @@ type TaskResult = Result<(), String>;
 
 const TASKS: &[(&str, &str)] = &[
     ("fmt", "rustfmt in check mode"),
-    (
-        "lint-roots",
-        "every product crate root denies panicking lints and unsafe",
-    ),
+    ("lint-roots", "every product crate root denies panicking lints and unsafe"),
     ("clippy", "clippy on all targets, warnings are errors"),
     ("test", "all tests in the workspace"),
-    (
-        "attribution",
-        "dependency licenses on the allowlist; assets listed in ATTRIBUTION.md",
-    ),
-    (
-        "layering",
-        "workspace dependencies only point down; nothing below wordsmith-ui uses it",
-    ),
+    ("attribution", "dependency licenses on the allowlist; assets listed in ATTRIBUTION.md"),
+    ("layering", "workspace dependencies only point down; nothing below wordsmith-ui uses it"),
     ("wasm", "build wordsmith-web for wasm32-unknown-unknown"),
 ];
 
@@ -47,14 +31,8 @@ const WASM_TARGET: &str = "wasm32-unknown-unknown";
 const WASM_CRATE: &str = "wordsmith-web";
 
 /// Lints every product crate root must deny, per the ground rules.
-const REQUIRED_DENIES: &[&str] = &[
-    "clippy::unwrap_used",
-    "clippy::expect_used",
-    "clippy::panic",
-    "clippy::unimplemented",
-    "clippy::todo",
-    "clippy::unreachable",
-];
+const REQUIRED_DENIES: &[&str] =
+    &["clippy::unwrap_used", "clippy::expect_used", "clippy::panic", "clippy::unimplemented", "clippy::todo", "clippy::unreachable"];
 
 /// Bounds for walking `assets/`, which is treated like any other input.
 const MAX_ASSET_DEPTH: usize = 12;
@@ -107,33 +85,12 @@ fn run_task(name: &str, root: &Path) -> TaskResult {
     let result = match name {
         "fmt" => cargo(root, &["fmt", "--all", "--", "--check"]),
         "lint-roots" => check_lint_roots(root),
-        "clippy" => cargo(
-            root,
-            &[
-                "clippy",
-                "--workspace",
-                "--all-targets",
-                "--locked",
-                "--",
-                "-D",
-                "warnings",
-            ],
-        ),
+        "clippy" => cargo(root, &["clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"]),
         "test" => cargo(root, &["test", "--workspace", "--locked"]),
         "attribution" => check_attribution(root),
         "layering" => check_layering(root),
-        "wasm" => cargo(
-            root,
-            &[
-                "build",
-                "--locked",
-                "-p",
-                WASM_CRATE,
-                "--target",
-                WASM_TARGET,
-            ],
-        )
-        .map_err(|e| format!("{e} (is the target installed? rustup target add {WASM_TARGET})")),
+        "wasm" => cargo(root, &["build", "--locked", "-p", WASM_CRATE, "--target", WASM_TARGET])
+            .map_err(|e| format!("{e} (is the target installed? rustup target add {WASM_TARGET})")),
         other => Err(format!("no runner for task '{other}'")),
     };
     result.map_err(|e| format!("{name}: {e}"))
@@ -152,30 +109,14 @@ fn cargo_bin() -> String {
 }
 
 fn cargo(root: &Path, args: &[&str]) -> TaskResult {
-    let status = Command::new(cargo_bin())
-        .args(args)
-        .current_dir(root)
-        .status()
-        .map_err(|e| format!("could not run cargo: {e}"))?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(format!("`cargo {}` exited with {status}", args.join(" ")))
-    }
+    let status = Command::new(cargo_bin()).args(args).current_dir(root).status().map_err(|e| format!("could not run cargo: {e}"))?;
+    if status.success() { Ok(()) } else { Err(format!("`cargo {}` exited with {status}", args.join(" "))) }
 }
 
 fn cargo_output(root: &Path, args: &[&str]) -> Result<String, String> {
-    let out = Command::new(cargo_bin())
-        .args(args)
-        .current_dir(root)
-        .output()
-        .map_err(|e| format!("could not run cargo: {e}"))?;
+    let out = Command::new(cargo_bin()).args(args).current_dir(root).output().map_err(|e| format!("could not run cargo: {e}"))?;
     if !out.status.success() {
-        return Err(format!(
-            "`cargo {}` failed: {}",
-            args.join(" "),
-            String::from_utf8_lossy(&out.stderr)
-        ));
+        return Err(format!("`cargo {}` failed: {}", args.join(" "), String::from_utf8_lossy(&out.stderr)));
     }
     String::from_utf8(out.stdout).map_err(|e| format!("cargo printed non-UTF-8 output: {e}"))
 }
@@ -203,25 +144,11 @@ fn parse_pkg(line: &str) -> Option<(String, Option<PathBuf>)> {
 }
 
 fn workspace_members(root: &Path) -> Result<Vec<Member>, String> {
-    let out = cargo_output(
-        root,
-        &[
-            "tree",
-            "--workspace",
-            "--locked",
-            "--depth",
-            "0",
-            "--prefix",
-            "none",
-            "--format",
-            "{p}",
-        ],
-    )?;
+    let out = cargo_output(root, &["tree", "--workspace", "--locked", "--depth", "0", "--prefix", "none", "--format", "{p}"])?;
     let mut members = Vec::new();
     let mut seen = BTreeSet::new();
     for line in out.lines().filter(|l| !l.trim().is_empty()) {
-        let (name, path) =
-            parse_pkg(line).ok_or_else(|| format!("unexpected cargo tree line: {line}"))?;
+        let (name, path) = parse_pkg(line).ok_or_else(|| format!("unexpected cargo tree line: {line}"))?;
         let dir = path.ok_or_else(|| format!("workspace member without a path: {line}"))?;
         if seen.insert(name.clone()) {
             members.push(Member { name, dir });
@@ -234,11 +161,7 @@ fn workspace_members(root: &Path) -> Result<Vec<Member>, String> {
 }
 
 fn crate_roots(dir: &Path) -> Vec<PathBuf> {
-    let mut roots: Vec<PathBuf> = ["src/lib.rs", "src/main.rs"]
-        .iter()
-        .map(|p| dir.join(p))
-        .filter(|p| p.is_file())
-        .collect();
+    let mut roots: Vec<PathBuf> = ["src/lib.rs", "src/main.rs"].iter().map(|p| dir.join(p)).filter(|p| p.is_file()).collect();
     if let Ok(entries) = std::fs::read_dir(dir.join("src/bin")) {
         for entry in entries.flatten() {
             let p = entry.path();
@@ -284,8 +207,7 @@ fn check_lint_roots(root: &Path) -> TaskResult {
             failures.push(format!("{}: no crate root found", member.name));
         }
         for file in roots {
-            let source = std::fs::read_to_string(&file)
-                .map_err(|e| format!("cannot read {}: {e}", file.display()))?;
+            let source = std::fs::read_to_string(&file).map_err(|e| format!("cannot read {}: {e}", file.display()))?;
             for problem in lint_root_problems(&source) {
                 failures.push(format!("{}: {problem}", file.display()));
             }
@@ -301,19 +223,7 @@ fn check_attribution(root: &Path) -> TaskResult {
     //    under allowlisted licenses.
     let out = cargo_output(
         root,
-        &[
-            "tree",
-            "--workspace",
-            "--locked",
-            "--target",
-            "all",
-            "-e",
-            "normal,build,dev",
-            "--prefix",
-            "none",
-            "--format",
-            "{p}\t{l}",
-        ],
+        &["tree", "--workspace", "--locked", "--target", "all", "-e", "normal,build,dev", "--prefix", "none", "--format", "{p}\t{l}"],
     )?;
     let mut checked = BTreeSet::new();
     for line in out.lines().filter(|l| !l.trim().is_empty()) {
@@ -332,20 +242,14 @@ fn check_attribution(root: &Path) -> TaskResult {
         }
         match spdx::is_allowed(license) {
             Ok(true) => {}
-            Ok(false) => failures.push(format!(
-                "{pkg}: license '{license}' is not on the allowlist"
-            )),
+            Ok(false) => failures.push(format!("{pkg}: license '{license}' is not on the allowlist")),
             Err(e) => failures.push(format!("{pkg}: cannot read license '{license}': {e}")),
         }
     }
-    println!(
-        "checked {} packages against the license allowlist",
-        checked.len()
-    );
+    println!("checked {} packages against the license allowlist", checked.len());
 
     // 2. Every file under assets/ must be named in ATTRIBUTION.md.
-    let attribution = std::fs::read_to_string(root.join("ATTRIBUTION.md"))
-        .map_err(|e| format!("cannot read ATTRIBUTION.md: {e}"))?;
+    let attribution = std::fs::read_to_string(root.join("ATTRIBUTION.md")).map_err(|e| format!("cannot read ATTRIBUTION.md: {e}"))?;
     let mut assets = Vec::new();
     collect_files(&root.join("assets"), 0, &mut assets)?;
     let mut listed = 0usize;
@@ -363,13 +267,7 @@ fn check_attribution(root: &Path) -> TaskResult {
     println!("checked {listed} asset files against ATTRIBUTION.md");
 
     // 3. The legal files the ground rules require must exist.
-    for file in [
-        "LICENSE-MIT",
-        "LICENSE-APACHE",
-        "NOTICE",
-        "ATTRIBUTION.md",
-        "UPSTREAM.md",
-    ] {
+    for file in ["LICENSE-MIT", "LICENSE-APACHE", "NOTICE", "ATTRIBUTION.md", "UPSTREAM.md"] {
         if !root.join(file).is_file() {
             failures.push(format!("{file} is missing"));
         }
@@ -398,10 +296,7 @@ fn collect_files(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) -> TaskResult
         // Do not follow symlinks out of the tree.
         let is_link = std::fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_symlink());
         if is_link {
-            return Err(format!(
-                "{} is a symlink; assets must be real files",
-                path.display()
-            ));
+            return Err(format!("{} is a symlink; assets must be real files", path.display()));
         }
         if path.is_dir() {
             collect_files(&path, depth + 1, out)?;
@@ -460,10 +355,7 @@ fn check_layering(root: &Path) -> TaskResult {
             }
         }
     }
-    println!(
-        "checked {edges} workspace dependency edges across {} crates",
-        members.len()
-    );
+    println!("checked {edges} workspace dependency edges across {} crates", members.len());
     report(failures, "workspace layering holds")
 }
 
@@ -484,8 +376,7 @@ mod tests {
 
     #[test]
     fn parses_cargo_tree_lines() {
-        let (name, path) =
-            parse_pkg("wordsmith-ui v0.1.0-dev (/repo/crates/wordsmith-ui)").unwrap();
+        let (name, path) = parse_pkg("wordsmith-ui v0.1.0-dev (/repo/crates/wordsmith-ui)").unwrap();
         assert_eq!(name, "wordsmith-ui");
         assert_eq!(path, Some(PathBuf::from("/repo/crates/wordsmith-ui")));
 
@@ -498,8 +389,7 @@ mod tests {
         assert!(path.is_some());
 
         // A git source is not a local path.
-        let (_, path) =
-            parse_pkg("craft-ui v0.1.0 (https://example.invalid/x?tag=v0.1.0#abc)").unwrap();
+        let (_, path) = parse_pkg("craft-ui v0.1.0 (https://example.invalid/x?tag=v0.1.0#abc)").unwrap();
         assert_eq!(path, None);
         assert!(parse_pkg("").is_none());
     }
@@ -510,16 +400,10 @@ mod tests {
         assert!(lint_root_problems(good).is_empty());
 
         let missing_todo = good.replace("clippy::todo,", "");
-        assert_eq!(
-            lint_root_problems(&missing_todo),
-            vec!["missing #![deny(clippy::todo)]"]
-        );
+        assert_eq!(lint_root_problems(&missing_todo), vec!["missing #![deny(clippy::todo)]"]);
 
         let no_forbid = good.replace("#![forbid(unsafe_code)]", "");
-        assert_eq!(
-            lint_root_problems(&no_forbid),
-            vec!["missing #![forbid(unsafe_code)]"]
-        );
+        assert_eq!(lint_root_problems(&no_forbid), vec!["missing #![forbid(unsafe_code)]"]);
 
         // Lints named outside a deny block do not count.
         let warn_only = good.replace("#![deny(", "#![warn(");

@@ -8,19 +8,8 @@
 
 /// License ids on the allowlist in `docs/REUSE.md` rule 5, spelled as SPDX
 /// ids. See `docs/decisions/0001-license-allowlist.md` for the mapping.
-pub const ALLOWED: &[&str] = &[
-    "MIT",
-    "Apache-2.0",
-    "BSD-2-Clause",
-    "BSD-3-Clause",
-    "0BSD",
-    "ISC",
-    "OFL-1.1",
-    "CC0-1.0",
-    "CC-BY-4.0",
-    "CC-BY-SA-4.0",
-    "Unlicense",
-];
+pub const ALLOWED: &[&str] =
+    &["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "ISC", "OFL-1.1", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "Unlicense"];
 
 /// `WITH` exceptions that only add permissions to an allowed license.
 pub const ALLOWED_EXCEPTIONS: &[&str] = &["LLVM-exception"];
@@ -122,10 +111,7 @@ impl Parser {
                 Ok(ok)
             }
             Some(Token::Word(id)) => {
-                if ["AND", "OR", "WITH"]
-                    .iter()
-                    .any(|op| id.eq_ignore_ascii_case(op))
-                {
+                if ["AND", "OR", "WITH"].iter().any(|op| id.eq_ignore_ascii_case(op)) {
                     return Err(format!("operator {id} where a license id was expected"));
                 }
                 self.pos += 1;
@@ -188,10 +174,7 @@ mod tests {
     fn and_needs_both_sides() {
         assert_eq!(is_allowed("(MIT OR Apache-2.0) AND Unicode-3.0"), Ok(false));
         assert_eq!(is_allowed("MIT AND ISC"), Ok(true));
-        assert_eq!(
-            is_allowed("(MIT OR Apache-2.0) AND (BSD-3-Clause)"),
-            Ok(true)
-        );
+        assert_eq!(is_allowed("(MIT OR Apache-2.0) AND (BSD-3-Clause)"), Ok(true));
     }
 
     #[test]
@@ -205,14 +188,8 @@ mod tests {
     #[test]
     fn with_exceptions() {
         assert_eq!(is_allowed("Apache-2.0 WITH LLVM-exception"), Ok(true));
-        assert_eq!(
-            is_allowed("Apache-2.0 WITH LLVM-exception OR MIT"),
-            Ok(true)
-        );
-        assert_eq!(
-            is_allowed("GPL-2.0-only WITH Classpath-exception-2.0"),
-            Ok(false)
-        );
+        assert_eq!(is_allowed("Apache-2.0 WITH LLVM-exception OR MIT"), Ok(true));
+        assert_eq!(is_allowed("GPL-2.0-only WITH Classpath-exception-2.0"), Ok(false));
     }
 
     #[test]

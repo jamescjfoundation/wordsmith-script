@@ -52,9 +52,7 @@ pub fn check_edge(from: &str, to: &str) -> Result<(), String> {
     let lf = layer_of(from).ok_or_else(|| format!("{from} has no layer in xtask/src/layers.rs"))?;
     let lt = layer_of(to).ok_or_else(|| format!("{to} has no layer in xtask/src/layers.rs"))?;
     if lt > lf {
-        return Err(format!(
-            "{from} (layer {lf}) depends on {to} (layer {lt}); dependencies must point down"
-        ));
+        return Err(format!("{from} (layer {lf}) depends on {to} (layer {lt}); dependencies must point down"));
     }
     Ok(())
 }
@@ -68,10 +66,7 @@ mod tests {
         let ui = layer_of("wordsmith-ui").unwrap_or(0);
         for (name, layer) in LAYERS {
             if *layer > ui {
-                assert!(
-                    ["wordsmith", "wordsmith-cli", "wordsmith-web"].contains(name),
-                    "{name} sits above the interface layer"
-                );
+                assert!(["wordsmith", "wordsmith-cli", "wordsmith-web"].contains(name), "{name} sits above the interface layer");
             }
         }
     }

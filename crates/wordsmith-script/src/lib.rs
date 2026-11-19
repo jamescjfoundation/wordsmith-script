@@ -7,14 +7,7 @@
 //! identity so the workspace, lints and layering checks have something to run.
 
 #![forbid(unsafe_code)]
-#![deny(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::unimplemented,
-    clippy::todo,
-    clippy::unreachable
-)]
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 /// Product name shown to people.
 pub const PRODUCT_NAME: &str = "Wordsmith Script";
