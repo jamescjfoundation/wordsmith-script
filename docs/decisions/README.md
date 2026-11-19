@@ -14,3 +14,4 @@ what would make us revisit it.
 | [0006](0006-engine-trim.md) | Trimming WordCraft's engine to session, undo, registry and recovery |
 | [0007](0007-mcp-trim.md) | Trimming WordCraft's MCP server |
 | [0008](0008-app-data.md) | Screenplay data lives in the document's `app_data` |
+| [0009](0009-element-model.md) | The element model and its defaults |

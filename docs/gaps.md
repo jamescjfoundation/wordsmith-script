@@ -5,9 +5,15 @@ that are not built yet, and anything else we know is missing. An item leaves
 this list when it ships with tests, or stays with a reason if v0.1 will not
 cover it.
 
+## Known for M2
+
+- Space before is applied at the top of a page (the first Action on a page
+  starts 12 pt below the margin). Screenplay convention drops it there; it is
+  a pagination rule, so it is M2's.
+
 ## Not started
 
-Everything in M1 to M8. Each milestone plan in `docs/plans/` breaks its part
+Everything in M1 to M8 not marked done in `docs/progress.md`. Each milestone plan in `docs/plans/` breaks its part
 of the spec into items that are tracked here as they land.
 
 ## Copied-code tests ignored for missing build inputs
