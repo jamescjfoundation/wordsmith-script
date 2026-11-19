@@ -23,6 +23,13 @@ tested. Left open:
 - The editor's look was not checked automatically; headless tests cover its
   behavior.
 
+## M2 gaps
+
+- The web build cannot export a PDF yet (native dialogs are desktop-only;
+  the web needs a download instead).
+- Printing to a real printer, and the Windows print path, are untested
+  (decision 0013).
+
 ## Not started
 
 Everything in M1 to M8 not marked done in `docs/progress.md`. Each milestone plan in `docs/plans/` breaks its part

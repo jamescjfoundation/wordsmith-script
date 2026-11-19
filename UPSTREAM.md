@@ -46,3 +46,4 @@ projects from here; a person decides when to send these.
 | Fix | Our commit | Upstream project | Status |
 | --- | --- | --- | --- |
 | `Document::app_data`: application data kept with a document, included in equality, `same_content` and serialization, `Arc`-shared values (decision 0008) | m1/doc-app-data | WordCraft (`crates/doc`) | candidate |
+| craft-print on Windows pulls winprint → sigstore → reqwest → webpki-root-certs (CDLA-Permissive-2.0) even with winprint's `pdfium` feature off; make sigstore optional (decision 0013) | m2/pdf | craft-libs (`crates/print`) and storytold/winprint.rs | candidate |

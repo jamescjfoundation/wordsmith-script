@@ -19,6 +19,8 @@ impl App {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
         wordsmith_ui::fonts::install(&cc.egui_ctx);
         let mut editor = Editor::new(wordsmith_ui::new_session());
+        let ctx = cc.egui_ctx.clone();
+        editor.dialogs = craft_dialogs::Dialogs::new(Arc::new(move || ctx.request_repaint()));
         if let Some(dir) = wordsmith_control_key::settings_dir() {
             let ctx = cc.egui_ctx.clone();
             let wake: Arc<dyn Fn() + Send + Sync> = Arc::new(move || ctx.request_repaint());
@@ -47,8 +49,9 @@ impl eframe::App for App {
         ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.into()));
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         self.editor.ui(ui);
+        self.editor.native_dialogs(Some(&*frame));
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {

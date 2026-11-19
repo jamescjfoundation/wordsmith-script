@@ -11,6 +11,7 @@
 
 pub mod commands;
 pub mod element;
+pub mod export;
 pub mod paginate;
 pub mod scene_heading;
 pub mod scenes;

@@ -11,9 +11,16 @@ publish.workspace = true
 wordsmith-doc = { workspace = true }
 wordsmith-engine = { workspace = true }
 wordsmith-layout = { workspace = true }
+wordsmith-pdf = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }
+
+[dev-dependencies]
+hayro-syntax = "0.7.2"
+hayro-interpret = { version = "0.7.0", default-features = false, features = ["embed-fonts"] }
+hayro-cmap = "0.1"
+kurbo = { workspace = true }
 
 [lints]
 workspace = true
