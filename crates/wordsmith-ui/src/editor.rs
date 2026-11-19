@@ -27,6 +27,14 @@ struct PageTexture {
     texture: TextureHandle,
 }
 
+/// Autocomplete suggestions showing at the caret.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Suggestions {
+    pub candidates: Vec<String>,
+    /// The highlighted one, which Tab or Enter accepts.
+    pub selected: usize,
+}
+
 /// One script window's editor.
 pub struct Editor {
     pub session: Session,
@@ -49,6 +57,12 @@ pub struct Editor {
     paginator: wordsmith_script::paginate::Paginator,
     /// The paginated script for the session's current revision.
     paginated: Option<(u64, Arc<Paginated>)>,
+    /// Autocomplete suggestions at the caret, if any are showing.
+    pub suggestions: Option<Suggestions>,
+    /// Where suggestions were hidden with Escape: (revision, caret). They stay hidden there.
+    dismissed: Option<(u64, wordsmith_doc::Pos)>,
+    /// The caret's rectangle on screen in the last frame, for placing the suggestion list.
+    caret_screen: Option<Rect>,
     /// Native file dialogs; each answer runs the command named with it, with the chosen path.
     #[cfg(not(target_arch = "wasm32"))]
     pub dialogs: craft_dialogs::Dialogs<&'static str>,
@@ -68,6 +82,9 @@ impl Editor {
             scroll_to_caret: true,
             message: String::new(),
             clipboard: None,
+            suggestions: None,
+            dismissed: None,
+            caret_screen: None,
             paginator: Default::default(),
             paginated: None,
             #[cfg(not(target_arch = "wasm32"))]
@@ -83,6 +100,59 @@ impl Editor {
         }
         self.scroll_to_caret = true;
         self.take_ui_requests();
+        self.refresh_suggestions();
+    }
+
+    /// Ask the script what is offered at the caret now. Suggestions hidden with Escape stay
+    /// hidden until the text or the caret changes.
+    pub fn refresh_suggestions(&mut self) {
+        let here = (self.session.rev(), self.session.sel.focus.clone());
+        if self.dismissed.as_ref() == Some(&here) {
+            self.suggestions = None;
+            return;
+        }
+        self.dismissed = None;
+        let offered = self.session.run("autocomplete.suggest", &json!({})).ok();
+        let candidates: Vec<String> =
+            offered.and_then(|v| v.get("candidates").cloned()).and_then(|c| serde_json::from_value(c).ok()).unwrap_or_default();
+        self.suggestions = match (&self.suggestions, candidates.is_empty()) {
+            (_, true) => None,
+            // Keep the highlight on the same entry while it is still offered.
+            (Some(old), false) => {
+                let keep = old.candidates.get(old.selected).and_then(|c| candidates.iter().position(|n| n == c)).unwrap_or(0);
+                Some(Suggestions { candidates, selected: keep })
+            }
+            (None, false) => Some(Suggestions { candidates, selected: 0 }),
+        };
+    }
+
+    /// Keys the suggestion list takes while it shows: Tab and Enter accept, Up and Down move,
+    /// Escape hides. Returns whether the key was taken.
+    fn suggestion_key(&mut self, shortcut: &str) -> bool {
+        let Some(sug) = self.suggestions.clone() else { return false };
+        match shortcut {
+            "Tab" | "Enter" => {
+                if let Some(c) = sug.candidates.get(sug.selected) {
+                    self.run("autocomplete.accept", json!({"candidate": c}));
+                }
+                true
+            }
+            "Down" => {
+                self.suggestions = Some(Suggestions { selected: (sug.selected + 1) % sug.candidates.len().max(1), ..sug });
+                true
+            }
+            "Up" => {
+                let n = sug.candidates.len().max(1);
+                self.suggestions = Some(Suggestions { selected: (sug.selected + n - 1) % n, ..sug });
+                true
+            }
+            "Escape" => {
+                self.dismissed = Some((self.session.rev(), self.session.sel.focus.clone()));
+                self.suggestions = None;
+                true
+            }
+            _ => false,
+        }
     }
 
     /// Act on what commands asked of the interface (open a dialog, copy text).
@@ -162,7 +232,9 @@ impl Editor {
                 Event::Cut => self.run("edit.cut", json!({})),
                 Event::Key { key, pressed: true, modifiers, .. } => {
                     let Some(shortcut) = keys::shortcut(key, modifiers, self.mac) else { continue };
-                    self.press(&shortcut);
+                    if !self.suggestion_key(&shortcut) {
+                        self.press(&shortcut);
+                    }
                 }
                 _ => {}
             }
@@ -299,6 +371,7 @@ impl Editor {
             let r = Rect::from_min_size(top, vec2(1.5, c.height * zoom));
             painter.line_segment([r.center_top(), r.center_bottom()], Stroke::new(1.5, Color32::BLACK));
             caret_rect = Some(r.expand(24.0));
+            self.caret_screen = Some(r);
         }
         if std::mem::take(&mut self.scroll_to_caret)
             && let Some(r) = caret_rect
@@ -342,7 +415,30 @@ impl Editor {
         egui::CentralPanel::default().show(ui, |ui| {
             egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| self.page_view(ui));
         });
+        self.suggestion_list(ui.ctx());
         crate::dialogs::show(self, ui.ctx());
+    }
+
+    /// The suggestion list, just below the caret. Clicking an entry accepts it.
+    fn suggestion_list(&mut self, ctx: &egui::Context) {
+        let (Some(sug), Some(caret)) = (self.suggestions.clone(), self.caret_screen) else { return };
+        let mut chosen = None;
+        egui::Area::new(egui::Id::new("autocomplete")).order(egui::Order::Foreground).fixed_pos(caret.left_bottom() + vec2(0.0, 4.0)).show(
+            ctx,
+            |ui| {
+                egui::Frame::popup(ui.style()).show(ui, |ui| {
+                    for (i, c) in sug.candidates.iter().enumerate() {
+                        if ui.selectable_label(i == sug.selected, c.as_str()).clicked() {
+                            chosen = Some(c.clone());
+                        }
+                    }
+                    ui.weak("Tab or Enter to accept · Esc to hide");
+                });
+            },
+        );
+        if let Some(c) = chosen {
+            self.run("autocomplete.accept", json!({"candidate": c}));
+        }
     }
 }
 
