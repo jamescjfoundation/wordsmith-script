@@ -8,19 +8,15 @@
 
 /// License ids on the allowlist in `docs/REUSE.md` rule 5, spelled as SPDX
 /// ids. See `docs/decisions/0001-license-allowlist.md` for the mapping.
-pub const ALLOWED: &[&str] = &[
-    "MIT",
-    "Apache-2.0",
-    "BSD-2-Clause",
-    "BSD-3-Clause",
-    "0BSD",
-    "ISC",
-    "OFL-1.1",
-    "CC0-1.0",
-    "CC-BY-4.0",
-    "CC-BY-SA-4.0",
-    "Unlicense",
-];
+pub const ALLOWED: &[&str] =
+    &["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "ISC", "OFL-1.1", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "Unlicense"];
+
+/// Licenses outside the `docs/REUSE.md` allowlist that the project owner
+/// reviewed and approved on 2026-11-19, because WordCraft's copied core
+/// cannot build without them. Reasons and conditions are in
+/// `docs/decisions/0001-license-allowlist.md`. Add to this list only with a
+/// person's approval recorded there.
+pub const REVIEWED_EXCEPTIONS: &[&str] = &["Zlib", "Unicode-3.0", "IJG"];
 
 /// `WITH` exceptions that only add permissions to an allowed license.
 pub const ALLOWED_EXCEPTIONS: &[&str] = &["LLVM-exception"];
@@ -122,14 +118,11 @@ impl Parser {
                 Ok(ok)
             }
             Some(Token::Word(id)) => {
-                if ["AND", "OR", "WITH"]
-                    .iter()
-                    .any(|op| id.eq_ignore_ascii_case(op))
-                {
+                if ["AND", "OR", "WITH"].iter().any(|op| id.eq_ignore_ascii_case(op)) {
                     return Err(format!("operator {id} where a license id was expected"));
                 }
                 self.pos += 1;
-                let mut ok = ALLOWED.contains(&id.as_str());
+                let mut ok = ALLOWED.contains(&id.as_str()) || REVIEWED_EXCEPTIONS.contains(&id.as_str());
                 if self.is_op("WITH") {
                     self.pos += 1;
                     match self.peek_word() {
@@ -172,7 +165,8 @@ mod tests {
         assert_eq!(is_allowed("MIT"), Ok(true));
         assert_eq!(is_allowed("Apache-2.0"), Ok(true));
         assert_eq!(is_allowed("GPL-3.0-only"), Ok(false));
-        assert_eq!(is_allowed("Zlib"), Ok(false));
+        assert_eq!(is_allowed("BSL-1.0"), Ok(false));
+        assert_eq!(is_allowed("MPL-2.0"), Ok(false));
     }
 
     #[test]
@@ -186,12 +180,9 @@ mod tests {
 
     #[test]
     fn and_needs_both_sides() {
-        assert_eq!(is_allowed("(MIT OR Apache-2.0) AND Unicode-3.0"), Ok(false));
+        assert_eq!(is_allowed("(MIT OR Apache-2.0) AND MPL-2.0"), Ok(false));
         assert_eq!(is_allowed("MIT AND ISC"), Ok(true));
-        assert_eq!(
-            is_allowed("(MIT OR Apache-2.0) AND (BSD-3-Clause)"),
-            Ok(true)
-        );
+        assert_eq!(is_allowed("(MIT OR Apache-2.0) AND (BSD-3-Clause)"), Ok(true));
     }
 
     #[test]
@@ -199,20 +190,22 @@ mod tests {
         // GPL AND MIT OR ISC == (GPL AND MIT) OR ISC
         assert_eq!(is_allowed("GPL-3.0-only AND MIT OR ISC"), Ok(true));
         assert_eq!(is_allowed("ISC OR GPL-3.0-only AND MIT"), Ok(true));
-        assert_eq!(is_allowed("Zlib OR GPL-3.0-only AND MIT"), Ok(false));
+        assert_eq!(is_allowed("BSL-1.0 OR GPL-3.0-only AND MIT"), Ok(false));
+    }
+
+    #[test]
+    fn reviewed_exceptions_pass() {
+        assert_eq!(is_allowed("Zlib"), Ok(true));
+        assert_eq!(is_allowed("(MIT OR Apache-2.0) AND Unicode-3.0"), Ok(true));
+        assert_eq!(is_allowed("(MIT OR Apache-2.0) AND IJG"), Ok(true));
+        assert_eq!(is_allowed("Unicode-3.0 AND GPL-3.0-only"), Ok(false));
     }
 
     #[test]
     fn with_exceptions() {
         assert_eq!(is_allowed("Apache-2.0 WITH LLVM-exception"), Ok(true));
-        assert_eq!(
-            is_allowed("Apache-2.0 WITH LLVM-exception OR MIT"),
-            Ok(true)
-        );
-        assert_eq!(
-            is_allowed("GPL-2.0-only WITH Classpath-exception-2.0"),
-            Ok(false)
-        );
+        assert_eq!(is_allowed("Apache-2.0 WITH LLVM-exception OR MIT"), Ok(true));
+        assert_eq!(is_allowed("GPL-2.0-only WITH Classpath-exception-2.0"), Ok(false));
     }
 
     #[test]

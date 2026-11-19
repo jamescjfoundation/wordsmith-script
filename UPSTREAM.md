@@ -11,14 +11,28 @@ Apache-2.0. Each copied file keeps its header; changed files add
 
 | Our crate | Upstream path | Upstream commit | Copied on | Notes |
 | --- | --- | --- | --- | --- |
-| _none yet_ | | | | Filled in by the bootstrap branch |
+| wordsmith-geom | `crates/geom` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed only |
+| wordsmith-doc | `crates/doc` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed only |
+| wordsmith-fonts | `crates/fonts` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; one test ignored (needs a Thai face from craft-fonts) |
+| wordsmith-layout | `crates/layout` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; three tests ignored (need craft-i18n language data) |
+| wordsmith-render | `crates/render` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed only |
+| wordsmith-pdf | `crates/pdf` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; PDF creator and producer say Wordsmith Script; one golden hash re-recorded |
 
 ## Pinned dependencies
 
 | Source | Pin | Crates |
 | --- | --- | --- |
-| craft-libs | `tag = "v0.1.0"` | craft-atomic, craft-settings, craft-quit, craft-print, craft-ui |
-| craft-libs | `rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a"` (the commit WordCraft pins) | every other craft-libs crate we use |
+| craft-libs | `rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a"` (the commit WordCraft pins) | every craft-libs crate we use, plus the patched `krilla` |
+| craft-libs v0.1.0 | no git tag exists; see `docs/decisions/0004-craft-libs-pins.md` | craft-atomic, craft-settings, craft-quit, craft-print, craft-ui (not used yet) |
+
+Build inputs WordCraft's CI supplies and we do not yet (see `docs/gaps.md`):
+
+| Input | WordCraft's pin | Used for |
+| --- | --- | --- |
+| craft-i18n (`CRAFT_I18N_DIR`) | `e56d26244bbac099bfd42e23fb12f78a4be418a7` | spelling dictionaries and hyphenation patterns in craft-proof |
+| craft-fonts (`CRAFT_FONTS_DIR`) | `b076417b5880bd4154bd22f00695b1d28c6bea83` | extra script faces (CJK, Arabic, Thai) |
+
+Not copied from WordCraft's engine yet: session, undo, command registry and recovery, plus the `mcp` crate. They come in the next bootstrap branch.
 
 ## Candidates to contribute back
 

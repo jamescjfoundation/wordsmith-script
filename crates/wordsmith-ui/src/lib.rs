@@ -3,14 +3,7 @@
 //! it; `cargo xtask ci` enforces that with its layering check.
 
 #![forbid(unsafe_code)]
-#![deny(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::unimplemented,
-    clippy::todo,
-    clippy::unreachable
-)]
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 /// Plain-text credit required by the reuse rules. Shown in the About window.
 pub const UPSTREAM_CREDIT: &str = "based on WordCraft by the ArtCraft team";

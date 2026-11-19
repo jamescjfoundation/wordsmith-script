@@ -1,4 +1,6 @@
-# Tests may unwrap and panic; production code may not (see crate roots).
+# Tests may unwrap, panic and index; production code may not (see crate roots).
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+cognitive-complexity-threshold = 30

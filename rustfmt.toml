@@ -1,2 +1,4 @@
+# Same as WordCraft, so copied code is not reformatted.
 edition = "2024"
-max_width = 100
+max_width = 150
+use_small_heuristics = "Max"

@@ -1,6 +1,14 @@
 [workspace]
 resolver = "3"
 members = [
+    # Copied from WordCraft (see UPSTREAM.md)
+    "crates/wordsmith-geom",
+    "crates/wordsmith-doc",
+    "crates/wordsmith-fonts",
+    "crates/wordsmith-layout",
+    "crates/wordsmith-render",
+    "crates/wordsmith-pdf",
+    # Ours
     "crates/wordsmith-script",
     "crates/wordsmith-format",
     "crates/wordsmith-ui",
@@ -10,6 +18,12 @@ members = [
     "xtask",
 ]
 default-members = [
+    "crates/wordsmith-geom",
+    "crates/wordsmith-doc",
+    "crates/wordsmith-fonts",
+    "crates/wordsmith-layout",
+    "crates/wordsmith-render",
+    "crates/wordsmith-pdf",
     "crates/wordsmith-script",
     "crates/wordsmith-format",
     "crates/wordsmith-ui",
@@ -25,23 +39,87 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [workspace.dependencies]
+# Internal: copied from WordCraft
+wordsmith-geom = { path = "crates/wordsmith-geom" }
+wordsmith-doc = { path = "crates/wordsmith-doc" }
+wordsmith-fonts = { path = "crates/wordsmith-fonts" }
+wordsmith-layout = { path = "crates/wordsmith-layout" }
+wordsmith-render = { path = "crates/wordsmith-render" }
+wordsmith-pdf = { path = "crates/wordsmith-pdf" }
+# Internal: ours
 wordsmith-script = { path = "crates/wordsmith-script" }
 wordsmith-format = { path = "crates/wordsmith-format" }
 wordsmith-ui = { path = "crates/wordsmith-ui" }
 
-# Lint policy shared by every crate. Crate roots also carry the same
-# denies as attributes so the rule is visible where the code lives.
+# craft-libs. The v0.1.0 release has no git tag (see
+# docs/decisions/0004-craft-libs-pins.md), so every craft-libs crate uses one
+# shared rev: the commit WordCraft pins. Upgrade them all together.
+craft-proof = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
+craft-codepage = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
+craft-metafile = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
+craft-image-codecs = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
+craft-tiff = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
+craft-pdf = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0", default-features = false, features = ["write"] }
+craft-zip = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
+
+# Foundation (versions as WordCraft pins them)
+kurbo = { version = "0.13", features = ["serde"] }
+thiserror = "2"
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+log = "0.4"
+# All date and time conversion goes through chrono.
+chrono = { version = "0.4.45", default-features = false, features = ["std"] }
+base64 = "0.23"
+proptest = "1"
+unicode-bidi = "0.3"
+unicode-segmentation = "1"
+unicode-linebreak = "0.1"
+unicode-script = "0.5"
+
+# Text, rendering and PDF
+skrifa = "0.47"
+harfrust = "0.13"
+wuff = "0.2.9"
+brotli-decompressor = "5"
+vello_cpu = "0.2"
+image = { version = "0.25", default-features = false }
+
+# Lint policy shared by every crate. The extra clippy settings come from WordCraft
+# so the copied code keeps the standard it was written to.
 [workspace.lints.rust]
 unsafe_code = "forbid"
+# cargo llvm-cov sets `--cfg coverage`; timing tests skip themselves under it.
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(coverage)"] }
 
 [workspace.lints.clippy]
-unwrap_used = "deny"
-expect_used = "deny"
-panic = "deny"
-unimplemented = "deny"
-todo = "deny"
-unreachable = "deny"
+# The six panicking lints (unwrap_used, expect_used, panic, unimplemented,
+# todo, unreachable) are denied by attributes at every product crate root,
+# not here, so integration tests under tests/ can unwrap. `cargo xtask
+# lint-roots` checks that every crate root carries them.
+cognitive_complexity = "deny"
+wildcard_imports = "deny"
+too_many_arguments = "deny"
+dbg_macro = "warn"
+type_complexity = "allow"
+
+# Dependencies are optimized even in dev builds: layout and PDF tests are
+# slow otherwise. Line tables keep file and line in backtraces.
+[profile.dev.package."*"]
+opt-level = 2
+debug = false
+
+[profile.dev]
+opt-level = 1
+debug = "line-tables-only"
 
 [profile.release]
+opt-level = 3
 lto = "thin"
-codegen-units = 1
+codegen-units = 16
+debug = 0
+
+# Required by craft-pdf: its Krilla backend is patched so a writer that failed
+# during unwinding is rejected. Same pin as WordCraft.
+[patch.crates-io]
+krilla = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a" }

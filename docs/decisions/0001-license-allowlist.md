@@ -27,11 +27,28 @@ allowed, `A AND B` only if both are. The older `A/B` form means OR. Anything
 else, including a missing license field, fails the check.
 
 Not on the list, so they stop the build and need a person's decision:
-`Zlib`, `BSL-1.0`, `Unicode-3.0`, `MPL-2.0`, any GPL or LGPL, and any
-custom license file. When the build needs one of these only as an OR
-alternative, it passes without asking.
+`BSL-1.0`, `MPL-2.0`, any GPL or LGPL, and any custom license file. When the
+build needs one of these only as an OR alternative, it passes without asking.
+
+## Reviewed exceptions
+
+Approved by the project owner on 2026-11-19, when the WordCraft copy
+(decision 0005) first brought them in. All three are short permissive
+licenses, and the copied core cannot build without them. They are listed as
+`REVIEWED_EXCEPTIONS` in `xtask/src/spdx.rs`.
+
+| License | Packages that needed it (2026-11-19) | Condition |
+| --- | --- | --- |
+| `Zlib` | zlib-rs (compression under flate2, used by image codecs, zip and the PDF test reader); foldhash (hashing under hashbrown) | none beyond keeping notices in source distributions |
+| `Unicode-3.0` | unicode-ident (needed by every Rust derive macro); unicode-normalization (craft-proof); yoke, zerofrom (krilla PDF writer, hayro test reader) | keep the notice with distributed data and software |
+| `IJG` | jpeg-encoder (craft-image-codecs, reached from wordsmith-geom) | the documentation must say the software is based in part on the work of the Independent JPEG Group; this is in `NOTICE` |
+
+Still waiting for a decision: the SCOWL and Kuenning notices on craft-i18n's
+English spelling dictionaries. The owner chose to decide this when M3
+(spelling) starts. Until then the language data is not built in.
 
 ## Revisit when
 
-A needed dependency carries a license outside this list. That is a stop
+Re-check the reviewed exceptions whenever pins are upgraded, in case new
+packages start depending on them. A needed dependency carries a license outside this list. That is a stop
 rule: ask the person before adding an exception, and record the answer here.

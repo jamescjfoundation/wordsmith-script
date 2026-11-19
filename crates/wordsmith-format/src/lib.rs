@@ -3,14 +3,7 @@
 //! Fountain. Both arrive in milestone M4; the skeleton only links the layer.
 
 #![forbid(unsafe_code)]
-#![deny(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::unimplemented,
-    clippy::todo,
-    clippy::unreachable
-)]
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 /// File extension of the native format. The final choice is recorded in
 /// `docs/format.md` when the format lands in M4.
