@@ -12,6 +12,7 @@ wordsmith-script.workspace = true
 wordsmith-format.workspace = true
 wordsmith-engine.workspace = true
 wordsmith-doc.workspace = true
+wordsmith-geom.workspace = true
 wordsmith-layout.workspace = true
 wordsmith-render.workspace = true
 egui.workspace = true

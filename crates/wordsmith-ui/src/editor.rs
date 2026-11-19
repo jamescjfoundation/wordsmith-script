@@ -20,11 +20,69 @@ const GAP: f32 = 16.0;
 /// Zoom limits.
 pub const ZOOM_RANGE: std::ops::RangeInclusive<f32> = 0.5..=3.0;
 
-/// A page's raster, for one document revision and one scale.
+/// A tile's raster, for one document revision, scale and theme.
 struct PageTexture {
     rev: u64,
     scale_bits: u32,
+    dark: bool,
     texture: TextureHandle,
+}
+
+/// How the script is shown (SPEC "Views": normal, page and speed).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum View {
+    /// Pages as they print: (MORE), (CONT'D), page numbers.
+    #[default]
+    Page,
+    /// The script in one continuous column, no page edges.
+    Normal,
+    /// Continuous and plain: every element at the left margin, its name in the gutter.
+    Speed,
+}
+
+/// What a view shows: its document and layout, and, for the page view, the map back to the
+/// script (the other views show the script itself).
+#[derive(Clone)]
+pub struct Shown {
+    /// The document shown, when it is not the paginated script's (the continuous views).
+    own: Option<Arc<wordsmith_doc::Document>>,
+    pub layout: Arc<wordsmith_layout::DocLayout>,
+    pub pag: Option<Arc<Paginated>>,
+}
+
+impl Shown {
+    /// The document this view draws.
+    pub fn doc(&self) -> &wordsmith_doc::Document {
+        match (&self.own, &self.pag) {
+            (Some(d), _) => d,
+            (None, Some(p)) => &p.doc,
+            (None, None) => empty_document(),
+        }
+    }
+
+    pub fn to_output(&self, pos: &wordsmith_doc::Pos) -> Option<wordsmith_doc::Pos> {
+        match &self.pag {
+            Some(p) => p.to_output(pos),
+            None => Some(pos.clone()),
+        }
+    }
+    pub fn to_source(&self, pos: &wordsmith_doc::Pos) -> Option<wordsmith_doc::Pos> {
+        match &self.pag {
+            Some(p) => p.to_source(pos),
+            None => Some(pos.clone()),
+        }
+    }
+}
+
+/// Height of one drawn tile of a tall page, in document points. A continuous view is one very
+/// tall page; only its tiles in view are drawn. A page no taller than [`WHOLE_PAGE`] is drawn
+/// as one tile (every printed page), since each tile costs a renderer set-up.
+const TILE: f32 = 600.0;
+const WHOLE_PAGE: f32 = 1_200.0;
+
+/// The tile height for a page `h` points tall.
+fn tile_height(h: f32) -> f32 {
+    if h <= WHOLE_PAGE { h.max(1.0) } else { TILE }
 }
 
 /// The find bar's fields.
@@ -55,7 +113,20 @@ pub struct Suggestions {
 /// One script window's editor.
 pub struct Editor {
     pub session: Session,
-    pages: HashMap<usize, PageTexture>,
+    pages: HashMap<(View, usize, usize), PageTexture>,
+    /// Which view is showing.
+    pub view: View,
+    /// Dark interface and dark pages.
+    pub dark: bool,
+    /// Keep the caret's line at the middle of the window.
+    pub typewriter: bool,
+    /// Hide menus, toolbar and status bar.
+    pub focus_mode: bool,
+    /// The normal view's copy of the script, for one revision.
+    normal_doc: Option<(u64, Arc<wordsmith_doc::Document>)>,
+    /// The speed view's document and layout, for one revision.
+    speed: Option<(u64, Shown)>,
+    speed_cache: wordsmith_layout::LayoutCache,
     /// Points on screen per document point.
     pub zoom: f32,
     /// Apply macOS key conventions.
@@ -97,6 +168,13 @@ impl Editor {
         Editor {
             session,
             pages: HashMap::new(),
+            view: View::Page,
+            dark: false,
+            typewriter: false,
+            focus_mode: false,
+            normal_doc: None,
+            speed: None,
+            speed_cache: Default::default(),
             zoom: 1.0,
             mac: cfg!(target_os = "macos"),
             palette: None,
@@ -183,6 +261,15 @@ impl Editor {
         }
     }
 
+    /// Escape with no suggestions showing leaves focus mode.
+    fn leave_focus(&mut self, shortcut: &str) -> bool {
+        if shortcut == "Escape" && self.focus_mode {
+            self.focus_mode = false;
+            return true;
+        }
+        false
+    }
+
     /// Act on what commands asked of the interface (open a dialog, copy text).
     fn take_ui_requests(&mut self) {
         for req in std::mem::take(&mut self.session.ui_requests) {
@@ -198,6 +285,12 @@ impl Editor {
                 Some("about") => self.show_about = true,
                 Some("recover") => self.recovery = Some(RecoveryPrompt),
                 Some("exportPdf") => self.ask_export_path(),
+                Some("view.page") => self.set_view(View::Page),
+                Some("view.normal") => self.set_view(View::Normal),
+                Some("view.speed") => self.set_view(View::Speed),
+                Some("view.dark") => self.dark = !self.dark,
+                Some("view.typewriter") => self.typewriter = !self.typewriter,
+                Some("view.focus") => self.focus_mode = !self.focus_mode,
                 Some("find") => {
                     let query = self.session.selected_text();
                     let bar = self.find.take().unwrap_or_default();
@@ -265,7 +358,7 @@ impl Editor {
                 Event::Cut => self.run("edit.cut", json!({})),
                 Event::Key { key, pressed: true, modifiers, .. } => {
                     let Some(shortcut) = keys::shortcut(key, modifiers, self.mac) else { continue };
-                    if !self.suggestion_key(&shortcut) {
+                    if !self.suggestion_key(&shortcut) && !self.leave_focus(&shortcut) {
                         self.press(&shortcut);
                     }
                 }
@@ -310,6 +403,56 @@ impl Editor {
         p
     }
 
+    /// Switch views. Up and Down follow the view's lines.
+    pub fn set_view(&mut self, view: View) {
+        self.view = view;
+        self.session.view_mode = match view {
+            View::Page => wordsmith_layout::ViewMode::Print,
+            View::Normal | View::Speed => wordsmith_layout::ViewMode::Web,
+        };
+        self.session.view_width = text_width(&self.session.doc);
+        self.scroll_to_caret = true;
+    }
+
+    /// What the current view shows.
+    pub fn shown(&mut self) -> Shown {
+        match self.view {
+            View::Page => {
+                let pag = self.paginated();
+                Shown { own: None, layout: pag.layout.clone(), pag: Some(pag) }
+            }
+            View::Normal => {
+                self.session.view_mode = wordsmith_layout::ViewMode::Web;
+                self.session.view_width = text_width(&self.session.doc);
+                let rev = self.session.rev();
+                let doc = match &self.normal_doc {
+                    Some((r, d)) if *r == rev => d.clone(),
+                    _ => {
+                        let d = Arc::new(self.session.doc.clone());
+                        self.normal_doc = Some((rev, d.clone()));
+                        d
+                    }
+                };
+                Shown { own: Some(doc), layout: self.session.layout(), pag: None }
+            }
+            View::Speed => {
+                let rev = self.session.rev();
+                if let Some((r, s)) = &self.speed
+                    && *r == rev
+                {
+                    return s.clone();
+                }
+                let doc = speed_document(&self.session.doc);
+                let opts =
+                    wordsmith_layout::LayoutOptions { view: wordsmith_layout::ViewMode::Web, web_width: text_width(&doc), ..Default::default() };
+                let layout = Arc::new(wordsmith_layout::layout(&doc, &mut self.speed_cache, &opts));
+                let s = Shown { own: Some(Arc::new(doc)), layout, pag: None };
+                self.speed = Some((rev, s.clone()));
+                s
+            }
+        }
+    }
+
     /// A page's texture at `scale` pixels per document point, drawn again when the document or
     /// scale changed.
     fn texture(
@@ -317,28 +460,34 @@ impl Editor {
         ctx: &egui::Context,
         doc: &wordsmith_doc::Document,
         index: usize,
+        tile: usize,
         page: &wordsmith_layout::Page,
         scale: f32,
     ) -> TextureHandle {
         let rev = self.session.rev();
         let bits = scale.to_bits();
-        if let Some(t) = self.pages.get(&index)
+        let key = (self.view, index, tile);
+        if let Some(t) = self.pages.get(&key)
             && t.rev == rev
             && t.scale_bits == bits
+            && t.dark == self.dark
         {
             return t.texture.clone();
         }
-        let opts = wordsmith_render::RenderOptions::default();
-        let r = wordsmith_render::render_page(doc, page, scale, &opts);
+        let opts = wordsmith_render::RenderOptions { dark: self.dark, ..Default::default() };
+        let th = tile_height(page.h);
+        let top = tile as f32 * th;
+        let area = wordsmith_geom::Rect { x: 0.0, y: top, w: page.w, h: (page.h - top).clamp(1.0, th) };
+        let r = wordsmith_render::render_area(doc, page, area, scale, &opts);
         let image = egui::ColorImage::from_rgba_premultiplied([r.width as usize, r.height as usize], &r.pixels);
-        let texture = match self.pages.remove(&index) {
+        let texture = match self.pages.remove(&key) {
             Some(mut t) => {
                 t.texture.set(image, TextureOptions::LINEAR);
                 t.texture
             }
-            None => ctx.load_texture(format!("page-{index}"), image, TextureOptions::LINEAR),
+            None => ctx.load_texture(format!("page-{index}-{tile}"), image, TextureOptions::LINEAR),
         };
-        self.pages.insert(index, PageTexture { rev, scale_bits: bits, texture: texture.clone() });
+        self.pages.insert(key, PageTexture { rev, scale_bits: bits, dark: self.dark, texture: texture.clone() });
         texture
     }
 
@@ -346,7 +495,7 @@ impl Editor {
     /// (with its (MORE) and (CONT'D) lines and page numbers); the caret and clicks map to the
     /// script itself.
     pub fn page_view(&mut self, ui: &mut Ui) {
-        let pag = self.paginated();
+        let pag = self.shown();
         let layout = pag.layout.clone();
         let zoom = self.zoom;
         let ppp = ui.ctx().pixels_per_point();
@@ -363,7 +512,8 @@ impl Editor {
             m.set_focus_lock_filter(response.id, egui::EventFilter { tab: true, horizontal_arrows: true, vertical_arrows: true, escape: false })
         });
         let painter = ui.painter_at(area);
-        painter.rect_filled(area, 0.0, Color32::from_gray(96));
+        let (desk, paper) = if self.dark { (Color32::from_gray(24), Color32::from_gray(40)) } else { (Color32::from_gray(96), Color32::WHITE) };
+        painter.rect_filled(area, 0.0, desk);
 
         let mut origins: Vec<Rect> = Vec::with_capacity(layout.pages.len());
         let mut y = area.top() + GAP;
@@ -374,33 +524,33 @@ impl Editor {
         }
         for (i, page) in layout.pages.iter().enumerate() {
             let Some(rect) = origins.get(i).copied() else { continue };
-            if ui.is_rect_visible(rect) {
-                let tex = self.texture(ui.ctx(), &pag.doc, i, page, zoom * ppp);
-                painter.image(tex.id(), rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
-            } else {
-                painter.rect_filled(rect, 0.0, Color32::WHITE);
+            if !ui.is_rect_visible(rect) {
+                continue;
             }
-        }
-        let to_screen = |page: usize, x: f32, y: f32| origins.get(page).map(|r| r.min + vec2(x * zoom, y * zoom));
-
-        // Every match of the find bar's query, on the pages in view.
-        if let Some(bar) = self.find.as_ref().filter(|b| !b.query.is_empty()) {
-            let q = wordsmith_script::commands::find::Query { text: bar.query.clone(), match_case: bar.match_case, whole_word: bar.whole_word };
-            let fill = Color32::from_rgba_unmultiplied(255, 210, 0, 90);
-            for (a, b) in wordsmith_script::commands::find::find_all(&self.session, &q).into_iter().take(5_000) {
-                let (Some(a), Some(b)) = (pag.to_output(&a), pag.to_output(&b)) else { continue };
-                for (page, r) in layout.selection_rects(&pag.doc, &a, &b, 0) {
-                    if let Some(min) = to_screen(page, r.x, r.y) {
-                        painter.rect_filled(Rect::from_min_size(min, vec2(r.w * zoom, r.h * zoom)), 0.0, fill);
-                    }
+            // Draw the page in tiles, only those in view.
+            let th = tile_height(page.h);
+            let tiles = (page.h / th).ceil().max(1.0) as usize;
+            for tile in 0..tiles {
+                let top = tile as f32 * th;
+                let h = (page.h - top).min(th);
+                let tile_rect = Rect::from_min_size(rect.min + vec2(0.0, top * zoom), vec2(rect.width(), h * zoom));
+                if ui.is_rect_visible(tile_rect) {
+                    let tex = self.texture(ui.ctx(), pag.doc(), i, tile, page, zoom * ppp);
+                    painter.image(tex.id(), tile_rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
+                } else {
+                    painter.rect_filled(tile_rect, 0.0, paper);
                 }
             }
         }
+        let to_screen = |page: usize, x: f32, y: f32| origins.get(page).map(|r| r.min + vec2(x * zoom, y * zoom));
+        self.draw_gutter(ui, &painter, &pag, &origins, zoom);
+        self.draw_find_matches(&painter, &pag, &origins, zoom);
+
         // Selection, then the caret.
         if !self.session.sel.is_collapsed() {
             let (a, b) = self.session.sel.ordered();
             let (a, b) = (pag.to_output(&a).unwrap_or(a), pag.to_output(&b).unwrap_or(b));
-            for (page, r) in layout.selection_rects(&pag.doc, &a, &b, 0) {
+            for (page, r) in layout.selection_rects(pag.doc(), &a, &b, 0) {
                 if let Some(min) = to_screen(page, r.x, r.y) {
                     painter.rect_filled(
                         Rect::from_min_size(min, vec2(r.w * zoom, r.h * zoom)),
@@ -410,40 +560,22 @@ impl Editor {
                 }
             }
         }
-        // Misspelled words: a dotted red line under each, on the pages in view.
-        if self.spelling {
-            let found = wordsmith_script::spelling::check(&self.session.doc, &mut self.spell_cache);
-            let red = Stroke::new(1.5, Color32::from_rgb(220, 40, 40));
-            for m in &found {
-                let at = |off| wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(m.block), off };
-                let (Some(a), Some(b)) = (pag.to_output(&at(m.start)), pag.to_output(&at(m.end))) else { continue };
-                for (page, r) in layout.selection_rects(&pag.doc, &a, &b, 0) {
-                    let Some(min) = to_screen(page, r.x, r.y + r.h - 1.0) else { continue };
-                    if !ui.is_rect_visible(Rect::from_min_size(min, vec2(r.w * zoom, 2.0))) {
-                        continue;
-                    }
-                    let (x0, x1, y) = (min.x, min.x + r.w * zoom, min.y);
-                    let mut x = x0;
-                    while x < x1 {
-                        painter.line_segment([pos2(x, y), pos2((x + 2.0).min(x1), y)], red);
-                        x += 4.0;
-                    }
-                }
-            }
-        }
+        self.draw_misspellings(ui, &painter, &pag, &origins, zoom);
         let mut caret_rect = None;
         if let Some(c) = pag.to_output(&self.session.sel.focus).and_then(|at| layout.caret(&at))
             && let Some(top) = to_screen(c.page, c.x, c.top)
         {
             let r = Rect::from_min_size(top, vec2(1.5, c.height * zoom));
-            painter.line_segment([r.center_top(), r.center_bottom()], Stroke::new(1.5, Color32::BLACK));
+            let ink = if self.dark { Color32::from_gray(230) } else { Color32::BLACK };
+            painter.line_segment([r.center_top(), r.center_bottom()], Stroke::new(1.5, ink));
             caret_rect = Some(r.expand(24.0));
             self.caret_screen = Some(r);
         }
         if std::mem::take(&mut self.scroll_to_caret)
             && let Some(r) = caret_rect
         {
-            ui.scroll_to_rect(r, None);
+            // Typewriter scrolling keeps the caret's line at the middle of the window.
+            ui.scroll_to_rect(r, self.typewriter.then_some(egui::Align::Center));
         }
 
         // Mouse: a click places the caret, Shift+click or a drag extends, a double-click selects
@@ -512,13 +644,82 @@ impl Editor {
         }
     }
 
+    /// The speed view names each paragraph's element in the left gutter.
+    fn draw_gutter(&self, ui: &Ui, painter: &egui::Painter, pag: &Shown, origins: &[Rect], zoom: f32) {
+        if self.view != View::Speed {
+            return;
+        }
+        let elements = Elements::of_doc(&self.session.doc);
+        let font = egui::FontId::proportional(10.0 * zoom.max(0.8));
+        let colour = if self.dark { Color32::from_gray(150) } else { Color32::from_gray(220) };
+        for (i, b) in self.session.doc.body.iter().enumerate() {
+            let Some(p) = b.as_para() else { continue };
+            let at = wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(i), off: 0 };
+            let Some(c) = pag.layout.caret(&at) else { continue };
+            let Some(page) = origins.get(c.page) else { continue };
+            let y = page.min.y + c.top * zoom;
+            if !ui.is_rect_visible(Rect::from_min_size(pos2(page.min.x - 120.0, y), vec2(120.0, c.height * zoom))) {
+                continue;
+            }
+            painter.text(pos2(page.min.x - 8.0, y), egui::Align2::RIGHT_TOP, elements.of_para(p).name.as_str(), font.clone(), colour);
+        }
+    }
+
+    /// Every match of the find bar's query, on the pages in view.
+    fn draw_find_matches(&self, painter: &egui::Painter, pag: &Shown, origins: &[Rect], zoom: f32) {
+        let to_screen = |page: usize, x: f32, y: f32| origins.get(page).map(|r| r.min + vec2(x * zoom, y * zoom));
+        if let Some(bar) = self.find.as_ref().filter(|b| !b.query.is_empty()) {
+            let q = wordsmith_script::commands::find::Query { text: bar.query.clone(), match_case: bar.match_case, whole_word: bar.whole_word };
+            let fill = Color32::from_rgba_unmultiplied(255, 210, 0, 90);
+            for (a, b) in wordsmith_script::commands::find::find_all(&self.session, &q).into_iter().take(5_000) {
+                let (Some(a), Some(b)) = (pag.to_output(&a), pag.to_output(&b)) else { continue };
+                for (page, r) in pag.layout.selection_rects(pag.doc(), &a, &b, 0) {
+                    if let Some(min) = to_screen(page, r.x, r.y) {
+                        painter.rect_filled(Rect::from_min_size(min, vec2(r.w * zoom, r.h * zoom)), 0.0, fill);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Misspelled words: a dotted red line under each, on the pages in view.
+    fn draw_misspellings(&mut self, ui: &Ui, painter: &egui::Painter, pag: &Shown, origins: &[Rect], zoom: f32) {
+        let to_screen = |page: usize, x: f32, y: f32| origins.get(page).map(|r| r.min + vec2(x * zoom, y * zoom));
+        if self.spelling {
+            let found = wordsmith_script::spelling::check(&self.session.doc, &mut self.spell_cache);
+            let red = Stroke::new(1.5, Color32::from_rgb(220, 40, 40));
+            for m in &found {
+                let at = |off| wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(m.block), off };
+                let (Some(a), Some(b)) = (pag.to_output(&at(m.start)), pag.to_output(&at(m.end))) else { continue };
+                for (page, r) in pag.layout.selection_rects(pag.doc(), &a, &b, 0) {
+                    let Some(min) = to_screen(page, r.x, r.y + r.h - 1.0) else { continue };
+                    if !ui.is_rect_visible(Rect::from_min_size(min, vec2(r.w * zoom, 2.0))) {
+                        continue;
+                    }
+                    let (x0, x1, y) = (min.x, min.x + r.w * zoom, min.y);
+                    let mut x = x0;
+                    while x < x1 {
+                        painter.line_segment([pos2(x, y), pos2((x + 2.0).min(x1), y)], red);
+                        x += 4.0;
+                    }
+                }
+            }
+        }
+    }
+
     /// The whole window: menus, toolbar, status bar, pages and dialogs.
     pub fn ui(&mut self, ui: &mut Ui) {
+        let theme = if self.dark { egui::Theme::Dark } else { egui::Theme::Light };
+        if ui.ctx().theme() != theme {
+            ui.ctx().set_theme(theme);
+        }
         self.handle_keys(ui);
-        crate::chrome::menu_bar(self, ui);
-        crate::chrome::toolbar(self, ui);
-        crate::chrome::find_bar(self, ui);
-        crate::chrome::status_bar(self, ui);
+        if !self.focus_mode {
+            crate::chrome::menu_bar(self, ui);
+            crate::chrome::toolbar(self, ui);
+            crate::chrome::find_bar(self, ui);
+            crate::chrome::status_bar(self, ui);
+        }
         egui::CentralPanel::default().show(ui, |ui| {
             egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| self.page_view(ui));
         });
@@ -547,6 +748,38 @@ impl Editor {
             self.run("autocomplete.accept", json!({"candidate": c}));
         }
     }
+}
+
+/// An empty document, for a view with nothing to show.
+fn empty_document() -> &'static wordsmith_doc::Document {
+    static EMPTY: std::sync::LazyLock<wordsmith_doc::Document> = std::sync::LazyLock::new(wordsmith_doc::Document::new);
+    &EMPTY
+}
+
+/// The text column's width, points: what the continuous views lay the script out at, so lines
+/// break as on paper.
+fn text_width(doc: &wordsmith_doc::Document) -> f32 {
+    let s = &doc.last_section;
+    (s.page_w - s.margin_left - s.margin_right).max(72.0)
+}
+
+/// The speed view's document: the script with every element at the left margin, left-aligned,
+/// with no space before except before Scene Headings. Paragraphs, text and casing are the
+/// script's own, so positions are the same.
+pub fn speed_document(doc: &wordsmith_doc::Document) -> wordsmith_doc::Document {
+    let mut out = doc.clone();
+    let elements = Elements::of_doc(doc);
+    let sheet = Arc::make_mut(&mut out.styles);
+    for st in &mut sheet.styles {
+        let heading = elements.get(&st.id).is_some_and(|d| d.kind == ElementKind::SceneHeading);
+        st.para.indent_left = Some(0.0);
+        st.para.indent_right = Some(0.0);
+        st.para.indent_first = Some(0.0);
+        st.para.align = Some(wordsmith_doc::props::Align::Left);
+        st.para.space_before = Some(if heading { wordsmith_script::template::LINE } else { 0.0 });
+        st.para.page_break_before = Some(false);
+    }
+    out
 }
 
 /// The page whose vertical span is nearest `p` (a click in the gap between pages).

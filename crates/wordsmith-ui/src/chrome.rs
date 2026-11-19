@@ -58,6 +58,14 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 item(ed, ui, "view.elementSettings");
             });
             ui.menu_button("View", |ui| {
+                for id in ["view.normal", "view.page", "view.speed"] {
+                    item(ed, ui, id);
+                }
+                ui.separator();
+                for id in ["view.darkTheme", "view.typewriter", "view.focusMode"] {
+                    item(ed, ui, id);
+                }
+                ui.separator();
                 item(ed, ui, "view.commandPalette");
                 if ui.button("Zoom In").clicked() {
                     ed.zoom = (ed.zoom * 1.25).clamp(*ZOOM_RANGE.start(), *ZOOM_RANGE.end());
