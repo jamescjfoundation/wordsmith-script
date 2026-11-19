@@ -57,6 +57,11 @@ pub struct Editor {
     paginator: wordsmith_script::paginate::Paginator,
     /// The paginated script for the session's current revision.
     paginated: Option<(u64, Arc<Paginated>)>,
+    /// Underline misspelled words.
+    pub spelling: bool,
+    spell_cache: wordsmith_script::spelling::SpellCache,
+    /// The misspelling a right-click opened the menu on, with its suggestions.
+    spell_menu: Option<(wordsmith_script::spelling::Misspelling, Vec<String>)>,
     /// Autocomplete suggestions at the caret, if any are showing.
     pub suggestions: Option<Suggestions>,
     /// Where suggestions were hidden with Escape: (revision, caret). They stay hidden there.
@@ -82,6 +87,9 @@ impl Editor {
             scroll_to_caret: true,
             message: String::new(),
             clipboard: None,
+            spelling: true,
+            spell_cache: Default::default(),
+            spell_menu: None,
             suggestions: None,
             dismissed: None,
             caret_screen: None,
@@ -364,6 +372,27 @@ impl Editor {
                 }
             }
         }
+        // Misspelled words: a dotted red line under each, on the pages in view.
+        if self.spelling {
+            let found = wordsmith_script::spelling::check(&self.session.doc, &mut self.spell_cache);
+            let red = Stroke::new(1.5, Color32::from_rgb(220, 40, 40));
+            for m in &found {
+                let at = |off| wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(m.block), off };
+                let (Some(a), Some(b)) = (pag.to_output(&at(m.start)), pag.to_output(&at(m.end))) else { continue };
+                for (page, r) in layout.selection_rects(&pag.doc, &a, &b, 0) {
+                    let Some(min) = to_screen(page, r.x, r.y + r.h - 1.0) else { continue };
+                    if !ui.is_rect_visible(Rect::from_min_size(min, vec2(r.w * zoom, 2.0))) {
+                        continue;
+                    }
+                    let (x0, x1, y) = (min.x, min.x + r.w * zoom, min.y);
+                    let mut x = x0;
+                    while x < x1 {
+                        painter.line_segment([pos2(x, y), pos2((x + 2.0).min(x1), y)], red);
+                        x += 4.0;
+                    }
+                }
+            }
+        }
         let mut caret_rect = None;
         if let Some(c) = pag.to_output(&self.session.sel.focus).and_then(|at| layout.caret(&at))
             && let Some(top) = to_screen(c.page, c.x, c.top)
@@ -387,7 +416,46 @@ impl Editor {
             let (x, y) = ((p.x - r.min.x) / zoom, (p.y - r.min.y) / zoom);
             layout.hit(page, x, y, StoryRef::Body).and_then(|pos| pag.to_source(&pos)).and_then(|pos| serde_json::to_value(pos).ok())
         };
-        if let Some(p) = response.interact_pointer_pos() {
+        // Right-click on a misspelled word: its suggestions, Ignore, Add to Dictionary.
+        if response.secondary_clicked()
+            && let Some(p) = response.interact_pointer_pos()
+            && let Some(pos) = hit(p).and_then(|v| serde_json::from_value::<wordsmith_doc::Pos>(v).ok())
+        {
+            let found = wordsmith_script::spelling::check(&self.session.doc, &mut self.spell_cache);
+            self.spell_menu = found.into_iter().find(|m| m.block == pos.path.last() && (m.start..=m.end).contains(&pos.off)).map(|m| {
+                let s = wordsmith_script::spelling::suggest(&m.word, 6);
+                (m, s)
+            });
+        }
+        let mut menu_action: Option<(&'static str, Value)> = None;
+        if let Some((m, suggestions)) = self.spell_menu.clone() {
+            response.context_menu(|ui| {
+                for s in &suggestions {
+                    if ui.button(s.as_str()).clicked() {
+                        menu_action =
+                            Some(("spelling.replace", json!({"block": m.block, "start": m.start, "end": m.end, "word": m.word, "with": s})));
+                        ui.close();
+                    }
+                }
+                if suggestions.is_empty() {
+                    ui.weak("No suggestions");
+                }
+                ui.separator();
+                if ui.button("Ignore in This Script").clicked() {
+                    menu_action = Some(("spelling.ignore", json!({"word": m.word})));
+                    ui.close();
+                }
+                if ui.button("Add to Dictionary").clicked() {
+                    menu_action = Some(("spelling.addWord", json!({"word": m.word})));
+                    ui.close();
+                }
+            });
+        }
+        if let Some((id, params)) = menu_action {
+            self.spell_menu = None;
+            self.run(id, params);
+        }
+        if let Some(p) = response.interact_pointer_pos().filter(|_| !response.secondary_clicked()) {
             let shift = ui.input(|i| i.modifiers.shift);
             if response.double_clicked() {
                 if let Some(pos) = hit(p) {

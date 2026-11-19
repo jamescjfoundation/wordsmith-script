@@ -285,3 +285,16 @@ fn up_and_down_move_through_suggestions() {
     frame(&ctx, &mut ed, vec![key(Key::ArrowDown, Modifiers::NONE), key(Key::ArrowDown, Modifiers::NONE), key(Key::Tab, Modifiers::NONE)]);
     assert_eq!(lines(&ed)[0], l("Character", "ANNA"), "third alphabetically: ABE, ALEX, ANNA");
 }
+
+#[test]
+fn misspellings_are_checked_in_the_page_view() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![key(Key::Num2, cmd()), text("A dragn sleeps.")]);
+    let found = ed.session.run("spelling.check", &json!({})).unwrap();
+    assert_eq!(found["misspellings"][0]["word"], "dragn");
+    // Drawing the underlines runs every frame without trouble; switching them off too.
+    frame(&ctx, &mut ed, vec![]);
+    ed.spelling = false;
+    frame(&ctx, &mut ed, vec![]);
+}
