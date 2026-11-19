@@ -8,3 +8,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | bootstrap/wordcraft-copy | Copied WordCraft geom, doc, fonts, layout, render, pdf (6ef13b2) as wordsmith-*; craft-libs pinned to 93dac78c; Zlib, Unicode-3.0, IJG allowed as reviewed exceptions; 1,460 tests pass, 4 ignored for missing build inputs |
 | 2026-11-19 | bootstrap/engine | wordsmith-engine trimmed from WordCraft's engine (session, undo, registry, recovery, file access); 1,502 tests pass |
 | 2026-11-19 | bootstrap/mcp | wordsmith-mcp and wordsmith-control-key from WordCraft, trimmed and rebranded; bootstrap complete; 1,528 tests pass |
+| 2026-11-19 | m1/doc-app-data | M1 plan; Document::app_data so per-script data is undoable (decision 0008); 1,532 tests pass |

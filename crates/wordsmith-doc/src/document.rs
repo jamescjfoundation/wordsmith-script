@@ -1,3 +1,4 @@
+// Modified by the Wordsmith Script contributors.
 use super::block::{Block, Blocks, BoxBudget};
 use super::compare::{para_block, same_blocks, same_bytes, same_glossary, same_parts};
 use super::error::{DocError, Result};
@@ -75,6 +76,7 @@ impl Document {
             media: BTreeMap::new(),
             passthrough: BTreeMap::new(),
             glossary: Vec::new(),
+            app_data: BTreeMap::new(),
             media_index: MediaIndex::default(),
             kept: Default::default(),
             missing_pictures: Default::default(),
@@ -154,6 +156,7 @@ impl Document {
             media,
             passthrough,
             glossary,
+            app_data,
             media_index: _,
             kept: _,
             missing_pictures: _,
@@ -176,6 +179,7 @@ impl Document {
             media: other_media,
             passthrough: other_passthrough,
             glossary: other_glossary,
+            app_data: other_app_data,
             media_index: _,
             kept: _,
             missing_pictures: _,
@@ -197,6 +201,7 @@ impl Document {
             && same_bytes(media, other_media)
             && same_bytes(passthrough, other_passthrough)
             && same_glossary(glossary, other_glossary)
+            && app_data == other_app_data
     }
 
     pub fn story(&self, s: StoryRef) -> Option<&Blocks> {

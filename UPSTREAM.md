@@ -45,4 +45,4 @@ projects from here; a person decides when to send these.
 
 | Fix | Our commit | Upstream project | Status |
 | --- | --- | --- | --- |
-| _none yet_ | | | |
+| `Document::app_data`: application data kept with a document, included in equality, `same_content` and serialization, `Arc`-shared values (decision 0008) | m1/doc-app-data | WordCraft (`crates/doc`) | candidate |
