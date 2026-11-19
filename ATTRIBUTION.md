@@ -44,6 +44,8 @@ script font; Courier Prime is added in M2.
 | wordsmith-render | WordCraft `crates/render` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Renamed; changed files carry "Modified by the Wordsmith Script contributors" |
 | wordsmith-pdf | WordCraft `crates/pdf` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Renamed; changed files carry "Modified by the Wordsmith Script contributors" |
 | wordsmith-engine | WordCraft `crates/engine` at 6ef13b2 (session, undo, command registry, recovery, file access) | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Trimmed (decision 0006); every file carries "Modified by the Wordsmith Script contributors" except our new `tests.rs` |
+| wordsmith-control-key | WordCraft `crates/control-key` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Renamed (decision 0007) |
+| wordsmith-mcp | WordCraft `crates/mcp` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Trimmed and rebranded (decision 0007) |
 
 ## Dependencies
 
