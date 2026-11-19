@@ -25,6 +25,15 @@ on 2026-11-19) and are `#[ignore]`d until we decide how to supply it:
   a Thai face with OpenType tables (craft-fonts `CRAFT_FONTS_DIR`). Not
   needed for screenplays; revisit if we ship craft-fonts.
 
+## Cut from WordCraft's engine, to revisit
+
+- IME (input method) receipts and composition safeguards. Revisit with the
+  editor in M1, so composing text in an input method stays safe.
+- Find state and the find commands. Bring them across for find and replace in
+  M3 instead of rewriting them.
+- The MCP server (`mcp`, `control-key`) is not copied yet; next bootstrap
+  branch.
+
 ## Known gaps in the tooling
 
 - The CI workflow has never run on a real runner because there is no remote

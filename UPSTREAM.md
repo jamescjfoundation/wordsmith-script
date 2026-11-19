@@ -17,6 +17,7 @@ Apache-2.0. Each copied file keeps its header; changed files add
 | wordsmith-layout | `crates/layout` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; three tests ignored (need craft-i18n language data) |
 | wordsmith-render | `crates/render` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed only |
 | wordsmith-pdf | `crates/pdf` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; PDF creator and producer say Wordsmith Script; one golden hash re-recorded |
+| wordsmith-engine | `crates/engine` (parts) | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Trimmed to session, undo, registry, recovery and file-access confinement; see `docs/decisions/0006-engine-trim.md`. `file_access.rs` and `recovery/desktop.rs` are upstream with one-line changes; the rest is cut down from upstream files |
 
 ## Pinned dependencies
 
@@ -32,7 +33,7 @@ Build inputs WordCraft's CI supplies and we do not yet (see `docs/gaps.md`):
 | craft-i18n (`CRAFT_I18N_DIR`) | `e56d26244bbac099bfd42e23fb12f78a4be418a7` | spelling dictionaries and hyphenation patterns in craft-proof |
 | craft-fonts (`CRAFT_FONTS_DIR`) | `b076417b5880bd4154bd22f00695b1d28c6bea83` | extra script faces (CJK, Arabic, Thai) |
 
-Not copied from WordCraft's engine yet: session, undo, command registry and recovery, plus the `mcp` crate. They come in the next bootstrap branch.
+Not copied yet: the `mcp` and `control-key` crates. They come in the next bootstrap branch.
 
 ## Candidates to contribute back
 
