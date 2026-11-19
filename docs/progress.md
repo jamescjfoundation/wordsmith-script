@@ -20,3 +20,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m3/autocomplete | Six autocomplete lists, learning, rebuild, editing, options, suggestion list in the editor; 1,626 tests pass |
 | 2026-11-19 | m3/spelling | Spelling (Moby list) skipping character names, intros and capitals; underlines and right-click fixes; 1,632 tests pass |
 | 2026-11-19 | m3/find | Find and replace (case, whole word, one-step Replace All), find bar with highlights; 1,636 tests pass |
+| 2026-11-19 | m3/views | Normal, page and speed views, dark theme, typewriter scrolling, focus mode; M3 complete; typing at 150 pages 16.3 ms median; 1,638 tests pass |

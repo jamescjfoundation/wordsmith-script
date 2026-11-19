@@ -44,6 +44,12 @@ fn open(s: &mut Session, what: &str) -> Result<Value, CmdError> {
 pub fn ui_specs() -> Vec<CommandSpec> {
     vec![
         CommandSpec::new("view.commandPalette", "Command Palette", "View", |s, _| open(s, "palette")).key("Mod+Shift+P").pure(),
+        CommandSpec::new("view.normal", "Normal View", "View", |s, _| open(s, "view.normal")).key("Mod+Alt+1").pure(),
+        CommandSpec::new("view.page", "Page View", "View", |s, _| open(s, "view.page")).key("Mod+Alt+2").pure(),
+        CommandSpec::new("view.speed", "Speed View", "View", |s, _| open(s, "view.speed")).key("Mod+Alt+3").pure(),
+        CommandSpec::new("view.darkTheme", "Dark Theme", "View", |s, _| open(s, "view.dark")).pure(),
+        CommandSpec::new("view.typewriter", "Typewriter Scrolling", "View", |s, _| open(s, "view.typewriter")).pure(),
+        CommandSpec::new("view.focusMode", "Focus Mode", "View", |s, _| open(s, "view.focus")).key("Mod+Shift+F").pure(),
         CommandSpec::new("view.find", "Find and Replace…", "Edit", |s, _| open(s, "find")).key("Mod+F").pure(),
         CommandSpec::new("view.elementSettings", "Element Settings…", "Format › Elements", |s, _| open(s, "elementSettings")).pure(),
         CommandSpec::new("help.about", "About Wordsmith Script", "Help", |s, _| open(s, "about")).pure(),

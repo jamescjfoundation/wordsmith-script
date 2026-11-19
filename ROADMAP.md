@@ -12,5 +12,5 @@ out of scope for v0.1:
 - Production breakdown tagging and scheduling export.
 
 Later candidates from the spec, unordered: teleplay and stage-play templates,
-structure colors, writing stats and sprint timer, dual dialogue, inclusivity
+structure colors, writing stats and sprint timer, dark PDF colours, dual dialogue, inclusivity
 report, story board images and PDF export.

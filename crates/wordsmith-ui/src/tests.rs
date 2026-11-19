@@ -317,3 +317,54 @@ fn the_find_bar_opens_with_the_selection_and_runs_commands() {
     frame(&ctx, &mut ed, vec![]);
     assert_eq!(ed.find.as_ref().and_then(|b| b.count), Some(0));
 }
+
+#[test]
+fn the_three_views_show_the_same_script() {
+    use crate::editor::View;
+    let ctx = ctx();
+    let mut ed = Editor::new(wordsmith_script::session_for(long_script(6)));
+    ed.session.registry = std::sync::Arc::new(crate::registry());
+    ed.mac = false;
+    frame(&ctx, &mut ed, vec![]);
+    let page = ed.shown();
+    assert!(page.layout.pages.len() >= 3);
+    frame(&ctx, &mut ed, vec![key(Key::Num1, Modifiers { alt: true, ..cmd() })]);
+    assert_eq!(ed.view, View::Normal);
+    let normal = ed.shown();
+    assert_eq!(normal.layout.pages.len(), 1, "one continuous column");
+    assert!(normal.pag.is_none(), "the script itself, no (MORE)/(CONT'D)");
+    frame(&ctx, &mut ed, vec![key(Key::Num3, Modifiers { alt: true, ..cmd() })]);
+    assert_eq!(ed.view, View::Speed);
+    let speed = ed.shown();
+    // Every element sits at the left margin in the speed view.
+    let x = |s: &crate::editor::Shown, block: usize| {
+        let at = wordsmith_doc::Pos { story: wordsmith_doc::StoryRef::Body, path: wordsmith_doc::Path::top(block), off: 0 };
+        s.layout.caret(&at).map(|c| c.x).unwrap_or(f32::NAN)
+    };
+    assert!((x(&speed, 2) - x(&speed, 1)).abs() < 0.5, "Character and Action line up");
+    assert!((x(&normal, 2) - x(&normal, 1)).abs() > 100.0, "but not in the normal view");
+    // Typing works the same in each view.
+    ed.run("caret.docEnd", json!({}));
+    frame(&ctx, &mut ed, vec![text("!")]);
+    assert!(lines(&ed).last().map(|l| l.1.ends_with('!')).unwrap_or(false));
+    frame(&ctx, &mut ed, vec![key(Key::Num2, Modifiers { alt: true, ..cmd() })]);
+    assert_eq!(ed.view, View::Page);
+}
+
+#[test]
+fn dark_theme_typewriter_and_focus_mode() {
+    let ctx = ctx();
+    let mut ed = editor();
+    ed.run("view.darkTheme", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.dark && ctx.theme() == egui::Theme::Dark);
+    ed.run("view.typewriter", json!({}));
+    assert!(ed.typewriter);
+    frame(&ctx, &mut ed, vec![key(Key::F, Modifiers { shift: true, ..cmd() })]);
+    assert!(ed.focus_mode);
+    // Typing still works in focus mode; Escape leaves it.
+    frame(&ctx, &mut ed, vec![text("int")]);
+    assert_eq!(lines(&ed)[0].1, "INT");
+    frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE), key(Key::Escape, Modifiers::NONE)]);
+    assert!(!ed.focus_mode);
+}

@@ -4638,6 +4638,7 @@ dependencies = [
  "wordsmith-doc",
  "wordsmith-engine",
  "wordsmith-format",
+ "wordsmith-geom",
  "wordsmith-layout",
  "wordsmith-render",
  "wordsmith-script",
