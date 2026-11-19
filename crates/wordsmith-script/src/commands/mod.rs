@@ -53,6 +53,7 @@ pub fn specs() -> Vec<CommandSpec> {
     all.extend(settings::specs());
     all.extend(caret::specs());
     all.extend(crate::export::specs());
+    all.extend(crate::paginate::specs());
     all
 }
 

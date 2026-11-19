@@ -308,3 +308,23 @@ fn measuring_paragraph_by_paragraph_matches_the_full_layout() {
     let full = measure(&edited, &print_layout(&edited, &mut LayoutCache::new()));
     assert_eq!(measure_cached(&edited, &mut cache), full);
 }
+
+#[test]
+fn more_and_continued_texts_are_set_in_one_place() {
+    use serde_json::json;
+    let mut s = crate::session_for(after_filler(
+        PAGE_LINES - 4,
+        &[("Character", "ANNA"), ("Dialogue", "First line."), ("Parenthetical", "(beat)"), ("Dialogue", "Second line.")],
+    ));
+    s.run("moresContinueds.configure", &json!({"more": "(MORE TO COME)", "contd": "(CONT.)"})).unwrap();
+    let p = run(&s.doc);
+    let pg = pages(&p);
+    assert_eq!(texts(&pg[0]).last(), Some(&"(MORE TO COME)"));
+    assert_eq!(texts(&pg[1])[0], "ANNA (CONT.)");
+    assert!(s.run("moresContinueds.configure", &json!({"more": ""})).is_err());
+    assert!(s.run("moresContinueds.configure", &json!({"scene": "yes"})).is_err());
+    s.run("moresContinueds.configure", &json!({"dialogue": false})).unwrap();
+    assert!(!pages(&run(&s.doc)).concat().iter().any(|(_, t)| t.contains("MORE")));
+    s.run("edit.undo", &json!({})).unwrap();
+    assert_eq!(s.run("moresContinueds.settings", &json!({})).unwrap()["dialogue"], true, "undoable");
+}

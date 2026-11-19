@@ -82,6 +82,41 @@ impl MoresContinueds {
     }
 }
 
+/// `moresContinueds.settings` and `moresContinueds.configure {dialogue?, character?, scene?,
+/// scenePageCount?, more?, contd?, continuedTop?, continuedBottom?}`: the one place the
+/// (MORE) and (CONT'D) texts and switches are set (SPEC "Mores and continueds").
+pub fn specs() -> Vec<wordsmith_engine::CommandSpec> {
+    use serde_json::Value;
+    use wordsmith_engine::{CmdError, CommandSpec};
+    fn configure(s: &mut wordsmith_engine::Session, v: &Value) -> wordsmith_engine::CmdResult {
+        let mut m = MoresContinueds::of_doc(&s.doc);
+        for (key, slot) in
+            [("dialogue", &mut m.dialogue), ("character", &mut m.character), ("scene", &mut m.scene), ("scenePageCount", &mut m.scene_page_count)]
+        {
+            if let Some(x) = v.get(key) {
+                *slot = x.as_bool().ok_or_else(|| CmdError::Params(format!("`{key}` must be true or false")))?;
+            }
+        }
+        for (key, slot) in
+            [("more", &mut m.more), ("contd", &mut m.contd), ("continuedTop", &mut m.continued_top), ("continuedBottom", &mut m.continued_bottom)]
+        {
+            if let Some(x) = v.get(key) {
+                let text = x.as_str().map(str::trim).filter(|t| !t.is_empty() && t.len() <= MAX_MARK_LEN && !t.contains('\n'));
+                *slot = text.ok_or_else(|| CmdError::Params(format!("`{key}` is 1 to {MAX_MARK_LEN} bytes on one line")))?.to_string();
+            }
+        }
+        m.store(&mut s.doc);
+        Ok(serde_json::to_value(&m).unwrap_or_default())
+    }
+    const LOC: &str = "Format › Pages";
+    vec![
+        CommandSpec::new("moresContinueds.settings", "More and Continued Settings", LOC, |s, _| Ok(serde_json::to_value(MoresContinueds::of_doc(&s.doc)).unwrap_or_default())).pure(),
+        CommandSpec::new("moresContinueds.configure", "Change More and Continued Settings", LOC, configure).params(
+            r#"{"dialogue"?: bool, "character"?: bool, "scene"?: bool, "scenePageCount"?: bool, "more"?: string, "contd"?: string, "continuedTop"?: string, "continuedBottom"?: string}"#,
+        ),
+    ]
+}
+
 /// Split rules (SPEC leaves them to convention; decision 0012).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Rules {
