@@ -14,3 +14,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m1/element-settings | Element settings, custom elements, font for all, Dialogue-then-Character option, scene-heading settings; 1,576 tests pass |
 | 2026-11-19 | m1/editor | Desktop editor on egui 0.36: page view, keyboard and mouse through the registry, element selector, palette, element settings dialog, crash recovery; M1 complete; 1,587 tests pass |
 | 2026-11-19 | m2/paginate | Screenplay paginator: keep rules, sentence splits, (MORE)/(CONT'D), automatic CONT'D, scene CONTINUED option, page numbers; layout agrees with every plan; 150 pages in 73-99 ms; 1,602 tests pass |
+| 2026-11-19 | m2/page-view | Page view shows the paginated script; incremental repagination; typing at 150 pages 14.5 ms median per keystroke frame; 1,604 tests pass |
