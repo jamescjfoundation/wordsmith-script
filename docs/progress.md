@@ -9,3 +9,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | bootstrap/engine | wordsmith-engine trimmed from WordCraft's engine (session, undo, registry, recovery, file access); 1,502 tests pass |
 | 2026-11-19 | bootstrap/mcp | wordsmith-mcp and wordsmith-control-key from WordCraft, trimmed and rebranded; bootstrap complete; 1,528 tests pass |
 | 2026-11-19 | m1/doc-app-data | M1 plan; Document::app_data so per-script data is undoable (decision 0008); 1,532 tests pass |
+| 2026-11-19 | m1/elements | Element registry, screenplay template, scene index, Courier Prime bundled and measured; 1,551 tests pass |

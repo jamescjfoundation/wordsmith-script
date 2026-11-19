@@ -10,8 +10,8 @@ Add the entry in the same commit as the asset.
 
 ## Assets
 
-The fonts are embedded by `wordsmith-fonts` as its bundled faces. They are not the
-script font; Courier Prime is added in M2.
+The fonts are embedded by `wordsmith-fonts` as its bundled faces. Courier Prime is the
+script font; the others come with the copied WordCraft font code.
 
 | Path | What it is | Source | License | Added |
 | --- | --- | --- | --- | --- |
@@ -32,6 +32,11 @@ script font; Courier Prime is added in M2.
 | `assets/fonts/OFL-JetBrainsMono.txt` | License text for JetBrains Mono | upstream font project; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (license text) | 2026-11-19 |
 | `assets/fonts/OFL-SourceSans3.txt` | License text for Source Sans 3 | upstream font project; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (license text) | 2026-11-19 |
 | `assets/fonts/OFL-SourceSerif4.txt` | License text for Source Serif 4 | upstream font project; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (license text) | 2026-11-19 |
+| `assets/fonts/CourierPrime-Regular.ttf` | Courier Prime Regular, Copyright 2015 The Courier Prime Project Authors; designer Alan Dague-Greene | https://github.com/google/fonts/tree/cc5661d43cd4f9aad5567033a8e15ca28dc35c86/ofl/courierprime (upstream project https://github.com/quoteunquoteapps/CourierPrime) | OFL-1.1 (`assets/fonts/OFL-CourierPrime.txt`) | 2026-11-19 |
+| `assets/fonts/CourierPrime-Bold.ttf` | Courier Prime Bold, Copyright 2015 The Courier Prime Project Authors; designer Alan Dague-Greene | https://github.com/google/fonts/tree/cc5661d43cd4f9aad5567033a8e15ca28dc35c86/ofl/courierprime (upstream project https://github.com/quoteunquoteapps/CourierPrime) | OFL-1.1 (`assets/fonts/OFL-CourierPrime.txt`) | 2026-11-19 |
+| `assets/fonts/CourierPrime-Italic.ttf` | Courier Prime Italic, Copyright 2015 The Courier Prime Project Authors; designer Alan Dague-Greene | https://github.com/google/fonts/tree/cc5661d43cd4f9aad5567033a8e15ca28dc35c86/ofl/courierprime (upstream project https://github.com/quoteunquoteapps/CourierPrime) | OFL-1.1 (`assets/fonts/OFL-CourierPrime.txt`) | 2026-11-19 |
+| `assets/fonts/CourierPrime-BoldItalic.ttf` | Courier Prime BoldItalic, Copyright 2015 The Courier Prime Project Authors; designer Alan Dague-Greene | https://github.com/google/fonts/tree/cc5661d43cd4f9aad5567033a8e15ca28dc35c86/ofl/courierprime (upstream project https://github.com/quoteunquoteapps/CourierPrime) | OFL-1.1 (`assets/fonts/OFL-CourierPrime.txt`) | 2026-11-19 |
+| `assets/fonts/OFL-CourierPrime.txt` | License text for Courier Prime | https://github.com/google/fonts/tree/cc5661d43cd4f9aad5567033a8e15ca28dc35c86/ofl/courierprime (upstream project https://github.com/quoteunquoteapps/CourierPrime) | OFL-1.1 (license text) | 2026-11-19 |
 
 ## Copied code
 

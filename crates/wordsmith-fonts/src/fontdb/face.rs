@@ -28,6 +28,11 @@ pub(super) static BUNDLED: &[&[u8]] = &[
     include_bytes!("../../../../assets/fonts/Inter-Medium.ttf"),
     include_bytes!("../../../../assets/fonts/Inter-SemiBold.ttf"),
     include_bytes!("../../../../assets/fonts/JetBrainsMono-Regular.ttf"),
+    // Wordsmith Script: Courier Prime, the default script font (12 pt, 10 characters per inch).
+    include_bytes!("../../../../assets/fonts/CourierPrime-Regular.ttf"),
+    include_bytes!("../../../../assets/fonts/CourierPrime-Bold.ttf"),
+    include_bytes!("../../../../assets/fonts/CourierPrime-Italic.ttf"),
+    include_bytes!("../../../../assets/fonts/CourierPrime-BoldItalic.ttf"),
 ];
 
 #[derive(Clone)]
