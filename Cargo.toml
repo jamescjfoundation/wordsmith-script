@@ -69,6 +69,7 @@ craft-metafile = { git = "https://github.com/storytold/craft-libs", rev = "93dac
 craft-image-codecs = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 craft-tiff = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 craft-pdf = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0", default-features = false, features = ["write"] }
+craft-dialogs = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 craft-mcp-server = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 craft-zip = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 
@@ -99,6 +100,7 @@ image = { version = "0.25", default-features = false }
 # Interface (egui 0.36, as the kickoff and craft-libs v0.1.0 specify). Default features are off:
 # no bundled egui fonts (we ship our own, all OFL), and the OpenGL renderer instead of wgpu.
 egui = { version = "=0.36.2", default-features = false }
+raw-window-handle = "0.6.2"
 eframe = { version = "=0.36.2", default-features = false, features = ["accesskit", "glow", "wayland", "x11"] }
 
 # Lint policy shared by every crate. The extra clippy settings come from WordCraft
