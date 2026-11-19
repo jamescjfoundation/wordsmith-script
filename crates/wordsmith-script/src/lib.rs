@@ -9,11 +9,13 @@
 #![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
+pub mod commands;
 pub mod element;
 pub mod scene_heading;
 pub mod scenes;
 pub mod template;
 
+pub use commands::{new_session, registry, session_for};
 pub use element::{Casing, ElementDef, ElementKind, Elements};
 pub use scene_heading::SceneHeadingSettings;
 pub use scenes::{Scene, scenes};
