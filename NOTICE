@@ -19,3 +19,10 @@ only reference to them.
 
 Third-party assets (fonts, dictionaries and similar) are listed with their
 own licenses in ATTRIBUTION.md.
+
+This software is based in part on the work of the Independent JPEG Group
+(through the jpeg-encoder crate, used for JPEG image output).
+
+Some Rust dependencies are under the Zlib and Unicode-3.0 licenses, as well
+as MIT, Apache-2.0, BSD and ISC. Each crate's license is in its own package;
+docs/decisions/0001-license-allowlist.md lists which ones and why.
