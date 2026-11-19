@@ -12,3 +12,4 @@ what would make us revisit it.
 | [0004](0004-craft-libs-pins.md) | craft-libs pins when the v0.1.0 tag does not exist |
 | [0005](0005-copying-wordcraft.md) | How WordCraft code is copied, renamed and marked |
 | [0006](0006-engine-trim.md) | Trimming WordCraft's engine to session, undo, registry and recovery |
+| [0007](0007-mcp-trim.md) | Trimming WordCraft's MCP server |

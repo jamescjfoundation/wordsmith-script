@@ -31,8 +31,8 @@ on 2026-11-19) and are `#[ignore]`d until we decide how to supply it:
   editor in M1, so composing text in an input method stays safe.
 - Find state and the find commands. Bring them across for find and replace in
   M3 instead of rewriting them.
-- The MCP server (`mcp`, `control-key`) is not copied yet; next bootstrap
-  branch.
+- MCP tools for opening, saving and typing, and WordCraft's
+  `automation_roots` MCP test, wait for file and text commands (M1, M4, M8).
 
 ## Known gaps in the tooling
 
