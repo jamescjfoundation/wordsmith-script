@@ -16,7 +16,7 @@ pub const ALLOWED: &[&str] =
 /// cannot build without them. Reasons and conditions are in
 /// `docs/decisions/0001-license-allowlist.md`. Add to this list only with a
 /// person's approval recorded there.
-pub const REVIEWED_EXCEPTIONS: &[&str] = &["Zlib", "Unicode-3.0", "IJG"];
+pub const REVIEWED_EXCEPTIONS: &[&str] = &["Zlib", "Unicode-3.0", "IJG", "BSL-1.0"];
 
 /// `WITH` exceptions that only add permissions to an allowed license.
 pub const ALLOWED_EXCEPTIONS: &[&str] = &["LLVM-exception"];
@@ -165,7 +165,6 @@ mod tests {
         assert_eq!(is_allowed("MIT"), Ok(true));
         assert_eq!(is_allowed("Apache-2.0"), Ok(true));
         assert_eq!(is_allowed("GPL-3.0-only"), Ok(false));
-        assert_eq!(is_allowed("BSL-1.0"), Ok(false));
         assert_eq!(is_allowed("MPL-2.0"), Ok(false));
     }
 
@@ -190,7 +189,7 @@ mod tests {
         // GPL AND MIT OR ISC == (GPL AND MIT) OR ISC
         assert_eq!(is_allowed("GPL-3.0-only AND MIT OR ISC"), Ok(true));
         assert_eq!(is_allowed("ISC OR GPL-3.0-only AND MIT"), Ok(true));
-        assert_eq!(is_allowed("BSL-1.0 OR GPL-3.0-only AND MIT"), Ok(false));
+        assert_eq!(is_allowed("MPL-2.0 OR GPL-3.0-only AND MIT"), Ok(false));
     }
 
     #[test]
@@ -198,6 +197,7 @@ mod tests {
         assert_eq!(is_allowed("Zlib"), Ok(true));
         assert_eq!(is_allowed("(MIT OR Apache-2.0) AND Unicode-3.0"), Ok(true));
         assert_eq!(is_allowed("(MIT OR Apache-2.0) AND IJG"), Ok(true));
+        assert_eq!(is_allowed("BSL-1.0"), Ok(true));
         assert_eq!(is_allowed("Unicode-3.0 AND GPL-3.0-only"), Ok(false));
     }
 
