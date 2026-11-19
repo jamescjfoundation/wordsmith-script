@@ -209,3 +209,36 @@ fn typing_in_a_150_page_script() {
     times.sort();
     eprintln!("typing, {pages} pages: median {:?}, worst {:?} per keystroke frame", times[times.len() / 2], times[times.len() - 1]);
 }
+
+/// A window that has no handle: native dialogs are answered by an override in tests.
+struct NoWindow;
+impl raw_window_handle::HasWindowHandle for NoWindow {
+    fn window_handle(&self) -> Result<raw_window_handle::WindowHandle<'_>, raw_window_handle::HandleError> {
+        Err(raw_window_handle::HandleError::Unavailable)
+    }
+}
+impl raw_window_handle::HasDisplayHandle for NoWindow {
+    fn display_handle(&self) -> Result<raw_window_handle::DisplayHandle<'_>, raw_window_handle::HandleError> {
+        Err(raw_window_handle::HandleError::Unavailable)
+    }
+}
+
+#[test]
+fn export_pdf_asks_for_a_path_and_writes_the_file() {
+    let dir = std::env::temp_dir().join(format!("wordsmith-ui-export-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let target = dir.join("chosen.pdf");
+    let answer = target.clone();
+    let mut ed = editor();
+    ed.dialogs.set_override(Some(Box::new(move |_| craft_dialogs::Answer::Paths(vec![answer.clone()]))));
+    ed.run("file.exportPdfAs", json!({}));
+    for _ in 0..50 {
+        ed.native_dialogs(Some(&NoWindow));
+        if target.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(std::fs::read(&target).unwrap().starts_with(b"%PDF-"), "{}", ed.message);
+    let _ = std::fs::remove_dir_all(&dir);
+}

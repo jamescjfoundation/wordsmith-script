@@ -49,6 +49,9 @@ pub struct Editor {
     paginator: wordsmith_script::paginate::Paginator,
     /// The paginated script for the session's current revision.
     paginated: Option<(u64, Arc<Paginated>)>,
+    /// Native file dialogs; each answer runs the command named with it, with the chosen path.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub dialogs: craft_dialogs::Dialogs<&'static str>,
 }
 
 impl Editor {
@@ -67,6 +70,8 @@ impl Editor {
             clipboard: None,
             paginator: Default::default(),
             paginated: None,
+            #[cfg(not(target_arch = "wasm32"))]
+            dialogs: craft_dialogs::Dialogs::new(Arc::new(|| {})),
         }
     }
 
@@ -94,6 +99,7 @@ impl Editor {
                 }
                 Some("about") => self.show_about = true,
                 Some("recover") => self.recovery = Some(RecoveryPrompt),
+                Some("exportPdf") => self.ask_export_path(),
                 _ => {}
             }
         }
@@ -102,6 +108,35 @@ impl Editor {
     /// Text waiting for the clipboard (for tests).
     pub fn pending_clipboard(&self) -> Option<&str> {
         self.clipboard.as_deref()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn ask_export_path(&mut self) {
+        let dialog = craft_dialogs::FileDialog::save().title("Export PDF").filter("PDF", &["pdf"]).file_name("Script.pdf");
+        self.dialogs.ask(dialog, "file.exportPdf");
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn ask_export_path(&mut self) {
+        self.message = "Export PDF is not available in the web build yet.".into();
+    }
+
+    /// Show a waiting native dialog over `parent` (the window), and act on answers: each runs the
+    /// command it was asked for, with the chosen path. Call once a frame, after [`Editor::ui`].
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn native_dialogs<W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle>(&mut self, parent: Option<&W>) {
+        self.dialogs.show_pending(parent);
+        for (then, answer) in self.dialogs.take_answers() {
+            match answer {
+                craft_dialogs::Answer::Paths(paths) => {
+                    if let Some(path) = paths.first() {
+                        self.run(then, json!({"path": path}));
+                    }
+                }
+                craft_dialogs::Answer::Cancelled | craft_dialogs::Answer::Message(_) => {}
+                other => self.message = format!("{other:?}"),
+            }
+        }
     }
 
     /// Whether the editor should take keyboard input now (no dialog or text field has it).

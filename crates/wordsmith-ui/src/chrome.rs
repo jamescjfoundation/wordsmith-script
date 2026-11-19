@@ -26,6 +26,10 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("File", |ui| {
                 item(ed, ui, "file.new");
+                ui.separator();
+                item(ed, ui, "file.exportPdfAs");
+                item(ed, ui, "file.print");
+                ui.separator();
                 item(ed, ui, "file.recoverPrompt");
             });
             ui.menu_button("Edit", |ui| {
