@@ -19,3 +19,5 @@ what would make us revisit it.
 | [0011](0011-editor.md) | The M1 editor |
 | [0012](0012-pagination.md) | Screenplay pagination |
 | [0013](0013-printing.md) | PDF export and printing |
+| [0014](0014-spelling-data.md) | Spelling data (Moby list, no SCOWL) |
+| [0015](0015-autocomplete.md) | Autocomplete |
