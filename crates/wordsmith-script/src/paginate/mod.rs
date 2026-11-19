@@ -18,7 +18,7 @@ pub mod measure;
 pub mod output;
 pub mod plan;
 
-pub use output::{Paginated, paginate};
+pub use output::{Paginated, Paginator, paginate};
 pub use plan::{Piece, plan};
 
 /// `app_data` key of the more-and-continued settings.

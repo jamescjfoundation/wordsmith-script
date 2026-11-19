@@ -5,7 +5,7 @@
 use wordsmith_doc::{Document, StoryRef, para_block};
 use wordsmith_layout::LayoutCache;
 
-use super::{MoresContinueds, Paginated, Piece, paginate};
+use super::{MoresContinueds, Paginated, Paginator, Piece, paginate};
 use crate::template::{new_script, paragraph};
 
 const PAGE_LINES: usize = 54;
@@ -24,7 +24,7 @@ fn after_filler(n: usize, rest: &[(&str, &str)]) -> Document {
 }
 
 fn run(doc: &Document) -> Paginated {
-    let p = paginate(doc, &mut LayoutCache::new());
+    let p = paginate(doc);
     assert!(p.matches_plan, "the layout disagrees with the plan: {} planned, {} laid out", p.pages.len(), p.layout.pages.len());
     p
 }
@@ -255,14 +255,56 @@ pub(crate) fn feature(scenes: usize) -> Document {
 #[test]
 fn a_feature_length_script_paginates_and_matches_the_layout() {
     let doc = feature(300);
-    let mut cache = LayoutCache::new();
+    let mut pager = Paginator::new();
     let t0 = std::time::Instant::now();
-    let p = paginate(&doc, &mut cache);
+    let p = pager.paginate(&doc);
     let cold = t0.elapsed();
     let t1 = std::time::Instant::now();
-    let again = paginate(&doc, &mut cache);
+    let again = pager.paginate(&doc);
     let warm = t1.elapsed();
     eprintln!("feature: {} pages, paginate cold {cold:?}, warm {warm:?}", p.pages.len());
     assert!(p.matches_plan && again.matches_plan);
     assert!((120..=200).contains(&p.pages.len()), "{} pages", p.pages.len());
+}
+
+#[test]
+#[ignore = "timing breakdown, run by hand with --ignored --nocapture"]
+fn timing_breakdown() {
+    use super::measure::{MeasureCache, measure_cached, print_layout};
+    let doc = feature(300);
+    let mut cache = LayoutCache::new();
+    let mut mc = MeasureCache::default();
+    let _ = measure_cached(&doc, &mut mc);
+    let t_source = std::time::Duration::ZERO;
+    let t = std::time::Instant::now();
+    let m = measure_cached(&doc, &mut mc);
+    let t_measure = t.elapsed();
+    let marks = MoresContinueds::default();
+    let t = std::time::Instant::now();
+    let pages = super::plan(&doc, &m, &marks, super::Rules::default());
+    let t_plan = t.elapsed();
+    let t = std::time::Instant::now();
+    let (out, _) = super::output::build(&doc, &pages, &marks);
+    let t_build = t.elapsed();
+    let t = std::time::Instant::now();
+    let _ = print_layout(&out, &mut cache);
+    let t_out = t.elapsed();
+    eprintln!("source layout {t_source:?}, measure {t_measure:?}, plan {t_plan:?}, build {t_build:?}, output layout {t_out:?}");
+}
+
+#[test]
+fn measuring_paragraph_by_paragraph_matches_the_full_layout() {
+    use super::measure::{MeasureCache, measure, measure_cached, print_layout};
+    let mut doc = feature(20);
+    doc.body.push(para_block(paragraph("Dialogue", LONG_SPEECH)));
+    doc.body.push(para_block(paragraph("Transition", "SMASH CUT TO:")));
+    let full = measure(&doc, &print_layout(&doc, &mut LayoutCache::new()));
+    let mut cache = MeasureCache::default();
+    assert_eq!(measure_cached(&doc, &mut cache), full);
+    // Again, from the cache; then after an edit to one paragraph.
+    assert_eq!(measure_cached(&doc, &mut cache), full);
+    let mut edited = doc.clone();
+    edited.body[3] = para_block(paragraph("Action", "Changed, and now a different length entirely so it wraps onto a second line of the page."));
+    let full = measure(&edited, &print_layout(&edited, &mut LayoutCache::new()));
+    assert_eq!(measure_cached(&edited, &mut cache), full);
 }

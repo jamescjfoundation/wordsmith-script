@@ -9,7 +9,7 @@ use wordsmith_doc::props::{Align, CharProps};
 use wordsmith_doc::{Document, InlineObject, Paragraph, PartKind, StoryRef, para_block};
 use wordsmith_layout::{DocLayout, LayoutCache};
 
-use super::measure::{measure, print_layout};
+use super::measure::{MeasureCache, measure_cached, print_layout};
 use super::plan::{Piece, plan};
 use super::{MoresContinueds, Rules};
 use crate::element::{ElementKind, Elements};
@@ -120,6 +120,16 @@ fn auto_contd(doc: &Document, elements: &Elements) -> std::collections::HashSet<
     out
 }
 
+/// A revision for an output paragraph that is the same every time the same source paragraph is
+/// shown the same way, so an unchanged page lays out from the cache. The high bit keeps these
+/// apart from the counter `Paragraph::touch` uses.
+fn stable_rev(parts: &[u64]) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    parts.hash(&mut h);
+    h.finish() | (1 << 63)
+}
+
 /// The output paragraph for bytes `start..end` of source paragraph `src`.
 fn part_of(src: &Paragraph, start: usize, end: usize) -> Paragraph {
     let mut p = src.clone();
@@ -131,7 +141,6 @@ fn part_of(src: &Paragraph, start: usize, end: usize) -> Paragraph {
     if start > 0 {
         let _ = p.delete(0, start.min(end));
     }
-    p.touch();
     p
 }
 
@@ -155,9 +164,19 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> (
     for (n, page) in pages.iter().enumerate() {
         let first = body.len();
         for piece in page {
+            // What makes this output paragraph what it is, for its stable revision.
+            let mut identity: Vec<u64> = Vec::with_capacity(8);
             let (mut para, src) = match piece {
                 Piece::Para { block, start, end, space_before, .. } => {
                     let Some(sp) = doc.body.get(*block).and_then(|b| b.as_para()) else { continue };
+                    identity.extend([
+                        1,
+                        sp.rev,
+                        *start as u64,
+                        *end as u64,
+                        u64::from(*space_before),
+                        u64::from(*start == 0 && contd_blocks.contains(block)),
+                    ]);
                     let mut p = part_of(sp, *start, *end);
                     if !space_before {
                         p.props.space_before = Some(0.0);
@@ -171,13 +190,21 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> (
                     }
                     (p, Some(Source { block: *block, start: *start }))
                 }
-                Piece::More => (text_para(MORE_STYLE, &marks.more), None),
-                Piece::ContinuedBottom => (text_para(CONTINUED_BOTTOM_STYLE, &marks.continued_bottom), None),
+                Piece::More => {
+                    identity.push(2);
+                    (text_para(MORE_STYLE, &marks.more), None)
+                }
+                Piece::ContinuedBottom => {
+                    identity.push(3);
+                    (text_para(CONTINUED_BOTTOM_STYLE, &marks.continued_bottom), None)
+                }
                 Piece::ContinuedTop { page } => {
+                    identity.extend([4, *page as u64]);
                     let text = if marks.scene_page_count { format!("{} ({page})", marks.continued_top) } else { marks.continued_top.clone() };
                     (text_para(CONTINUED_TOP_STYLE, &text), None)
                 }
                 Piece::CharacterContd { block } => {
+                    identity.extend([5, doc.body.get(*block).and_then(|b| b.as_para()).map_or(0, |p| p.rev)]);
                     let name = doc.body.get(*block).and_then(|b| b.as_para()).map_or(String::new(), |p| with_contd(&p.text, &marks.contd));
                     let mut p = text_para(elements.id_of(ElementKind::Character), &name);
                     p.props.space_before = Some(0.0);
@@ -192,7 +219,12 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> (
             if body.len() == first {
                 para.props.space_before = Some(0.0);
             }
-            para.touch();
+            identity.extend([u64::from(body.len() == first), u64::from(n > 0)]);
+            if matches!(piece, Piece::More | Piece::ContinuedBottom | Piece::ContinuedTop { .. }) {
+                // The mark texts are settings; they are part of what the paragraph shows.
+                identity.push(marks_hash(marks));
+            }
+            para.rev = stable_rev(&identity);
             body.push(para_block(para));
             map.push(src);
         }
@@ -204,6 +236,13 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> (
     out.body = body;
     add_page_numbers(&mut out);
     (out, map)
+}
+
+fn marks_hash(marks: &MoresContinueds) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    (&marks.more, &marks.contd, &marks.continued_top, &marks.continued_bottom).hash(&mut h);
+    h.finish()
 }
 
 /// A header with the page number and a period, top right, and an empty first-page header, so
@@ -222,12 +261,33 @@ fn add_page_numbers(doc: &mut Document) {
     s.header = 0.5 * template::INCH;
 }
 
-/// Paginate `doc`: measure, plan, build the output and lay it out. `cache` holds paragraph
-/// layouts between calls.
-pub fn paginate(doc: &Document, cache: &mut LayoutCache) -> Paginated {
+/// What pagination keeps between calls: paragraph lines of the script, and the output's layout
+/// cache.
+#[derive(Default)]
+pub struct Paginator {
+    pub measure: MeasureCache,
+    pub layout: LayoutCache,
+}
+
+impl Paginator {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Paginate `doc`: measure, plan, build the output and lay it out.
+    pub fn paginate(&mut self, doc: &Document) -> Paginated {
+        paginate_with(doc, &mut self.measure, &mut self.layout)
+    }
+}
+
+/// Paginate `doc` once, with fresh caches.
+pub fn paginate(doc: &Document) -> Paginated {
+    Paginator::new().paginate(doc)
+}
+
+fn paginate_with(doc: &Document, measure: &mut MeasureCache, cache: &mut LayoutCache) -> Paginated {
     let marks = MoresContinueds::of_doc(doc);
-    let source = print_layout(doc, cache);
-    let m = measure(doc, &source);
+    let m = measure_cached(doc, measure);
     let pages = plan(doc, &m, &marks, Rules::default());
     let (out, map) = build(doc, &pages, &marks);
     let layout = print_layout(&out, cache);
