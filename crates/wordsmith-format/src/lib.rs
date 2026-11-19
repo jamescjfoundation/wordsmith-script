@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! File formats for Wordsmith Script: the native plain-text format and
-//! Fountain. Both arrive in milestone M4; the skeleton only links the layer.
+//! Fountain. Fountain reading arrives in M2 (for the golden scripts); the rest in M4.
 
 #![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
+
+pub mod fountain;
 
 /// File extension of the native format. The final choice is recorded in
 /// `docs/format.md` when the format lands in M4.
