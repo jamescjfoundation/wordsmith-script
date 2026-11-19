@@ -5,12 +5,6 @@ that are not built yet, and anything else we know is missing. An item leaves
 this list when it ships with tests, or stays with a reason if v0.1 will not
 cover it.
 
-## Known for M2
-
-- Space before is applied at the top of a page (the first Action on a page
-  starts 12 pt below the margin). Screenplay convention drops it there; it is
-  a pagination rule, so it is M2's.
-
 ## M1: done, with these gaps
 
 M1's spec items (element table, Return and Tab tables, separators, change
