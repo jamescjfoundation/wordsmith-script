@@ -49,6 +49,8 @@ pub struct Session {
     pub view_mode: ViewMode,
     /// Width of the continuous views, points.
     pub view_width: f32,
+    /// Page x the caret tries to keep on Up/Down. Every other command clears it.
+    pub goal_x: Option<f32>,
     /// Undo and redo steps. Shared so `run` can snapshot both stacks cheaply (a pointer per
     /// step) and put them back exactly when a command fails.
     history: Vec<Arc<Undo>>,

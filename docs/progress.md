@@ -10,3 +10,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | bootstrap/mcp | wordsmith-mcp and wordsmith-control-key from WordCraft, trimmed and rebranded; bootstrap complete; 1,528 tests pass |
 | 2026-11-19 | m1/doc-app-data | M1 plan; Document::app_data so per-script data is undoable (decision 0008); 1,532 tests pass |
 | 2026-11-19 | m1/elements | Element registry, screenplay template, scene index, Courier Prime bundled and measured; 1,551 tests pass |
+| 2026-11-19 | m1/typing | Typing, Return, Tab with separators, change element with Mod+0..9, casing, caret and selection commands; 1,568 tests pass |

@@ -35,6 +35,7 @@ impl Session {
             status: String::new(),
             view_mode: ViewMode::Print,
             view_width: DEFAULT_VIEW_WIDTH,
+            goal_x: None,
             history: Vec::new(),
             undo_evicted: 0,
             redo: Vec::new(),

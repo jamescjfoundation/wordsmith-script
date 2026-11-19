@@ -4,6 +4,11 @@ use super::snapshot_types::RunSnapshot;
 use super::{CharProps, CmdError, Document, Session, Value};
 use crate::CommandSpec;
 
+/// Commands that move the caret a line up or down and keep [`Session::goal_x`].
+fn is_vertical(id: &str) -> bool {
+    matches!(id, "caret.up" | "caret.down" | "select.up" | "select.down" | "caret.pageUp" | "caret.pageDown" | "select.pageUp" | "select.pageDown")
+}
+
 struct SuccessContext<'a> {
     spec: &'a CommandSpec,
     before_doc: &'a Option<RunSnapshot>,
@@ -71,6 +76,10 @@ impl Session {
             self.typing_open = false;
         }
         let sel_before = self.sel.clone();
+        // Up and Down keep the column the caret started in; anything else forgets it.
+        if !is_vertical(id) {
+            self.goal_x = None;
+        }
         let run = spec.run;
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(self, params)));
         let result = match result {
