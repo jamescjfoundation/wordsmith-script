@@ -25,6 +25,17 @@ tested. Left open:
 
 ## M2 gaps
 
+- More and continued texts can be edited and switched (`moresContinueds.*`),
+  but not given their own font (SPEC, Sourced); they use the script font.
+  There is no dialog for them yet; the command palette and agents reach the
+  commands.
+
+- Fountain reading strips emphasis (`*`, `**`, `_`) and keeps only the text;
+  formatting, the writer and round trips are M4. Dual dialogue (`^`) reads as
+  ordinary dialogue (dual dialogue is an open question in the spec).
+- The golden scripts have little dialogue; (MORE)/(CONT'D) are covered by
+  unit tests rather than the golden corpus.
+
 - The web build cannot export a PDF yet (native dialogs are desktop-only;
   the web needs a download instead).
 - Printing to a real printer, and the Windows print path, are untested
