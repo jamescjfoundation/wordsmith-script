@@ -10,7 +10,9 @@ fn fixed_fonts_exclude_system_and_optional_faces() {
     let threads: Vec<_> = (0..8).map(|_| std::thread::spawn(FontDb::init_test_fonts)).collect();
     assert!(threads.into_iter().all(|t| t.join().unwrap()));
     let db = FontDb::global();
+    // Wordsmith Script bundles Courier Prime, the script font.
     let families = [
+        "Courier Prime",
         "Inter",
         "Inter Medium",
         "Inter SemiBold",
