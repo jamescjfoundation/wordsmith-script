@@ -13,3 +13,4 @@ what would make us revisit it.
 | [0005](0005-copying-wordcraft.md) | How WordCraft code is copied, renamed and marked |
 | [0006](0006-engine-trim.md) | Trimming WordCraft's engine to session, undo, registry and recovery |
 | [0007](0007-mcp-trim.md) | Trimming WordCraft's MCP server |
+| [0008](0008-app-data.md) | Screenplay data lives in the document's `app_data` |
