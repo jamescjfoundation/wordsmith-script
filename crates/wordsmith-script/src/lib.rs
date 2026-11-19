@@ -16,6 +16,7 @@ pub mod export;
 pub mod paginate;
 pub mod scene_heading;
 pub mod scenes;
+pub mod spelling;
 pub mod template;
 
 pub use commands::{new_session, registry, session_for};

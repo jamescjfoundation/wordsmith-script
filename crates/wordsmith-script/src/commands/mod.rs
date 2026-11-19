@@ -12,6 +12,7 @@ pub mod autocomplete;
 pub mod caret;
 pub mod element;
 pub mod settings;
+pub mod spelling;
 pub mod text;
 
 use crate::element::Elements;
@@ -56,6 +57,7 @@ pub fn specs() -> Vec<CommandSpec> {
     all.extend(crate::export::specs());
     all.extend(crate::paginate::specs());
     all.extend(autocomplete::specs());
+    all.extend(spelling::specs());
     all
 }
 
