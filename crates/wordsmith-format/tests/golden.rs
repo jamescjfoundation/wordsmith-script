@@ -144,3 +144,17 @@ fn golden_scripts_have_their_scenes() {
         assert_eq!(script.scene_numbers.len(), scenes, "{name}: scene numbers");
     }
 }
+
+#[test]
+fn golden_scripts_survive_the_native_format() {
+    use wordsmith_format::native;
+    for name in SCRIPTS {
+        let text = std::fs::read_to_string(dir().join(format!("{name}.fountain"))).expect("golden script");
+        let doc = fountain::read(&text).expect("reads").doc;
+        let saved = native::write(&doc);
+        let back = native::read(&saved).expect("native reads");
+        let lines = |d: &wordsmith_doc::Document| wordsmith_script::commands::text::body_lines(&wordsmith_script::session_for(d.clone()));
+        assert_eq!(lines(&back), lines(&doc), "{name}");
+        assert_eq!(native::write(&back), saved, "{name}: stable bytes");
+    }
+}
