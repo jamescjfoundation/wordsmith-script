@@ -1,0 +1,20 @@
+# Performance
+
+Measurements the definition of done asks for. Each row says how to repeat
+it. Machine: Apple Silicon Mac, release build, 2026-11-19.
+
+| What | Result | How to measure |
+| --- | --- | --- |
+| Typing in a 150-page script: one editor frame per keystroke (command, repagination, drawing the visible pages) | median 14.5 ms, worst 17.1 ms over 20 keystrokes | `cargo test -p wordsmith-ui --release typing_in_a_150_page_script -- --ignored --nocapture` |
+| Paginating a 150-page script | 109 ms with empty caches, 14 ms warm (after an edit) | `cargo test -p wordsmith-script --release a_feature_length_script -- --nocapture` |
+
+Notes:
+
+- Repagination is fast after an edit because paragraphs are measured one at a
+  time through a cache (only edited paragraphs are laid out again) and the
+  output script's paragraphs keep stable revisions, so the layout cache
+  serves every unchanged one (decision 0012).
+- The headless frame does not include uploading textures to the GPU or
+  presenting the window. Caret Up and Down still lay out the whole script
+  (about 35 ms at 150 pages); that is a known cost, not yet optimised.
+- Linux and Windows have not been measured.

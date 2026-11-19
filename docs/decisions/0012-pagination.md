@@ -62,8 +62,19 @@ riskiest option (REUSE.md "Risks"), so:
   right-aligned at 7.5 in, half an inch from the top. A separate empty
   first-page header leaves page 1 unnumbered.
 
-## Performance (2026-11-19, Apple Silicon, release build)
+## Performance
 
-Paginating a 150-page script: 99 ms with an empty layout cache, 73 ms with
-a warm one. Too slow to repeat on every keystroke, so the editor must not
-repaginate synchronously while typing (M2 page view).
+Paragraphs are measured one at a time with `layout_para` through a
+`MeasureCache` keyed by paragraph revision and a fingerprint of the styles
+and page width, so the source script is never laid out as a whole. Output
+paragraphs get stable revisions derived from their source paragraph, byte
+range and flags, so the layout cache serves every unchanged one. With both,
+repaginating a 150-page script after an edit takes about 14 ms
+(`docs/performance.md`), so the editor repaginates on every edit.
+
+## Page view
+
+The editor draws the paginated output (with its (MORE), (CONT'D), CONTINUED
+and page numbers). The caret and selection are mapped into the output to be
+drawn; clicks on the output are mapped back to the script. Commands always
+work on the script itself.
