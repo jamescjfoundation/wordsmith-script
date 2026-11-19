@@ -136,6 +136,11 @@ pub struct Document {
     /// The document's own building blocks (its glossary document), in file order.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub glossary: Vec<BuildingBlock>,
+    /// Data an application keeps with the document, by key (`wordsmith.elements`): part of the
+    /// document, so undo snapshots, `==` and [`Document::same_content`] include it. Each value is
+    /// shared, so cloning the document for an undo step copies a pointer per entry.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub app_data: BTreeMap<String, Arc<serde_json::Value>>,
     /// Lookup cache for [`Document::add_media`]; not part of the document (never saved, ignored
     /// by `==`).
     #[serde(skip)]

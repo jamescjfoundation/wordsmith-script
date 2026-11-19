@@ -42,6 +42,10 @@ fn test_registry() -> Arc<crate::Registry> {
             Ok(Value::Null)
         }),
         CommandSpec::new("test.noop", "Nothing", "Test", |_, _| Ok(Value::Null)),
+        CommandSpec::new("test.setData", "Set Data", "Test", |s, v| {
+            s.doc.app_data.insert("test".into(), Arc::new(v.clone()));
+            Ok(Value::Null)
+        }),
         CommandSpec::new("test.fail", "Fail", "Test", edit_then_fail),
         CommandSpec::new("test.panic", "Panic", "Test", edit_then_panic),
         CommandSpec::new("test.disabled", "Disabled", "Test", |_, _| Ok(Value::Null)).when(|_| Some("never")),
@@ -254,4 +258,19 @@ fn recover_without_a_desktop_host_reports_disabled() {
     assert_eq!(r["enabled"], false);
     assert!(matches!(s.run("file.recover", &json!({"refresh": true})), Err(CmdError::Disabled(_))));
     assert!(matches!(s.run("file.recover", &json!({"restore": "a", "discard": "b"})), Err(CmdError::Params(_))));
+}
+
+#[test]
+fn a_command_that_only_changes_app_data_is_an_undoable_edit() {
+    let mut s = session("Hello");
+    s.run("test.setData", &json!({"n": 1})).unwrap();
+    assert!(s.dirty);
+    assert_eq!(s.undo_label(), Some("Set Data"));
+    s.run("test.setData", &json!({"n": 1})).unwrap();
+    assert_eq!(s.undo_depth(), 1, "setting the same value again changes nothing");
+    s.run("test.setData", &json!({"n": 2})).unwrap();
+    s.run("edit.undo", &json!({})).unwrap();
+    assert_eq!(s.doc.app_data["test"]["n"], 1);
+    s.run("edit.undo", &json!({})).unwrap();
+    assert!(s.doc.app_data.is_empty());
 }
