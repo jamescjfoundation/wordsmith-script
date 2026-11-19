@@ -11,3 +11,4 @@ what would make us revisit it.
 | [0003](0003-toolchain-and-ci.md) | Toolchain pinning, the CI gate and the lint policy |
 | [0004](0004-craft-libs-pins.md) | craft-libs pins when the v0.1.0 tag does not exist |
 | [0005](0005-copying-wordcraft.md) | How WordCraft code is copied, renamed and marked |
+| [0006](0006-engine-trim.md) | Trimming WordCraft's engine to session, undo, registry and recovery |
