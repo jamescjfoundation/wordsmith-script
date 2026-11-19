@@ -5,7 +5,7 @@
 
 use serde_json::Value;
 use wordsmith_doc::{Document, Pos};
-use wordsmith_engine::{CmdResult, CommandSpec, Selection, Session, cmd::sel_result};
+use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Move {
@@ -139,6 +139,27 @@ fn go(s: &mut Session, m: Move, extend: bool) -> CmdResult {
     sel_result(s)
 }
 
+/// `caret.to {pos, extend?}`: put the caret at `pos` (a click), or extend the selection to it
+/// (Shift+click, a drag). The position is clamped to the document.
+fn caret_to(s: &mut Session, v: &Value) -> CmdResult {
+    let pos: Pos =
+        v.get("pos").and_then(|p| serde_json::from_value(p.clone()).ok()).ok_or_else(|| CmdError::Params("`pos` must be a position".into()))?;
+    let to = s.doc.clamp(&pos);
+    let extend = v.get("extend").and_then(Value::as_bool).unwrap_or(false);
+    s.sel = if extend { Selection { anchor: s.sel.anchor.clone(), focus: to } } else { Selection::caret(to) };
+    sel_result(s)
+}
+
+/// `select.wordAt {pos}`: select the word at `pos` (a double-click).
+fn select_word_at(s: &mut Session, v: &Value) -> CmdResult {
+    let pos: Pos =
+        v.get("pos").and_then(|p| serde_json::from_value(p.clone()).ok()).ok_or_else(|| CmdError::Params("`pos` must be a position".into()))?;
+    let at = s.doc.clamp(&pos);
+    let (a, b) = s.doc.para_at(&at).map_or((at.off, at.off), |p| p.word_at(at.off));
+    s.sel = Selection { anchor: Pos { off: a, ..at.clone() }, focus: Pos { off: b, ..at } };
+    sel_result(s)
+}
+
 fn select_all(s: &mut Session, _: &Value) -> CmdResult {
     let story = s.sel.focus.story;
     s.sel = Selection { anchor: s.doc.start_of(story), focus: s.doc.end_of(story) };
@@ -171,5 +192,7 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("select.docStart", "Select to Script Start", LOC, |s, _| go(s, Move::DocStart, true)).key("Mod+Shift+Home").pure(),
         CommandSpec::new("select.docEnd", "Select to Script End", LOC, |s, _| go(s, Move::DocEnd, true)).key("Mod+Shift+End").pure(),
         CommandSpec::new("select.all", "Select All", "Edit", select_all).key("Mod+A").pure(),
+        CommandSpec::new("caret.to", "Place Caret", LOC, caret_to).params(r#"{"pos": position, "extend"?: bool}"#).pure(),
+        CommandSpec::new("select.wordAt", "Select Word", LOC, select_word_at).params(r#"{"pos": position}"#).pure(),
     ]
 }
