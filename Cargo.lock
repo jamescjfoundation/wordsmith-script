@@ -4612,6 +4612,7 @@ dependencies = [
 name = "wordsmith-script"
 version = "0.1.0-dev"
 dependencies = [
+ "craft-proof",
  "hayro-cmap",
  "hayro-interpret",
  "hayro-syntax",

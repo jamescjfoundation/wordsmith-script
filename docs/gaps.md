@@ -41,6 +41,13 @@ tested. Left open:
 - Printing to a real printer, and the Windows print path, are untested
   (decision 0013).
 
+## M3 gaps
+
+- "Add to Dictionary" lasts for the session; saving the personal dictionary
+  between runs needs the settings store (M4). "Ignore in This Script" is
+  saved with the script.
+- Spelling is English only (decision 0014).
+
 ## Not started
 
 Everything in M1 to M8 not marked done in `docs/progress.md`. Each milestone plan in `docs/plans/` breaks its part
