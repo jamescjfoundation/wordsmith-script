@@ -1,0 +1,47 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/wordsmith-script",
+    "crates/wordsmith-format",
+    "crates/wordsmith-ui",
+    "apps/wordsmith",
+    "apps/wordsmith-cli",
+    "apps/wordsmith-web",
+    "xtask",
+]
+default-members = [
+    "crates/wordsmith-script",
+    "crates/wordsmith-format",
+    "crates/wordsmith-ui",
+    "apps/wordsmith",
+    "apps/wordsmith-cli",
+]
+
+[workspace.package]
+version = "0.1.0-dev"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[workspace.dependencies]
+wordsmith-script = { path = "crates/wordsmith-script" }
+wordsmith-format = { path = "crates/wordsmith-format" }
+wordsmith-ui = { path = "crates/wordsmith-ui" }
+
+# Lint policy shared by every crate. Crate roots also carry the same
+# denies as attributes so the rule is visible where the code lives.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+unimplemented = "deny"
+todo = "deny"
+unreachable = "deny"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

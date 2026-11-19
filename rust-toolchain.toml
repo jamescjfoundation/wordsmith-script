@@ -1,0 +1,6 @@
+# The minimum supported version is rust-version in Cargo.toml (1.95).
+# Development and CI track stable with the components the gate needs.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32-unknown-unknown"]
