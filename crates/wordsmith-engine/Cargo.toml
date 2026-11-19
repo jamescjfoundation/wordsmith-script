@@ -1,0 +1,31 @@
+# Modified by the Wordsmith Script contributors.
+[package]
+name = "wordsmith-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Wordsmith Script (from WordCraft) engine: editing session, undo/redo, command registry, desktop recovery"
+
+[lints]
+workspace = true
+
+[features]
+test-support = []
+
+[dependencies]
+wordsmith-doc = { workspace = true }
+wordsmith-layout = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+chrono = { workspace = true }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+js-sys = "0.3"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+getrandom = { workspace = true }
+
+[dev-dependencies]
+wordsmith-doc = { workspace = true, features = ["test-support"] }

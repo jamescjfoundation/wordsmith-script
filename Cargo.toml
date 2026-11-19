@@ -8,6 +8,7 @@ members = [
     "crates/wordsmith-layout",
     "crates/wordsmith-render",
     "crates/wordsmith-pdf",
+    "crates/wordsmith-engine",
     # Ours
     "crates/wordsmith-script",
     "crates/wordsmith-format",
@@ -24,6 +25,7 @@ default-members = [
     "crates/wordsmith-layout",
     "crates/wordsmith-render",
     "crates/wordsmith-pdf",
+    "crates/wordsmith-engine",
     "crates/wordsmith-script",
     "crates/wordsmith-format",
     "crates/wordsmith-ui",
@@ -46,6 +48,7 @@ wordsmith-fonts = { path = "crates/wordsmith-fonts" }
 wordsmith-layout = { path = "crates/wordsmith-layout" }
 wordsmith-render = { path = "crates/wordsmith-render" }
 wordsmith-pdf = { path = "crates/wordsmith-pdf" }
+wordsmith-engine = { path = "crates/wordsmith-engine" }
 # Internal: ours
 wordsmith-script = { path = "crates/wordsmith-script" }
 wordsmith-format = { path = "crates/wordsmith-format" }
@@ -71,6 +74,7 @@ log = "0.4"
 # All date and time conversion goes through chrono.
 chrono = { version = "0.4.45", default-features = false, features = ["std"] }
 base64 = "0.23"
+getrandom = "0.3"
 proptest = "1"
 unicode-bidi = "0.3"
 unicode-segmentation = "1"
