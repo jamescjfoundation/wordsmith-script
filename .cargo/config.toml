@@ -1,0 +1,3 @@
+[alias]
+# `cargo xtask ci` is the gate every merge to main must pass.
+xtask = "run --quiet --locked --package xtask --"

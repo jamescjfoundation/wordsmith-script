@@ -1,0 +1,15 @@
+[package]
+name = "wordsmith-ui"
+description = "Desktop and web interface for Wordsmith Script"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+wordsmith-script.workspace = true
+wordsmith-format.workspace = true
+
+[lints]
+workspace = true
