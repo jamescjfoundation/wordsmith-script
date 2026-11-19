@@ -14,8 +14,6 @@ tested. Left open:
 
 - Saving and opening files: M4. Crash recovery is the only persistence until
   then.
-- Normal and speed views, typewriter scrolling, focus mode, dark theme: M3.
-  The M1 editor shows the print layout.
 - IME (input method) composition safeguards were cut from the engine
   (decision 0006); egui's own text events work, but composing text is not
   protected the way WordCraft protected it.
@@ -47,6 +45,11 @@ tested. Left open:
   between runs needs the settings store (M4). "Ignore in This Script" is
   saved with the script.
 - Spelling is English only (decision 0014).
+- Dark PDF colours (SPEC: "optionally matched in PDF colors") are not built.
+- View, theme, typewriter and focus settings are not remembered between runs
+  (settings store, M4).
+- Writing stats, sprint timer and structure colours are later items
+  (`ROADMAP.md`).
 
 ## Not started
 
