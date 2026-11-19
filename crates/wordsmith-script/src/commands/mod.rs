@@ -10,6 +10,7 @@ use wordsmith_engine::{CmdResult, CommandSpec, Registry, Session, cmd::pos_json}
 
 pub mod caret;
 pub mod element;
+pub mod settings;
 pub mod text;
 
 use crate::element::Elements;
@@ -49,6 +50,7 @@ pub fn specs() -> Vec<CommandSpec> {
         .key("Mod+N"),
     ];
     all.extend(element::specs());
+    all.extend(settings::specs());
     all.extend(caret::specs());
     all
 }
