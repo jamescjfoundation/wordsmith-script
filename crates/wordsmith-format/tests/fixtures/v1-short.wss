@@ -1,0 +1,21 @@
+Wordsmith Script 1
+=== settings ===
+{
+  "appData": {},
+  "core": {
+    "title": "Fixture"
+  }
+}
+=== script ===
+@SceneHeading
+EXT. YARD - DAY
+
+@Action
+Wind.
+
+@Character
+BOB
+
+@Dialogue
+Hi.
+
