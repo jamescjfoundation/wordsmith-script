@@ -9,6 +9,9 @@ publish.workspace = true
 
 [dependencies]
 wordsmith-ui.workspace = true
+eframe.workspace = true
+egui.workspace = true
+wordsmith-control-key.workspace = true
 
 [lints]
 workspace = true

@@ -10,6 +10,13 @@ publish.workspace = true
 [dependencies]
 wordsmith-script.workspace = true
 wordsmith-format.workspace = true
+wordsmith-engine.workspace = true
+wordsmith-doc.workspace = true
+wordsmith-layout.workspace = true
+wordsmith-render.workspace = true
+egui.workspace = true
+serde_json.workspace = true
+log.workspace = true
 
 [lints]
 workspace = true
