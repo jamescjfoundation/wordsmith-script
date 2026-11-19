@@ -33,7 +33,7 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 item(ed, ui, "file.recoverPrompt");
             });
             ui.menu_button("Edit", |ui| {
-                for id in ["edit.undo", "edit.redo", "edit.cut", "edit.copy", "select.all"] {
+                for id in ["edit.undo", "edit.redo", "edit.cut", "edit.copy", "select.all", "view.find"] {
                     item(ed, ui, id);
                 }
             });
@@ -103,6 +103,51 @@ pub fn toolbar(ed: &mut Editor, ui: &mut Ui) {
             ui.label(format!("{:.0}%", ed.zoom * 100.0));
         });
     });
+}
+
+/// The find bar: query, replacement, options and their commands.
+pub fn find_bar(ed: &mut Editor, ui: &mut Ui) {
+    let Some(mut bar) = ed.find.clone() else { return };
+    let mut action: Option<&'static str> = None;
+    let mut close = false;
+    egui::Panel::top("find").show(ui, |ui| {
+        ui.horizontal(|ui| {
+            ui.label("Find");
+            let q = ui.add(egui::TextEdit::singleline(&mut bar.query).desired_width(200.0));
+            if q.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                action = Some("find.next");
+                q.request_focus();
+            }
+            ui.label("Replace with");
+            ui.add(egui::TextEdit::singleline(&mut bar.with).desired_width(160.0));
+            ui.checkbox(&mut bar.match_case, "Match case");
+            ui.checkbox(&mut bar.whole_word, "Whole word");
+            for (label, id) in [("Previous", "find.previous"), ("Next", "find.next"), ("Replace", "replace.one"), ("Replace All", "replace.all")] {
+                if ui.button(label).clicked() {
+                    action = Some(id);
+                }
+            }
+            if let Some(n) = bar.count {
+                ui.label(format!("{n} found"));
+            }
+            if ui.button("Close").clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                close = true;
+            }
+        });
+    });
+    if close {
+        ed.find = None;
+        return;
+    }
+    if let Some(id) = action.filter(|_| !bar.query.is_empty()) {
+        ed.run(id, bar.params());
+    }
+    bar.count = (!bar.query.is_empty())
+        .then(|| ed.session.run("find.all", &bar.params()).ok())
+        .flatten()
+        .and_then(|v| v["count"].as_u64())
+        .map(|n| n as usize);
+    ed.find = Some(bar);
 }
 
 pub fn status_bar(ed: &mut Editor, ui: &mut Ui) {

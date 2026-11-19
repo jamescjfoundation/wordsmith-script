@@ -27,6 +27,23 @@ struct PageTexture {
     texture: TextureHandle,
 }
 
+/// The find bar's fields.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct FindBar {
+    pub query: String,
+    pub with: String,
+    pub match_case: bool,
+    pub whole_word: bool,
+    /// Matches found for the current query (shown in the bar).
+    pub count: Option<usize>,
+}
+
+impl FindBar {
+    pub fn params(&self) -> Value {
+        json!({"query": self.query, "with": self.with, "matchCase": self.match_case, "wholeWord": self.whole_word})
+    }
+}
+
 /// Autocomplete suggestions showing at the caret.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Suggestions {
@@ -57,6 +74,8 @@ pub struct Editor {
     paginator: wordsmith_script::paginate::Paginator,
     /// The paginated script for the session's current revision.
     paginated: Option<(u64, Arc<Paginated>)>,
+    /// The find bar, while it is open.
+    pub find: Option<FindBar>,
     /// Underline misspelled words.
     pub spelling: bool,
     spell_cache: wordsmith_script::spelling::SpellCache,
@@ -87,6 +106,7 @@ impl Editor {
             scroll_to_caret: true,
             message: String::new(),
             clipboard: None,
+            find: None,
             spelling: true,
             spell_cache: Default::default(),
             spell_menu: None,
@@ -178,6 +198,11 @@ impl Editor {
                 Some("about") => self.show_about = true,
                 Some("recover") => self.recovery = Some(RecoveryPrompt),
                 Some("exportPdf") => self.ask_export_path(),
+                Some("find") => {
+                    let query = self.session.selected_text();
+                    let bar = self.find.take().unwrap_or_default();
+                    self.find = Some(FindBar { query: if query.is_empty() || query.contains('\n') { bar.query.clone() } else { query }, ..bar });
+                }
                 _ => {}
             }
         }
@@ -358,6 +383,19 @@ impl Editor {
         }
         let to_screen = |page: usize, x: f32, y: f32| origins.get(page).map(|r| r.min + vec2(x * zoom, y * zoom));
 
+        // Every match of the find bar's query, on the pages in view.
+        if let Some(bar) = self.find.as_ref().filter(|b| !b.query.is_empty()) {
+            let q = wordsmith_script::commands::find::Query { text: bar.query.clone(), match_case: bar.match_case, whole_word: bar.whole_word };
+            let fill = Color32::from_rgba_unmultiplied(255, 210, 0, 90);
+            for (a, b) in wordsmith_script::commands::find::find_all(&self.session, &q).into_iter().take(5_000) {
+                let (Some(a), Some(b)) = (pag.to_output(&a), pag.to_output(&b)) else { continue };
+                for (page, r) in layout.selection_rects(&pag.doc, &a, &b, 0) {
+                    if let Some(min) = to_screen(page, r.x, r.y) {
+                        painter.rect_filled(Rect::from_min_size(min, vec2(r.w * zoom, r.h * zoom)), 0.0, fill);
+                    }
+                }
+            }
+        }
         // Selection, then the caret.
         if !self.session.sel.is_collapsed() {
             let (a, b) = self.session.sel.ordered();
@@ -479,6 +517,7 @@ impl Editor {
         self.handle_keys(ui);
         crate::chrome::menu_bar(self, ui);
         crate::chrome::toolbar(self, ui);
+        crate::chrome::find_bar(self, ui);
         crate::chrome::status_bar(self, ui);
         egui::CentralPanel::default().show(ui, |ui| {
             egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| self.page_view(ui));

@@ -298,3 +298,22 @@ fn misspellings_are_checked_in_the_page_view() {
     ed.spelling = false;
     frame(&ctx, &mut ed, vec![]);
 }
+
+#[test]
+fn the_find_bar_opens_with_the_selection_and_runs_commands() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![key(Key::Num2, cmd()), text("The dog and the dog.")]);
+    ed.run("caret.docStart", json!({}));
+    ed.run("select.wordRight", json!({}));
+    frame(&ctx, &mut ed, vec![key(Key::F, cmd())]);
+    assert_eq!(ed.find.as_ref().map(|b| b.query.as_str()), Some("The "));
+    let bar = crate::editor::FindBar { query: "dog".into(), with: "cat".into(), ..Default::default() };
+    ed.find = Some(bar.clone());
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.find.as_ref().and_then(|b| b.count), Some(2));
+    ed.run("replace.all", bar.params());
+    assert_eq!(lines(&ed)[0].1, "The cat and the cat.");
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.find.as_ref().and_then(|b| b.count), Some(0));
+}
