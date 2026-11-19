@@ -15,3 +15,4 @@ what would make us revisit it.
 | [0007](0007-mcp-trim.md) | Trimming WordCraft's MCP server |
 | [0008](0008-app-data.md) | Screenplay data lives in the document's `app_data` |
 | [0009](0009-element-model.md) | The element model and its defaults |
+| [0010](0010-typing-rules.md) | Typing rules the spec leaves open |
