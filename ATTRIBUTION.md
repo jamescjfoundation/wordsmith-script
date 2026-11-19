@@ -52,6 +52,16 @@ script font; the others come with the copied WordCraft font code.
 | wordsmith-control-key | WordCraft `crates/control-key` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Renamed (decision 0007) |
 | wordsmith-mcp | WordCraft `crates/mcp` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Trimmed and rebranded (decision 0007) |
 
+## Test data
+
+| Path | What it is | Source | License |
+| --- | --- | --- | --- |
+| `crates/wordsmith-format/tests/golden/everybodys-girl.fountain` | "Everybody's Girl" by A. Van Buren Powell (Vitagraph, 1918), transcribed into Fountain | *Writing the Photoplay* (1919), Project Gutenberg #17903 | public domain in the USA (published before 1931) |
+| `crates/wordsmith-format/tests/golden/timid-teddy.fountain` | "Timid Teddy" by Embrie Zuver, transcribed into Fountain | *How to Write Photoplays* (1915), Project Gutenberg #76829 | public domain in the USA (published before 1931) |
+| `crates/wordsmith-format/tests/golden/salt-of-vengeance.fountain` | "The Salt of Vengeance" by Henry Albert Phillips, transcribed into Fountain | *The Photodrama* (1914), Project Gutenberg #70937 | public domain in the USA (published before 1931) |
+
+These are test data and are not shipped with the app. See `docs/golden.md`.
+
 ## Dependencies
 
 Rust crate dependencies are not copied into the repository. Their licenses
