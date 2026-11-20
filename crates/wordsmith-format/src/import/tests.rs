@@ -21,7 +21,7 @@ fn script(paras: &[(&str, &str)]) -> Document {
 
 #[test]
 fn flat_text_is_classified_by_convention() {
-    let src = "INT. KITCHEN - NIGHT\n\nRain hits the window,\nhard.\n\nANNA (V.O.)\n(quietly,\nalmost to herself)\nDid you hear that?\nI did.\n\nBOB (CONT'D)\nNo.\n\nCUT TO:\n\nJUST CAPITALS\n";
+    let src = "INT. KITCHEN - NIGHT\n\nRain hits the window,\nhard.\n\nANNA (V.O.)\n(quietly,\nalmost to herself)\nDid you hear that?\nI did.\n\nBOB (CONT'D)\nNo.\n\nCUT TO:\n\nJUST CAPITALS\n\nBOOM!\n";
     let doc = text(src, true).unwrap();
     assert_eq!(
         lines(&doc),
@@ -34,7 +34,8 @@ fn flat_text_is_classified_by_convention() {
             l("Character", "BOB"),
             l("Dialogue", "No."),
             l("Transition", "CUT TO:"),
-            l("Action", "JUST CAPITALS"),
+            l("SceneHeading", "JUST CAPITALS"),
+            l("Action", "BOOM!"),
         ]
     );
 }

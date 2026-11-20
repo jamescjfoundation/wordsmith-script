@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! File formats for Wordsmith Script: the native plain-text format and
-//! Fountain ([`native`], [`fountain`]); imports and exports arrive with M4.
+//! File formats for Wordsmith Script: the native plain-text format ([`native`]),
+//! Fountain ([`fountain`]), imports of plain text, RTF and PDF ([`import`]) and
+//! exports to plain text, RTF and HTML ([`export`]).
 
 #![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 mod emphasis;
+pub mod export;
 pub mod fountain;
 pub mod import;
 pub mod native;
