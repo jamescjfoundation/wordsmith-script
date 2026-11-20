@@ -725,3 +725,19 @@ fn notes_in_the_editor() {
     ed.run(id, params);
     assert_eq!(ed.session.run("note.list", &json!({})).unwrap()[0]["text"], "Hail.");
 }
+
+#[test]
+fn revision_mode_from_the_editor() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("element.action", json!({}));
+    frame(&ctx, &mut ed, vec![text("Rain.")]);
+    ed.run("revision.next", json!({}));
+    ed.run("view.revisions", json!({}));
+    assert!(ed.show_revisions);
+    frame(&ctx, &mut ed, vec![text(" Snow.")]);
+    let pag = ed.paginated();
+    assert_eq!(pag.page_revisions, [Some(0)], "the page is revised in Blue");
+    frame(&ctx, &mut ed, vec![]);
+}

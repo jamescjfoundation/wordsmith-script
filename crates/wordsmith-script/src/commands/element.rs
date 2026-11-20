@@ -22,8 +22,13 @@ pub(crate) fn element_of_para_at<'a>(doc: &Document, elements: &'a Elements, at:
 pub(crate) fn apply_element(s: &mut Session, elements: &Elements, path: &Path, id: &str, caret: bool) -> Result<(), CmdError> {
     let target = elements.get(id).ok_or_else(|| CmdError::Params(format!("no element `{id}`")))?.clone();
     let story = s.sel.focus.story;
+    let revising = crate::revisions::typing_set(&s.doc);
     let para = s.doc.para_mut(story, path)?;
     let was = elements.of_para(para).kind;
+    if revising.is_some() && para.props.style.as_deref() != Some(target.id.as_str()) && !para.text.is_empty() {
+        // In revision mode, changing a paragraph's element is a revision of it.
+        para.mark.revised = revising;
+    }
     para.props.style = Some(target.id.clone());
     if target.casing == Casing::Upper {
         uppercase(para);

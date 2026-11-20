@@ -3,7 +3,7 @@
 //! The format is documented in `docs/format.md`; decision 0017 explains the choices.
 //!
 //! ```text
-//! Wordsmith Script 2
+//! Wordsmith Script 3
 //! === settings ===
 //! { ...sorted, pretty-printed JSON: page, styles, core, appData... }
 //! === script ===
@@ -28,7 +28,7 @@ use wordsmith_script::template::new_script;
 use wordsmith_script::{ElementKind, Elements};
 
 /// The format version this build writes.
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 /// The first line's words before the version number.
 pub const MAGIC: &str = "Wordsmith Script";
 /// Largest native file read, bytes.
@@ -103,6 +103,9 @@ pub fn write(doc: &Document) -> String {
         if p.props.page_break_before == Some(true) {
             out.push_str(" page-break");
         }
+        if let Some(set) = p.mark.revised {
+            out.push_str(&format!(" revised={set}"));
+        }
         out.push('\n');
         let encoded = crate::emphasis::encode_with(p, true, &|_| None);
         // An empty paragraph has no text lines at all.
@@ -153,6 +156,8 @@ fn migrate(
             let paragraphs = paragraphs.into_iter().map(|(id, attrs, text)| (id, attrs, text.replace('{', "\\{"))).collect();
             migrate(2, settings, paragraphs)
         }
+        // 2 → 3: revision and locked-page marks join the note marks; `{` was already escaped.
+        2 => migrate(3, settings, paragraphs),
         VERSION => Ok((settings, paragraphs)),
         v if v > VERSION => Err(ReadError::NewerVersion(v)),
         v => Err(ReadError::Damaged(format!("unknown format {v}"))),
@@ -244,6 +249,8 @@ pub fn read(text: &str) -> Result<Document, ReadError> {
             // A paragraph of an element the file does not define reads as General.
             let style = if elements.get(&id).is_some() { id } else { general.clone() };
             let mut p = crate::emphasis::decode_with(&style, &text, false, true);
+            // A deletion in the paragraph, revised in a set.
+            p.mark.revised = attrs.iter().find_map(|a| a.strip_prefix("revised=")).and_then(|n| n.parse().ok());
             if attrs.iter().any(|a| a == "page-break") {
                 p.props.page_break_before = Some(true);
             }

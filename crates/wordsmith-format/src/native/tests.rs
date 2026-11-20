@@ -146,8 +146,28 @@ fn notes_and_their_anchors_round_trip_and_version_1_braces_stay_braces() {
     assert_eq!(wordsmith_script::notes::Notes::of_doc(&back), wordsmith_script::notes::Notes::of_doc(&s.doc));
     assert_eq!(write(&back), text, "stable");
     // A version 1 file with braces reads them as text.
-    let v1 = text.replacen("Wordsmith Script 2", "Wordsmith Script 1", 1).replace("{n1}", "").replace("{/n}", "").replace("\\{", "{");
+    let v1 =
+        text.replacen(&format!("Wordsmith Script {VERSION}"), "Wordsmith Script 1", 1).replace("{n1}", "").replace("{/n}", "").replace("\\{", "{");
     let old = read(&v1).unwrap();
     assert_eq!(old.body[0].as_para().map(|p| p.text.as_str()), Some("INT. A {B} - DAY"));
     assert!(old.body[0].as_para().unwrap().run_ranges().all(|(_, c)| c.note.is_none()));
+}
+
+#[test]
+fn revisions_round_trip_and_version_2_files_read() {
+    let mut s = wordsmith_script::new_session();
+    s.run("element.action", &json!({})).unwrap();
+    s.run("text.insert", &json!({"text": "Rain hits the window."})).unwrap();
+    s.run("revision.mode", &json!({"on": true})).unwrap();
+    s.run("text.insert", &json!({"text": " More."})).unwrap();
+    s.run("text.backspace", &json!({})).unwrap();
+    let text = write(&s.doc);
+    assert!(text.contains("@Action revised=0\nRain hits the window.{r0} More{/r}\n"), "{text}");
+    let back = read(&text).unwrap();
+    assert_eq!(back.body, s.doc.body);
+    assert_eq!(write(&back), text);
+    // A version 2 file (no revision marks) reads as before.
+    let v2 = "Wordsmith Script 2\n=== settings ===\n{}\n=== script ===\n@Action\nA {n1}note{/n} and \\{braces}\n";
+    let old = read(v2).unwrap();
+    assert_eq!(old.body[0].as_para().map(|p| p.text.as_str()), Some("A note and {braces}"));
 }

@@ -500,8 +500,91 @@ fn note_popover(ed: &mut Editor, ctx: &Context) {
     }
 }
 
+/// The revision sets: the current set, each set's name, color and text styles, the mark and its
+/// place, colored pages, and rolling back. Every change is a command.
+fn revisions_window(ed: &mut Editor, ctx: &Context) {
+    let mut open = ed.show_revisions;
+    let rev = wordsmith_script::revisions::Revisions::of_doc(&ed.session.doc);
+    let mut action: Option<(&str, Value)> = None;
+    egui::Window::new("Revision Sets").open(&mut open).collapsible(false).show(ctx, |ui| {
+        let mut mode = rev.mode;
+        if ui.checkbox(&mut mode, "Revision mode: mark what I type and delete").changed() {
+            action = Some(("revision.mode", json!({"on": mode})));
+        }
+        if rev.sets.is_empty() {
+            ui.label("No revision sets yet. Next Revision starts Blue (the original draft is White).");
+        }
+        egui::Grid::new("revision_sets").num_columns(6).show(ui, |ui| {
+            for h in ["Current", "Name", "Color", "Bold", "Underline", "Strike"] {
+                ui.label(egui::RichText::new(h).strong());
+            }
+            ui.end_row();
+            for (i, set) in rev.sets.iter().enumerate() {
+                if ui.radio(set.name == rev.current, "").clicked() {
+                    action = Some(("revision.setCurrent", json!({"name": set.name})));
+                }
+                let mut name = set.name.clone();
+                if ui.add(egui::TextEdit::singleline(&mut name).desired_width(140.0)).lost_focus() && name != set.name {
+                    action = Some(("revision.configure", json!({"set": {"index": i, "name": name}})));
+                }
+                let mut color = wordsmith_script::revisions::parse_color(&set.color).map_or([255, 255, 255], |c| [c.0, c.1, c.2]);
+                if ui.color_edit_button_srgb(&mut color).changed() {
+                    let hex = format!("#{:02X}{:02X}{:02X}", color[0], color[1], color[2]);
+                    action = Some(("revision.configure", json!({"set": {"index": i, "color": hex}})));
+                }
+                for (key, on) in [("bold", set.bold), ("underline", set.underline), ("strike", set.strike)] {
+                    let mut b = on;
+                    if ui.checkbox(&mut b, "").changed() {
+                        action = Some(("revision.configure", json!({"set": {"index": i, key: b}})));
+                    }
+                }
+                ui.end_row();
+            }
+        });
+        if ui.button("Next Revision").clicked() {
+            action = Some(("revision.next", json!({})));
+        }
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.label("Mark");
+            let mut mark = rev.mark.clone();
+            if ui.add(egui::TextEdit::singleline(&mut mark).desired_width(24.0)).changed() && !mark.trim().is_empty() {
+                action = Some(("revision.configure", json!({"mark": mark.trim()})));
+            }
+            ui.label("at");
+            let mut at = f64::from(rev.mark_at);
+            if ui.add(egui::DragValue::new(&mut at).range(0.1..=8.0).speed(0.05).suffix(" in")).changed() {
+                action = Some(("revision.configure", json!({"markAt": at})));
+            }
+            ui.label("from the page's left edge");
+        });
+        let mut color_pages = rev.color_pages;
+        if ui.checkbox(&mut color_pages, "Color revised pages in PDF and print").changed() {
+            action = Some(("revision.configure", json!({"colorPages": color_pages})));
+        }
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.label("Roll back to");
+            if ui.button("the original (White)").clicked() {
+                action = Some(("revision.rollback", json!({"to": ""})));
+            }
+            for set in rev.sets.iter().rev().skip(1) {
+                if ui.button(set.name.as_str()).clicked() {
+                    action = Some(("revision.rollback", json!({"to": set.name})));
+                }
+            }
+        });
+        ui.label("Rolling back clears the later sets' marks; the text stays as it is.");
+    });
+    if let Some((cmd, params)) = action {
+        ed.run(cmd, params);
+    }
+    ed.show_revisions = open;
+}
+
 /// Show whichever dialogs are open.
 pub fn show(ed: &mut Editor, ctx: &Context) {
+    revisions_window(ed, ctx);
     note_popover(ed, ctx);
     header_footer_window(ed, ctx);
     title_page_window(ed, ctx);

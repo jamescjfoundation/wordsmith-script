@@ -41,6 +41,8 @@ pub struct Paginated {
     pub layout: Arc<DocLayout>,
     /// The output was laid out on exactly the planned pages.
     pub matches_plan: bool,
+    /// Each page's newest revision set, if it has revised text.
+    pub page_revisions: Vec<Option<u32>>,
 }
 
 impl Paginated {
@@ -144,9 +146,67 @@ fn part_of(src: &Paragraph, start: usize, end: usize) -> Paragraph {
     p
 }
 
+/// Which of the output paragraph's lines are revised (for the margin marks), and the newest set
+/// on it: its revised characters, and, on its first line, a deletion in the paragraph.
+fn revised_lines(doc: &Document, sp: &Paragraph, start: usize, end: usize, para: &Paragraph) -> (Vec<bool>, Option<u32>) {
+    let deleted = if start == 0 { sp.mark.revised } else { None };
+    let newest = para.run_ranges().filter_map(|(_, c)| c.revised).chain(deleted).max();
+    if newest.is_none() {
+        return (Vec::new(), None);
+    }
+    let (lines, _) = super::measure::measure_text(doc, sp, sp.text.get(start..end).unwrap_or(""));
+    let mut flags: Vec<bool> =
+        lines.iter().map(|&(a, b)| para.run_ranges().any(|(r, c)| c.revised.is_some() && r.start < b.max(a + 1) && r.end > a)).collect();
+    if deleted.is_some()
+        && let Some(f) = flags.first_mut()
+    {
+        *f = true;
+    }
+    (flags, newest)
+}
+
+/// The revision sets' text styles on revised runs.
+fn set_styles(para: &mut Paragraph, rev: &crate::revisions::Revisions) {
+    let ranges: Vec<(std::ops::Range<usize>, u32)> = para.run_ranges().filter_map(|(r, c)| c.revised.map(|i| (r, i))).collect();
+    for (r, i) in ranges {
+        let Some(set) = rev.set(i) else { continue };
+        if set.bold || set.underline || set.strike {
+            let (b, u, k) = (set.bold, set.underline, set.strike);
+            let _ = para.format(r.start, r.end, &|c| {
+                if b {
+                    c.bold = Some(true);
+                }
+                if u {
+                    c.underline = Some(wordsmith_doc::props::Underline::Single);
+                }
+                if k {
+                    c.strike = Some(true);
+                }
+            });
+        }
+    }
+}
+
+/// The output script, each output paragraph's source, and each page's newest revision set.
+pub struct Built {
+    pub doc: Document,
+    pub map: Vec<Option<Source>>,
+    pub page_revisions: Vec<Option<u32>>,
+}
+
 /// Build the output script for `pages` of `doc`.
-pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> (Document, Vec<Option<Source>>) {
+pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> Built {
     let elements = Elements::of_doc(doc);
+    let rev = crate::revisions::Revisions::of_doc(doc);
+    let rev_hash = stable_rev(&[serde_json::to_string(&rev)
+        .map(|t| {
+            use std::hash::{Hash, Hasher};
+            let mut h = std::collections::hash_map::DefaultHasher::new();
+            t.hash(&mut h);
+            h.finish()
+        })
+        .unwrap_or(0)]);
+    let mut page_revisions = Vec::with_capacity(pages.len());
     let contd_blocks = if marks.character { auto_contd(doc, &elements) } else { Default::default() };
     let mut out = doc.clone();
     let sheet = Arc::make_mut(&mut out.styles);
@@ -162,6 +222,7 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> (
     let mut map = Vec::new();
     for (n, page) in pages.iter().enumerate() {
         let first = body.len();
+        let mut page_newest: Option<u32> = None;
         for piece in page {
             // What makes this output paragraph what it is, for its stable revision.
             let mut identity: Vec<u64> = Vec::with_capacity(8);
@@ -219,6 +280,22 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> (
                 para.props.space_before = Some(0.0);
             }
             identity.extend([u64::from(body.len() == first), u64::from(n > 0)]);
+            // Revision marks beside the revised lines, and the sets' text styles.
+            if let Piece::Para { block, start, end, .. } = piece
+                && let Some(sp) = doc.body.get(*block).and_then(|b| b.as_para())
+            {
+                let (flags, newest) = revised_lines(doc, sp, *start, *end, &para);
+                if newest.is_some() {
+                    page_newest = page_newest.max(newest);
+                    set_styles(&mut para, &rev);
+                    let y = out.styles.resolve_para(&para.props).space_before.max(0.0);
+                    let lines: Vec<String> = flags.iter().map(|f| if *f { rev.mark.clone() } else { String::new() }).collect();
+                    let mark = super::margin::margin_box(&mut out, rev.mark_at * template::INCH, y, 0.5 * template::INCH, &lines, Align::Left);
+                    let at = para.len();
+                    let _ = para.insert_object(at, mark, &CharProps::default());
+                    identity.push(rev_hash);
+                }
+            }
             if matches!(piece, Piece::More | Piece::ContinuedBottom | Piece::ContinuedTop { .. }) {
                 // The mark texts are settings; they are part of what the paragraph shows.
                 identity.push(marks_hash(marks));
@@ -227,6 +304,17 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> (
             body.push(para_block(para));
             map.push(src);
         }
+        // With color pages on, a revised page is colored in its newest set's color.
+        if rev.color_pages
+            && let Some(color) = page_newest.and_then(|i| rev.set(i)).and_then(|set| crate::revisions::parse_color(&set.color))
+            && let Some(wordsmith_doc::Block::Para(p)) = body.get_mut(first).map(Arc::make_mut)
+        {
+            let fill = super::margin::page_fill(&out, color);
+            let at = p.len();
+            let _ = p.insert_object(at, fill, &CharProps::default());
+            p.rev = stable_rev(&[p.rev, rev_hash, 6]);
+        }
+        page_revisions.push(page_newest);
     }
     if body.is_empty() {
         body.push(para_block(Paragraph::new()));
@@ -234,7 +322,7 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> (
     }
     out.body = body;
     crate::header_footer::apply(&mut out);
-    (out, map)
+    Built { doc: out, map, page_revisions }
 }
 
 fn marks_hash(marks: &MoresContinueds) -> u64 {
@@ -272,11 +360,11 @@ fn paginate_with(doc: &Document, measure: &mut MeasureCache, cache: &mut LayoutC
     let marks = MoresContinueds::of_doc(doc);
     let m = measure_cached(doc, measure);
     let pages = plan(doc, &m, &marks, Rules::default());
-    let (out, map) = build(doc, &pages, &marks);
+    let Built { doc: out, map, page_revisions } = build(doc, &pages, &marks);
     let layout = print_layout(&out, cache);
     let matches_plan = layout.pages.len() == pages.len();
     if !matches_plan {
         log::warn!("pagination: planned {} pages, the layout made {}", pages.len(), layout.pages.len());
     }
-    Paginated { doc: out, pages, map, layout, matches_plan }
+    Paginated { doc: out, pages, map, layout, matches_plan, page_revisions }
 }

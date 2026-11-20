@@ -284,7 +284,7 @@ fn timing_breakdown() {
     let pages = super::plan(&doc, &m, &marks, super::Rules::default());
     let t_plan = t.elapsed();
     let t = std::time::Instant::now();
-    let (out, _) = super::output::build(&doc, &pages, &marks);
+    let out = super::output::build(&doc, &pages, &marks).doc;
     let t_build = t.elapsed();
     let t = std::time::Instant::now();
     let _ = print_layout(&out, &mut cache);
