@@ -460,6 +460,9 @@ pub struct ParaProps {
     /// the speech after it are set beside the speech before.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dual: Option<bool>,
+    /// A scene heading's id for the scene's own data (title, color, cast, arc beats).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scene_id: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shading: Option<Rgb>,
     #[serde(skip_serializing_if = "Option::is_none")]

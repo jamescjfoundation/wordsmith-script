@@ -32,12 +32,33 @@ pub struct Tools {
     pub macros: Option<(usize, Value)>,
     /// "Replace this alias?": slot (1-based), alias start and the macro's name.
     pub macro_confirm: Option<(u64, u64, String)>,
+    pub reports: Option<crate::reports::ReportState>,
+    /// The scene properties window: the scene, the name being typed, and field drafts.
+    pub scene_props: Option<(usize, String, crate::reports::Drafts)>,
+    /// The character window: the character shown, and field drafts.
+    pub character: Option<(String, crate::reports::Drafts)>,
 }
 
 /// Act on a UI request to open a tool window. Returns whether it was one.
 pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
     match what {
         "tool.macros" => ed.tools.macros = Some((0, macro_form(ed, 0))),
+        "tool.reports" => ed.tools.reports = Some(Default::default()),
+        "tool.sceneProperties" => {
+            let scene = req["scene"].as_u64().map(|i| i as usize).or_else(|| {
+                let all = wordsmith_script::scenes(&ed.session.doc);
+                wordsmith_script::scenes::scene_at(&all, ed.session.sel.focus.path.last()).map(|s| s.index)
+            });
+            match scene {
+                Some(i) => ed.tools.scene_props = Some((i, String::new(), Default::default())),
+                None => ed.message = "Put the caret in a scene first.".into(),
+            }
+        }
+        "tool.character" => {
+            let name = req["name"].as_str().map(str::to_string).unwrap_or_default();
+            ed.tools.character = Some((name, Default::default()));
+        }
+        "tool.highlights" => ed.show_highlights = !ed.show_highlights,
         "tool.macroConfirm" => {
             ed.tools.macro_confirm =
                 Some((req["slot"].as_u64().unwrap_or(0), req["start"].as_u64().unwrap_or(0), req["name"].as_str().unwrap_or("").to_string()))
@@ -496,4 +517,5 @@ pub fn show(ed: &mut Editor, ctx: &Context) {
     reformat_window(ed, ctx);
     macros_window(ed, ctx);
     macro_confirm_window(ed, ctx);
+    crate::reports::show(ed, ctx);
 }

@@ -32,6 +32,51 @@ pub const MAX_QUOTE_CHARS: usize = 120;
 pub struct Note {
     pub text: String,
     pub author: String,
+    /// SPEC-2 10: a title, a type (one of the script's note types), a color and dates (Unix
+    /// seconds, given by the caller; 0 when unknown).
+    pub title: String,
+    pub kind: String,
+    pub color: String,
+    pub created: u64,
+    pub modified: u64,
+}
+
+/// `app_data` key of the note types.
+pub const NOTE_TYPES_KEY: &str = "wordsmith.noteTypes";
+/// The note types a script starts with (ours).
+pub const DEFAULT_NOTE_TYPES: [&str; 6] = ["General", "Story", "Character", "Dialogue", "Research", "Production"];
+
+/// The script's note types.
+pub fn note_types(doc: &Document) -> Vec<String> {
+    match doc.app_data.get(NOTE_TYPES_KEY).and_then(|v| v.as_array()) {
+        Some(a) => a
+            .iter()
+            .filter_map(Value::as_str)
+            .map(|t| t.chars().filter(|c| !c.is_control()).take(40).collect::<String>())
+            .filter(|t| !t.trim().is_empty())
+            .take(100)
+            .collect(),
+        None => DEFAULT_NOTE_TYPES.iter().map(|t| (*t).to_string()).collect(),
+    }
+}
+
+/// Title, type, color and time from a command's parameters, onto `n`.
+fn apply_fields(n: &mut Note, v: &Value) {
+    if let Some(t) = p::str(v, "title") {
+        n.title = t.chars().filter(|c| !c.is_control()).take(200).collect::<String>().trim().to_string();
+    }
+    if let Some(k) = p::str(v, "type") {
+        n.kind = k.chars().filter(|c| !c.is_control()).take(40).collect::<String>().trim().to_string();
+    }
+    if let Some(c) = p::str(v, "color") {
+        n.color = if crate::revisions::parse_color(c).is_some() { c.to_uppercase() } else { String::new() };
+    }
+    if let Some(now) = v.get("now").and_then(Value::as_u64) {
+        if n.created == 0 {
+            n.created = now;
+        }
+        n.modified = now;
+    }
 }
 
 fn clean(text: &str) -> String {
@@ -53,6 +98,11 @@ impl Notes {
                 if let (Ok(id), Ok(mut n)) = (k.parse::<u32>(), serde_json::from_value::<Note>(v)) {
                     n.text = clean(&n.text);
                     n.author = n.author.chars().filter(|c| !c.is_control()).take(100).collect();
+                    n.title = n.title.chars().filter(|c| !c.is_control()).take(200).collect();
+                    n.kind = n.kind.chars().filter(|c| !c.is_control()).take(40).collect();
+                    if crate::revisions::parse_color(&n.color).is_none() {
+                        n.color.clear();
+                    }
                     notes.insert(id, n);
                 }
             }
@@ -142,7 +192,12 @@ fn add(s: &mut Session, v: &Value) -> CmdResult {
     }
     let id = notes.next_id();
     s.doc.format_range(&a, &b, &|c| c.note = Some(id))?;
-    notes.notes.insert(id, Note { text, author: s.author.clone() });
+    let mut note = Note { text, author: s.author.clone(), ..Note::default() };
+    apply_fields(&mut note, v);
+    if note.kind.is_empty() {
+        note.kind = note_types(&s.doc).into_iter().next().unwrap_or_default();
+    }
+    notes.notes.insert(id, note);
     notes.store(&mut s.doc);
     Ok(json!({"id": id}))
 }
@@ -157,12 +212,15 @@ fn note_param(s: &Session, v: &Value) -> Result<(u32, Notes), CmdError> {
     Ok((id, notes))
 }
 
-/// `note.edit {id, text}`: change a note's text.
+/// `note.edit {id, text?, title?, type?, color?, now?}`: change a note.
 fn edit(s: &mut Session, v: &Value) -> CmdResult {
     let (id, mut notes) = note_param(s, v)?;
-    let text = clean(p::req_str(v, "text")?);
+    let text = p::str(v, "text").map(clean);
     if let Some(n) = notes.notes.get_mut(&id) {
-        n.text = text;
+        if let Some(t) = text {
+            n.text = t;
+        }
+        apply_fields(n, v);
     }
     notes.store(&mut s.doc);
     Ok(json!({"id": id}))
@@ -200,6 +258,11 @@ pub fn list_json(doc: &Document) -> Value {
                     "id": id,
                     "text": n.text,
                     "author": n.author,
+                    "title": n.title,
+                    "type": n.kind,
+                    "color": n.color,
+                    "created": n.created,
+                    "modified": n.modified,
                     "quote": a.map(|a| a.quote.clone()).unwrap_or_default(),
                     "block": a.map(|a| a.start.0),
                     "scene": scene,
@@ -221,7 +284,7 @@ fn list(s: &mut Session, _: &Value) -> CmdResult {
 fn at(s: &mut Session, _: &Value) -> CmdResult {
     let Some(id) = note_at(&s.doc, &s.sel.focus) else { return Ok(Value::Null) };
     let n = Notes::of_doc(&s.doc).notes.get(&id).cloned().unwrap_or_default();
-    Ok(json!({"id": id, "text": n.text, "author": n.author}))
+    Ok(json!({"id": id, "text": n.text, "author": n.author, "title": n.title, "type": n.kind, "color": n.color}))
 }
 
 /// `note.goto {id}`: select the text a note is attached to.
@@ -232,10 +295,38 @@ fn goto(s: &mut Session, v: &Value) -> CmdResult {
     sel_result(s)
 }
 
+/// The next (or previous) note from the caret, wrapping round.
+fn step(s: &mut Session, forward: bool) -> CmdResult {
+    let here = (s.sel.focus.path.last(), s.sel.focus.off);
+    let mut all: Vec<(u32, (usize, usize))> = anchors(&s.doc).into_iter().map(|(id, a)| (id, a.start)).collect();
+    all.sort_by_key(|x| x.1);
+    let pick = if forward {
+        all.iter().find(|(_, at)| *at > here).or_else(|| all.first())
+    } else {
+        all.iter().rev().find(|(_, at)| *at < here).or_else(|| all.last())
+    };
+    let Some((id, _)) = pick.copied() else { return Err(CmdError::Failed("the script has no notes".into())) };
+    goto(s, &json!({"id": id}))
+}
+
+/// `note.setTypes {types}`.
+fn set_types(s: &mut Session, v: &Value) -> CmdResult {
+    let list = v.get("types").and_then(Value::as_array).ok_or_else(|| CmdError::Params("`types` is a list".into()))?;
+    let types: Vec<String> =
+        list.iter().filter_map(Value::as_str).map(|t| t.trim().chars().take(40).collect::<String>()).filter(|t| !t.is_empty()).take(100).collect();
+    s.doc.app_data.insert(NOTE_TYPES_KEY.into(), Arc::new(json!(types)));
+    Ok(json!(types))
+}
+
 pub fn specs() -> Vec<CommandSpec> {
     vec![
-        CommandSpec::new("note.add", "Add Note", "Script", add).params(r#"{"text": string}"#),
-        CommandSpec::new("note.edit", "Edit Note", "Script", edit).params(r#"{"id": number, "text": string}"#),
+        CommandSpec::new("note.add", "Add Note", "Script", add)
+            .params(r##"{"text": string, "title"?, "type"?, "color"? "#RRGGBB", "now"? unix seconds}"##),
+        CommandSpec::new("note.edit", "Edit Note", "Script", edit).params(r##"{"id": number, "text"?, "title"?, "type"?, "color"?, "now"?}"##),
+        CommandSpec::new("note.next", "Next Note", "Go", |s, _| step(s, true)).key("Mod+Alt+Down"),
+        CommandSpec::new("note.previous", "Previous Note", "Go", |s, _| step(s, false)).key("Mod+Alt+Up"),
+        CommandSpec::new("note.types", "Note Types", "Script", |s, _| Ok(json!(note_types(&s.doc)))).pure(),
+        CommandSpec::new("note.setTypes", "Set Note Types", "Script", set_types).params(r#"{"types": [string]}"#),
         CommandSpec::new("note.delete", "Delete Note", "Script", delete).params(r#"{"id": number}"#),
         CommandSpec::new("note.list", "List Notes", "Script", list).pure(),
         CommandSpec::new("note.at", "Note at Caret", "Script", at).pure(),
@@ -324,5 +415,39 @@ mod tests {
         assert_eq!(n.notes.len(), 1);
         assert_eq!(n.notes[&4].text, "ok");
         assert_eq!(n.next_id(), 5);
+    }
+}
+
+#[cfg(test)]
+mod spec2_tests {
+    use super::*;
+    use crate::commands::new_session;
+
+    #[test]
+    fn note_fields_types_and_stepping() {
+        let mut s = new_session();
+        s.run("text.insert", &json!({"text": "int. hall\nRain.\nSun."})).unwrap();
+        s.sel = Selection::caret(pos(1, 0));
+        let a = s.run("note.add", &json!({"text": "Wetter?", "title": "Weather", "type": "Story", "color": "#ff0000", "now": 86_400})).unwrap()["id"]
+            .clone();
+        s.sel = Selection::caret(pos(2, 0));
+        s.run("note.add", &json!({"text": "Hotter?"})).unwrap();
+        s.run("note.edit", &json!({"id": a, "now": 172_800})).unwrap();
+        let list = s.run("note.list", &json!({})).unwrap();
+        assert_eq!(
+            (list[0]["title"].as_str(), list[0]["type"].as_str(), list[0]["color"].as_str()),
+            (Some("Weather"), Some("Story"), Some("#FF0000"))
+        );
+        assert_eq!((list[0]["created"].as_u64(), list[0]["modified"].as_u64()), (Some(86_400), Some(172_800)));
+        assert_eq!(list[1]["type"], "General", "the first type by default");
+        s.sel = Selection::caret(pos(0, 0));
+        s.run("note.next", &json!({})).unwrap();
+        assert_eq!(s.sel.focus.path.last(), 1);
+        s.run("note.next", &json!({})).unwrap();
+        assert_eq!(s.sel.focus.path.last(), 2);
+        s.run("note.next", &json!({})).unwrap();
+        assert_eq!(s.sel.focus.path.last(), 1, "wraps");
+        s.run("note.setTypes", &json!({"types": ["Fix", " ", "Idea"]})).unwrap();
+        assert_eq!(s.run("note.types", &json!({})).unwrap(), json!(["Fix", "Idea"]));
     }
 }

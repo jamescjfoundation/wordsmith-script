@@ -73,6 +73,10 @@ fn list(s: &mut Session, _: &Value) -> CmdResult {
             .map(|sc| {
                 let mut v = scene_json(&s.doc, &elements, sc);
                 v["number"] = json!(numbers.get(sc.index));
+                let data = crate::scene_data::of_scene(&s.doc, sc);
+                v["title"] = json!(data.title);
+                v["color"] = json!(data.color);
+                v["cast"] = json!(crate::scene_data::cast(&s.doc, &elements, sc).1);
                 v
             })
             .collect::<Vec<_>>()

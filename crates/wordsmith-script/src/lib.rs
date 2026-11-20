@@ -11,6 +11,7 @@
 
 pub mod autocomplete;
 pub mod bookmarks;
+pub mod cast;
 pub mod checker;
 pub mod commands;
 pub mod data;
@@ -23,7 +24,9 @@ pub mod notes;
 pub mod outline;
 pub mod paginate;
 pub mod reports;
+pub mod reports_more;
 pub mod revisions;
+pub mod scene_data;
 pub mod scene_heading;
 pub mod scene_numbers;
 pub mod scenes;

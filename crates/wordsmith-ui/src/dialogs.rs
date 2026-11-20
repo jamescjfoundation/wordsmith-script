@@ -509,8 +509,8 @@ fn note_popover(ed: &mut Editor, ctx: &Context) {
             ui.horizontal(|ui| {
                 if ui.button("Save").clicked() {
                     action = Some(match id {
-                        Some(i) => ("note.edit", json!({"id": i, "text": text})),
-                        None => ("note.add", json!({"text": text})),
+                        Some(i) => ("note.edit", json!({"id": i, "text": text, "now": crate::now_secs()})),
+                        None => ("note.add", json!({"text": text, "now": crate::now_secs()})),
                     });
                     keep = false;
                 }

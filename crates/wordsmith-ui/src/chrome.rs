@@ -50,13 +50,18 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                     item(ed, ui, id);
                 }
             });
+            ui.menu_button("Script", |ui| {
+                for id in ["view.sceneProperties", "view.character", "view.highlights"] {
+                    item(ed, ui, id);
+                }
+            });
             ui.menu_button("Insert", |ui| {
                 for id in ["scene.insert", "text.pageBreak", "bookmark.add"] {
                     item(ed, ui, id);
                 }
             });
             ui.menu_button("Go", |ui| {
-                for id in ["view.goto", "view.bookmarks", "bookmark.next", "bookmark.previous"] {
+                for id in ["view.goto", "view.bookmarks", "bookmark.next", "bookmark.previous", "note.next", "note.previous"] {
                     item(ed, ui, id);
                 }
             });
@@ -199,7 +204,7 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 }
             });
             ui.menu_button("Tools", |ui| {
-                for id in ["view.checker", "view.reformat", "view.macros"] {
+                for id in ["view.reports", "view.checker", "view.reformat", "view.macros"] {
                     item(ed, ui, id);
                 }
                 ui.menu_button("Run Macro", |ui| {

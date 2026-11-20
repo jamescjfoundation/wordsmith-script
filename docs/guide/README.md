@@ -17,3 +17,4 @@
 10. [Editing tools](editing.md): Go To, bookmarks, reformat, the format
     checker, typing options.
 11. [Macros and text styles](macros-and-styles.md).
+12. [Characters, scenes and reports](characters-and-reports.md).

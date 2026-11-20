@@ -244,8 +244,10 @@ pub fn after_split(doc: &mut Document, new: &wordsmith_doc::Pos) {
             || p.props.omitted.is_some()
             || p.props.beat.is_some()
             || p.props.bookmark.is_some()
-            || p.props.dual.is_some())
+            || p.props.dual.is_some()
+            || p.props.scene_id.is_some())
     {
+        p.props.scene_id = None;
         p.props.bookmark = None;
         p.props.dual = None;
         p.props.scene_number = None;

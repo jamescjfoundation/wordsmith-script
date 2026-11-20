@@ -908,3 +908,43 @@ fn macro_keys_and_style_keys_work_from_the_keyboard() {
     frame(&ctx, &mut ed, vec![]);
     assert!(ed.tools.macros.is_some());
 }
+
+#[test]
+fn reports_scene_properties_and_tables_open_and_work() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(
+        &ctx,
+        &mut ed,
+        vec![
+            text("int"),
+            key(Key::Tab, Modifiers::NONE),
+            text("hall"),
+            key(Key::Enter, Modifiers::NONE),
+            key(Key::Tab, Modifiers::NONE),
+            text("anna"),
+        ],
+    );
+    frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE), text("Hello.")]);
+    // Reports (Mod+Shift+J) runs a report straight away.
+    frame(&ctx, &mut ed, vec![key(Key::J, Modifiers { shift: true, ..cmd() })]);
+    frame(&ctx, &mut ed, vec![]);
+    let title = ed.tools.reports.as_ref().and_then(|r| r.result.as_ref()).map(|r| r["title"].clone());
+    assert_eq!(title, Some(json!("Scene Report")));
+    // Scene properties for the caret's scene.
+    ed.run("view.sceneProperties", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.tools.scene_props.as_ref().map(|s| s.0), Some(0));
+    ed.run("scene.setProperties", json!({"scene": 0, "title": "Arrival", "color": "Green"}));
+    // The Tables panel shows the title, sorted and filtered without changing the script.
+    ed.run("view.tables", json!({}));
+    ed.table_view.sort = Some(("heading".into(), true));
+    ed.table_view.filter = "arr".into();
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.scene_list()[0]["title"], "Arrival");
+    // Highlighted speeches are listed for drawing.
+    ed.run("character.set", json!({"name": "ANNA", "highlightOn": true}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(wordsmith_script::cast::highlighted_speeches(&ed.session.doc).len(), 1);
+}
