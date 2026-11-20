@@ -250,6 +250,8 @@ pub struct Editor {
     pub note_popover: Option<(Option<u32>, String)>,
     /// The table cell being edited.
     pub table_edit: Option<crate::tables::CellEdit>,
+    /// The story board's selection, drags and beat window.
+    pub board: crate::board::BoardState,
     /// The scene listing, for one revision.
     scene_cache: Option<(u64, Arc<Vec<Value>>)>,
     /// The revision auto-save last saw, to notice changes.
@@ -304,6 +306,7 @@ impl Editor {
             table_edit: None,
             note_popover: None,
             scene_cache: None,
+            board: Default::default(),
             seen_rev: 0,
         }
     }
@@ -564,6 +567,7 @@ impl Editor {
                 }
                 Some("view.cards") => self.structure = Some(crate::structure::Structure::Cards),
                 Some("view.scenes") => self.structure = Some(crate::structure::Structure::Scenes),
+                Some("view.board") => self.structure = Some(crate::structure::Structure::Board),
                 Some("view.dark") => self.dark = !self.dark,
                 Some("view.typewriter") => self.typewriter = !self.typewriter,
                 Some("view.focus") => self.focus_mode = !self.focus_mode,
@@ -676,7 +680,7 @@ impl Editor {
 
     /// Whether the editor should take keyboard input now (no dialog or text field has it).
     fn has_keyboard(&self, ui: &Ui) -> bool {
-        self.palette.is_none() && self.settings.is_none() && !ui.ctx().text_edit_focused()
+        self.palette.is_none() && self.settings.is_none() && self.board.edit.is_none() && !ui.ctx().text_edit_focused()
     }
 
     /// Turn this frame's keyboard events into commands.
@@ -1120,6 +1124,7 @@ impl Editor {
         egui::CentralPanel::default().show(ui, |ui| match self.structure {
             Some(crate::structure::Structure::Cards) => crate::structure::cards(self, ui),
             Some(crate::structure::Structure::Scenes) => crate::structure::scene_view(self, ui),
+            Some(crate::structure::Structure::Board) => crate::board::view(self, ui),
             None => {
                 egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| self.page_view(ui));
             }

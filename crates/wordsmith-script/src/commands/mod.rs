@@ -71,6 +71,7 @@ pub fn specs() -> Vec<CommandSpec> {
     all.extend(crate::scene_numbers::specs());
     all.extend(crate::locks::specs());
     all.extend(crate::reports::specs());
+    all.extend(crate::storyboard::specs());
     all
 }
 

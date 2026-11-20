@@ -764,3 +764,31 @@ fn revised_pages_and_the_character_report_export() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn the_story_board_adds_edits_and_sends_beats() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    let alt = Modifiers { alt: true, ..cmd() };
+    frame(&ctx, &mut ed, vec![key(Key::Num6, alt)]);
+    assert_eq!(ed.structure, Some(crate::structure::Structure::Board));
+    ed.run("beat.add", json!({"title": "Anna arrives"}));
+    ed.run("beat.add", json!({"title": "The fight", "x": 400, "y": 40}));
+    ed.run("beat.link", json!({"from": 1, "to": 2}));
+    frame(&ctx, &mut ed, vec![]);
+    // Editing: Tab moves between the fields; Save writes them.
+    ed.board.selected = Some(1);
+    let b = wordsmith_script::storyboard::Storyboard::of_doc(&ed.session.doc).beat(1).cloned().unwrap();
+    ed.board.edit = Some(crate::board::BeatEdit::of(&b));
+    frame(&ctx, &mut ed, vec![key(Key::Tab, Modifiers::NONE)]);
+    assert!(ed.board.edit.as_ref().is_some_and(|e| e.on_body));
+    frame(&ctx, &mut ed, vec![text("Late and wet.")]);
+    assert_eq!(ed.board.edit.as_ref().map(|e| e.body.as_str()), Some("Late and wet."));
+    ed.run("beat.update", json!({"id": 1, "body": "Late and wet."}));
+    ed.board.edit = None;
+    ed.run("beat.toScript", json!({"id": 1}));
+    assert_eq!(lines(&ed)[0], l("Outline1", "Anna arrives"));
+    assert_eq!(lines(&ed)[1], l("Summary", "Late and wet."));
+    frame(&ctx, &mut ed, vec![]);
+}

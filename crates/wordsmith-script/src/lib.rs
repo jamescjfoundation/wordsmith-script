@@ -23,6 +23,7 @@ pub mod scene_heading;
 pub mod scene_numbers;
 pub mod scenes;
 pub mod spelling;
+pub mod storyboard;
 pub mod template;
 pub mod title_page;
 

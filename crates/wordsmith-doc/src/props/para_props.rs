@@ -450,6 +450,9 @@ pub struct ParaProps {
     /// An omitted scene's placeholder heading: the id its text is kept under.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub omitted: Option<u32>,
+    /// The story board beat an outline paragraph was sent from.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub beat: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shading: Option<Rgb>,
     #[serde(skip_serializing_if = "Option::is_none")]

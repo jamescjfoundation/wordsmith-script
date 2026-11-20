@@ -36,3 +36,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m6/scene-numbers | Scene numbers shown or hidden, locked with letter suffixes, OMITTED and recall; Fountain #n#; golden PDFs re-recorded with numbers (diff checked); 1723 tests pass |
 | 2026-11-19 | m6/locking | Page locking with lettered overflow pages, levels, placeholders, unlock one level or all; labels in the header; 1729 tests pass |
 | 2026-11-19 | m6/reports | Revised pages only and without marks (export and print); scene lengths in eighths; character report; M6 complete; typing 16.3–16.5 ms at 150 pages; 1734 tests pass |
+| 2026-11-19 | m7/board | Story board: beats, links, grid snap, beat window with Tab, send to script as Outline 1 and Summary; 1742 tests pass |
