@@ -73,6 +73,60 @@ fn hostile_story_boards_read_safely() {
     assert_eq!(b.beats[0].color, PALETTE[0]);
     assert_eq!(b.beats[0].lane, None);
     assert_eq!((b.beats[1].x, b.beats[1].w), (CANVAS, 60.0));
-    assert_eq!(b.links, [Link { from: 1, to: 2 }]);
+    assert_eq!(b.links, [Link { from: 1, to: 2, ..Link::default() }]);
     assert_eq!(b.grid, 5.0);
+}
+
+#[test]
+fn boards_hold_their_own_beats() {
+    let mut s = crate::commands::new_session();
+    let second = s.run("storyboard.addBoard", &json!({"name": "Act Two"})).unwrap()["id"].as_u64().unwrap();
+    let a = s.run("beat.add", &json!({"title": "One"})).unwrap()["id"].clone();
+    let b = s.run("beat.add", &json!({"title": "Two", "board": second})).unwrap()["id"].clone();
+    s.run("beat.link", &json!({"from": a, "to": b, "style": "both", "color": "#123456"})).unwrap();
+    let board = Storyboard::of_doc(&s.doc);
+    assert_eq!(board.boards.len(), 2);
+    assert_eq!(board.beats.iter().map(|x| x.board).collect::<Vec<_>>(), [0, second as u32]);
+    assert_eq!((board.links[0].style.as_str(), board.links[0].color.as_str()), ("both", "#123456"));
+    s.run("beat.styleLink", &json!({"from": a, "to": b, "style": "line"})).unwrap();
+    assert!(s.run("beat.styleLink", &json!({"from": a, "to": b, "style": "zigzag"})).is_err());
+    s.run("storyboard.renameBoard", &json!({"id": second, "name": "Middle"})).unwrap();
+    s.run("storyboard.deleteBoard", &json!({"id": second})).unwrap();
+    let board = Storyboard::of_doc(&s.doc);
+    assert_eq!((board.beats.len(), board.links.len(), board.boards.len()), (1, 0, 1));
+    assert!(s.run("storyboard.deleteBoard", &json!({"id": 0})).is_err(), "the last board stays");
+    assert!(s.run("beat.add", &json!({"board": 9})).is_err());
+}
+
+#[test]
+fn beats_line_up_in_a_column_row_cascade_or_on_the_grid() {
+    let mut s = crate::commands::new_session();
+    s.run("storyboard.configure", &json!({"snap": false})).unwrap();
+    let ids: Vec<serde_json::Value> =
+        (0..3).map(|i| s.run("beat.add", &json!({"x": 100.0 + i as f32 * 333.0, "y": 50.0 + i as f32 * 7.0})).unwrap()["id"].clone()).collect();
+    s.run("beats.arrange", &json!({"ids": ids, "how": "column"})).unwrap();
+    let b = Storyboard::of_doc(&s.doc);
+    assert!(b.beats.iter().all(|x| x.x == 100.0));
+    assert_eq!(b.beats[1].y, 50.0 + BEAT_H + 20.0);
+    s.run("beats.arrange", &json!({"ids": ids, "how": "row"})).unwrap();
+    let b = Storyboard::of_doc(&s.doc);
+    assert!(b.beats.iter().all(|x| x.y == 50.0));
+    s.run("beats.arrange", &json!({"ids": ids, "how": "cascade"})).unwrap();
+    let b = Storyboard::of_doc(&s.doc);
+    assert_eq!((b.beats[2].x - b.beats[0].x, b.beats[2].y - b.beats[0].y), (60.0, 60.0));
+    s.run("beat.update", &json!({"id": ids[0], "x": 13.0})).unwrap();
+    s.run("beats.arrange", &json!({"ids": [ids[0].clone()], "how": "grid"})).unwrap();
+    assert_eq!(Storyboard::of_doc(&s.doc).beats[0].x, 20.0);
+    assert!(s.run("beats.arrange", &json!({"ids": [], "how": "row"})).is_err());
+}
+
+#[test]
+fn old_boards_read_with_one_board_and_forward_links() {
+    let mut doc = Document::new();
+    doc.app_data
+        .insert(STORYBOARD_KEY.into(), std::sync::Arc::new(json!({"beats": [{"id": 1}, {"id": 2, "board": 7}], "links": [{"from": 1, "to": 2}]})));
+    let b = Storyboard::of_doc(&doc);
+    assert_eq!(b.boards, vec![BoardInfo::default()]);
+    assert_eq!(b.beats[1].board, 0, "a beat on a missing board moves to the first");
+    assert_eq!(b.links[0].style, "forward");
 }

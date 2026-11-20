@@ -656,6 +656,8 @@ impl Editor {
                     Some("report-text") => ("Plain Text", "txt", "report.export"),
                     Some("report-csv") => ("CSV", "csv", "report.export"),
                     Some("pdf-filtered") => ("PDF", "pdf", "report.exportFilteredPdf"),
+                    Some("pdf-board") => ("PDF", "pdf", "storyboard.exportPdf"),
+                    Some("pdf-cards") => ("PDF", "pdf", "cards.exportPdf"),
                     _ => ("Plain Text", "txt", "file.exportText"),
                 };
                 (FileDialog::save().title(format!("Export {label}")).filter(label, &[ext]).file_name(format!("{name}.{ext}")), then)
@@ -783,6 +785,12 @@ impl Editor {
         if let Some(id) = id {
             self.run(id, json!({}));
         }
+    }
+
+    /// Bring the caret into view on the next frame.
+    pub fn request_scroll_to_caret(&mut self) {
+        self.scroll_to_caret = true;
+        self.structure = None;
     }
 
     /// The paginated script for the current revision, paginating again after an edit.
@@ -941,6 +949,7 @@ impl Editor {
         let to_screen = |page: usize, x: f32, y: f32| origins.get(page).map(|r| r.min + vec2(x * zoom, y * zoom));
         self.draw_gutter(ui, &painter, &pag, &origins, zoom);
         self.draw_character_highlights(&painter, &pag, &origins, zoom);
+        self.draw_outline_bars(&painter, &pag, &origins, zoom);
         self.draw_find_matches(&painter, &pag, &origins, zoom);
         self.draw_notes(&painter, &pag, &origins, zoom);
         self.draw_revised_pages(&painter, &pag, &origins);
@@ -1113,6 +1122,35 @@ impl Editor {
         }
     }
 
+    /// Outline paragraphs shown in the script: a colored bar in the left margin per nesting
+    /// level, so they read apart from the script's own text (SPEC-2 8).
+    fn draw_outline_bars(&self, painter: &egui::Painter, pag: &Shown, origins: &[Rect], zoom: f32) {
+        let elements = Elements::of_doc(&self.session.doc);
+        let colors = [Color32::from_rgb(70, 110, 200), Color32::from_rgb(60, 160, 120), Color32::from_rgb(200, 140, 40)];
+        let mut level = 0usize;
+        for (block, b) in self.session.doc.body.iter().enumerate() {
+            let Some(p) = b.as_para() else { continue };
+            let kind = elements.of_para(p).kind;
+            level = match kind {
+                ElementKind::Outline1 => 0,
+                ElementKind::Outline2 => 1,
+                ElementKind::Outline3 => 2,
+                ElementKind::Note | ElementKind::Summary => level,
+                _ => continue,
+            };
+            let at = |off| wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(block), off };
+            let (Some(a), Some(z)) = (pag.to_output(&at(0)), pag.to_output(&at(p.len()))) else { continue };
+            for (page, r) in pag.layout.selection_rects(pag.doc(), &a, &z, 0) {
+                let Some(page_rect) = origins.get(page) else { continue };
+                for l in 0..=level {
+                    let x = page_rect.min.x + (0.35 + 0.12 * l as f32) * 72.0 * zoom;
+                    let y = page_rect.min.y + r.y * zoom;
+                    painter.line_segment([pos2(x, y), pos2(x, y + r.h * zoom)], Stroke::new(3.0 * zoom.max(0.5), colors[l.min(2)]));
+                }
+            }
+        }
+    }
+
     /// Speeches of characters whose highlight is on, tinted in their color (on screen only).
     fn draw_character_highlights(&self, painter: &egui::Painter, pag: &Shown, origins: &[Rect], zoom: f32) {
         if !self.show_highlights {
@@ -1213,6 +1251,7 @@ impl Editor {
             crate::chrome::find_bar(self, ui);
             crate::chrome::status_bar(self, ui);
             crate::tables::panel(self, ui);
+            crate::strip::panel(self, ui);
         }
         egui::CentralPanel::default().show(ui, |ui| match self.structure {
             Some(crate::structure::Structure::Cards) => crate::structure::cards(self, ui),

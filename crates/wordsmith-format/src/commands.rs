@@ -213,6 +213,30 @@ fn export_filtered_pdf(s: &mut Session, v: &Value) -> CmdResult {
     Ok(json!({"path": path}))
 }
 
+fn write_pdf(path: &Path, doc: &wordsmith_doc::Document) -> CmdResult {
+    let bytes = wordsmith_script::planning_pdf::pdf(doc).map_err(failed)?;
+    std::fs::write(path, bytes).map_err(|e| failed(format!("{}: {e}", path.display())))?;
+    Ok(json!({"path": path}))
+}
+
+/// `storyboard.exportPdf {board?, path?}`: a story board as a one-page PDF.
+fn export_board_pdf(s: &mut Session, v: &Value) -> CmdResult {
+    let Some(path) = path_of(v) else {
+        return ask(s, "export", json!({"format": "pdf-board", "name": format!("{} Story Board", script_name(s))}));
+    };
+    let board = v.get("board").and_then(Value::as_u64).and_then(|b| u32::try_from(b).ok()).unwrap_or(0);
+    write_pdf(&path, &wordsmith_script::planning_pdf::storyboard_document(&s.doc, board))
+}
+
+/// `cards.exportPdf {stock?, columns?, rows?, frames?, grey?, scenes?, path?}`: index cards.
+fn export_cards_pdf(s: &mut Session, v: &Value) -> CmdResult {
+    let Some(path) = path_of(v) else {
+        return ask(s, "export", json!({"format": "pdf-cards", "name": format!("{} Cards", script_name(s))}));
+    };
+    let opts = wordsmith_script::planning_pdf::CardOptions::from_params(v);
+    write_pdf(&path, &wordsmith_script::planning_pdf::cards_document(&s.doc, &opts))
+}
+
 /// `macro.copyFromPath {path}`: replace this script's macros with another script's.
 fn copy_macros_from(s: &mut Session, v: &Value) -> CmdResult {
     let path = path_of(v).ok_or_else(|| CmdError::Params("`path` is required".into()))?;
@@ -233,6 +257,14 @@ pub fn specs() -> Vec<CommandSpec> {
             .pure(),
         CommandSpec::new("report.exportFilteredPdf", "Filtered Script as PDF…", "Reports", export_filtered_pdf)
             .params(r#"{"elements": [elementId], "path"?: string}"#)
+            .pure(),
+        CommandSpec::new("storyboard.exportPdf", "Story Board as PDF…", "File › Export", export_board_pdf)
+            .params(r#"{"board"?: number, "path"?: string}"#)
+            .pure(),
+        CommandSpec::new("cards.exportPdf", "Index Cards as PDF…", "File › Export", export_cards_pdf)
+            .params(
+                r#"{"stock"?: "card"|"grid", "columns"?: 1-6, "rows"?: 1-6, "frames"?: bool, "grey"?: bool, "scenes"?: [index], "path"?: string}"#,
+            )
             .pure(),
         CommandSpec::new("file.import", "Import…", "File", |s, _| ask(s, "import", json!({}))).pure(),
         CommandSpec::new("file.save", "Save", "File", save).key("Mod+S").pure(),

@@ -18,3 +18,4 @@
     checker, typing options.
 11. [Macros and text styles](macros-and-styles.md).
 12. [Characters, scenes and reports](characters-and-reports.md).
+13. [Boards, cards and the structure strip](planning.md).

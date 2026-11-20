@@ -21,6 +21,11 @@ behavior; every addition below is new.
   statistics and representation reports, saved as text, CSV or PDF; tables
   that sort, filter, hide columns and keep tabs of your own; note titles,
   types, colors and dates; next and previous note.
+- **Planning (M12):** several story boards per script; arrange beats on the
+  grid, in a column, a row or a cascade; link styles and colors; list lines
+  in beats; story board and index cards as PDF; cards per row and script-text
+  cards; the structure strip above the script; nesting bars for outline
+  paragraphs.
 
 ## 0.1.0 (2026-11-19)
 

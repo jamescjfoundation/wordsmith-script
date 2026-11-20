@@ -37,6 +37,10 @@ pub struct Tools {
     pub scene_props: Option<(usize, String, crate::reports::Drafts)>,
     /// The character window: the character shown, and field drafts.
     pub character: Option<(String, crate::reports::Drafts)>,
+    pub cards: crate::structure::CardPrefs,
+    /// The structure strip above the script, and its zoom (points per page).
+    pub strip: bool,
+    pub strip_zoom: f32,
 }
 
 /// Act on a UI request to open a tool window. Returns whether it was one.
@@ -59,6 +63,7 @@ pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
             ed.tools.character = Some((name, Default::default()));
         }
         "tool.highlights" => ed.show_highlights = !ed.show_highlights,
+        "tool.strip" => ed.tools.strip = !ed.tools.strip,
         "tool.macroConfirm" => {
             ed.tools.macro_confirm =
                 Some((req["slot"].as_u64().unwrap_or(0), req["start"].as_u64().unwrap_or(0), req["name"].as_str().unwrap_or("").to_string()))

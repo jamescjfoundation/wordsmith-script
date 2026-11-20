@@ -51,6 +51,8 @@ pub struct Beat {
     /// The outline lane it is in, if any, and its place there.
     pub lane: Option<u32>,
     pub order: f32,
+    /// The board (canvas) it is on.
+    pub board: u32,
 }
 
 impl Default for Beat {
@@ -66,16 +68,48 @@ impl Default for Beat {
             h: BEAT_H,
             lane: None,
             order: 0.0,
+            board: 0,
         }
     }
 }
 
+/// How a link is drawn: a plain line, an arrow forward (to `to`), back, or both ways.
+pub const LINK_STYLES: [&str; 4] = ["line", "forward", "back", "both"];
+
 /// A flow line from one beat to another.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Link {
     pub from: u32,
     pub to: u32,
+    /// One of [`LINK_STYLES`].
+    pub style: String,
+    /// `#RRGGBB`, or empty for the default.
+    pub color: String,
 }
+
+impl Default for Link {
+    fn default() -> Self {
+        Link { from: 0, to: 0, style: "forward".into(), color: String::new() }
+    }
+}
+
+/// One board (canvas) of beats.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct BoardInfo {
+    pub id: u32,
+    pub name: String,
+}
+
+impl Default for BoardInfo {
+    fn default() -> Self {
+        BoardInfo { id: 0, name: "Story Board".into() }
+    }
+}
+
+/// Most boards a script keeps.
+pub const MAX_BOARDS: usize = 50;
 
 /// An outline lane (acts, sequences …).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -103,11 +137,13 @@ pub struct Storyboard {
     /// Grid spacing, points.
     pub grid: f32,
     pub snap: bool,
+    /// The boards; there is always at least one.
+    pub boards: Vec<BoardInfo>,
 }
 
 impl Default for Storyboard {
     fn default() -> Self {
-        Storyboard { beats: Vec::new(), links: Vec::new(), lanes: Vec::new(), grid: 20.0, snap: true }
+        Storyboard { beats: Vec::new(), links: Vec::new(), lanes: Vec::new(), grid: 20.0, snap: true, boards: vec![BoardInfo::default()] }
     }
 }
 
@@ -155,10 +191,25 @@ impl Storyboard {
                     h: num(x, "h").unwrap_or(bd.h),
                     lane: id_of(x, "lane"),
                     order: num(x, "order").unwrap_or(0.0),
+                    board: id_of(x, "board").unwrap_or(0),
                 })
             })
             .collect();
-        let links = list("links").iter().take(MAX_LINKS * 2).filter_map(|x| Some(Link { from: id_of(x, "from")?, to: id_of(x, "to")? })).collect();
+        let links = list("links")
+            .iter()
+            .take(MAX_LINKS * 2)
+            .filter_map(|x| {
+                let style = text(x, "style");
+                Some(Link {
+                    from: id_of(x, "from")?,
+                    to: id_of(x, "to")?,
+                    style: if LINK_STYLES.contains(&style.as_str()) { style } else { "forward".into() },
+                    color: text(x, "color"),
+                })
+            })
+            .collect();
+        let boards =
+            list("boards").iter().take(MAX_BOARDS * 2).filter_map(|x| Some(BoardInfo { id: id_of(x, "id")?, name: text(x, "name") })).collect();
         let lanes = list("lanes")
             .iter()
             .take(MAX_LANES * 2)
@@ -170,7 +221,14 @@ impl Storyboard {
                 })
             })
             .collect();
-        Storyboard { beats, links, lanes, grid: num(v, "grid").unwrap_or(d.grid), snap: v.get("snap").and_then(Value::as_bool).unwrap_or(d.snap) }
+        Storyboard {
+            beats,
+            links,
+            lanes,
+            grid: num(v, "grid").unwrap_or(d.grid),
+            snap: v.get("snap").and_then(Value::as_bool).unwrap_or(d.snap),
+            boards,
+        }
     }
 
     /// The story board `doc` holds; hostile data is brought within the limits and links to
@@ -207,7 +265,32 @@ impl Storyboard {
         let ids: std::collections::HashSet<u32> = b.beats.iter().map(|x| x.id).collect();
         b.links.truncate(MAX_LINKS);
         b.links.retain(|l| l.from != l.to && ids.contains(&l.from) && ids.contains(&l.to));
-        b.links.dedup();
+        b.links.dedup_by(|a, b| a.from == b.from && a.to == b.to);
+        for l in &mut b.links {
+            if !color_ok(&l.color) {
+                l.color.clear();
+            }
+        }
+        b.boards.truncate(MAX_BOARDS);
+        let mut seen_boards = std::collections::HashSet::new();
+        b.boards.retain(|x| seen_boards.insert(x.id));
+        for x in &mut b.boards {
+            x.name = clean_text(&x.name, 60).replace('\n', " ");
+            if x.name.trim().is_empty() {
+                x.name = format!("Board {}", x.id + 1);
+            }
+        }
+        if b.boards.is_empty() {
+            b.boards.push(BoardInfo::default());
+        }
+        // A beat on a board that is gone goes to the first board.
+        let first = b.boards.first().map_or(0, |x| x.id);
+        let boards: std::collections::HashSet<u32> = b.boards.iter().map(|x| x.id).collect();
+        for x in &mut b.beats {
+            if !boards.contains(&x.board) {
+                x.board = first;
+            }
+        }
         b.grid = finite_in(b.grid, 5.0, 200.0, 20.0);
         b
     }
@@ -280,6 +363,12 @@ fn set_fields(b: &mut Beat, v: &Value, board: &Storyboard) -> Result<(), CmdErro
     if let Some(h) = f32_param(v, "h") {
         b.h = board.snapped(h).clamp(40.0, 1_000.0);
     }
+    if let Some(on) = id_of(v, "board") {
+        if !board.boards.iter().any(|x| x.id == on) {
+            return Err(CmdError::Params("`board` must be a board id".into()));
+        }
+        b.board = on;
+    }
     Ok(())
 }
 
@@ -299,12 +388,18 @@ fn add(s: &mut Session, v: &Value) -> CmdResult {
     if board.beats.len() >= MAX_BEATS {
         return Err(CmdError::Failed(format!("a story board holds at most {MAX_BEATS} beats")));
     }
-    let n = board.beats.len() as f32;
     let lane = v.get("lane").and_then(Value::as_u64).and_then(|l| u32::try_from(l).ok());
     if lane.is_some_and(|l| !board.lanes.iter().any(|x| x.id == l)) {
         return Err(CmdError::Params("`lane` must be a lane id".into()));
     }
+    let on = match id_of(v, "board") {
+        Some(id) if board.boards.iter().any(|x| x.id == id) => id,
+        Some(_) => return Err(CmdError::Params("`board` must be a board id".into())),
+        None => board.boards.first().map_or(0, |x| x.id),
+    };
+    let n = board.beats.iter().filter(|b| b.board == on).count() as f32;
     let mut b = Beat {
+        board: on,
         id: board.next_id(),
         x: board.snapped(40.0 + (n % 6.0) * (BEAT_W + 20.0)),
         y: board.snapped(40.0 + (n / 6.0).floor() * (BEAT_H + 20.0)),
@@ -352,9 +447,16 @@ fn link(s: &mut Session, v: &Value) -> CmdResult {
     if board.links.len() >= MAX_LINKS {
         return Err(CmdError::Failed(format!("a story board holds at most {MAX_LINKS} links")));
     }
-    let l = Link { from, to };
-    if !board.links.contains(&l) {
-        board.links.push(l);
+    let style = v.get("style").and_then(Value::as_str).unwrap_or("forward");
+    if !LINK_STYLES.contains(&style) {
+        return Err(CmdError::Params(format!("`style` is one of {}", LINK_STYLES.join(", "))));
+    }
+    let color = v.get("color").and_then(Value::as_str).unwrap_or("");
+    if !color.is_empty() && !color_ok(color) {
+        return Err(CmdError::Params("`color` must be #RRGGBB".into()));
+    }
+    if !board.links.iter().any(|l| l.from == from && l.to == to) {
+        board.links.push(Link { from, to, style: style.into(), color: color.to_uppercase() });
     }
     board.store(&mut s.doc);
     Ok(Value::Null)
@@ -367,6 +469,136 @@ fn unlink(s: &mut Session, v: &Value) -> CmdResult {
     board.links.retain(|l| !(l.from == from && l.to == to));
     board.store(&mut s.doc);
     Ok(Value::Null)
+}
+
+/// `beat.styleLink {from, to, style?, color?}`: how a link is drawn.
+fn style_link(s: &mut Session, v: &Value) -> CmdResult {
+    let (from, to) = (id_param(v, "from")?, id_param(v, "to")?);
+    let mut board = Storyboard::of_doc(&s.doc);
+    let l = board.links.iter_mut().find(|l| l.from == from && l.to == to).ok_or_else(|| CmdError::Params("there is no such link".into()))?;
+    if let Some(st) = v.get("style").and_then(Value::as_str) {
+        if !LINK_STYLES.contains(&st) {
+            return Err(CmdError::Params(format!("`style` is one of {}", LINK_STYLES.join(", "))));
+        }
+        l.style = st.into();
+    }
+    if let Some(c) = v.get("color").and_then(Value::as_str) {
+        if !c.is_empty() && !color_ok(c) {
+            return Err(CmdError::Params("`color` must be #RRGGBB or empty".into()));
+        }
+        l.color = c.to_uppercase();
+    }
+    board.store(&mut s.doc);
+    Ok(Value::Null)
+}
+
+/// `beats.arrange {ids, how}`: line the beats up on the grid, in a column, in a row, or as a
+/// cascade, starting from where the first of them (top left) is.
+fn arrange(s: &mut Session, v: &Value) -> CmdResult {
+    let ids: Vec<u32> = v
+        .get("ids")
+        .and_then(Value::as_array)
+        .map(|a| a.iter().filter_map(|x| x.as_u64()).filter_map(|x| u32::try_from(x).ok()).collect())
+        .unwrap_or_default();
+    let how = v.get("how").and_then(Value::as_str).unwrap_or("grid");
+    if !["grid", "column", "row", "cascade"].contains(&how) {
+        return Err(CmdError::Params("`how` is grid, column, row or cascade".into()));
+    }
+    let mut board = Storyboard::of_doc(&s.doc);
+    let mut picked: Vec<Beat> = board.beats.iter().filter(|b| ids.contains(&b.id)).cloned().collect();
+    if picked.is_empty() {
+        return Err(CmdError::Params("`ids` names no beats".into()));
+    }
+    // Reading order: top to bottom, then left to right (rows), or left to right (row).
+    if how == "row" {
+        picked.sort_by(|a, b| a.x.total_cmp(&b.x).then(a.y.total_cmp(&b.y)));
+    } else {
+        picked.sort_by(|a, b| a.y.total_cmp(&b.y).then(a.x.total_cmp(&b.x)));
+    }
+    let x0 = picked.iter().map(|b| b.x).fold(f32::INFINITY, f32::min);
+    let y0 = picked.iter().map(|b| b.y).fold(f32::INFINITY, f32::min);
+    let gap = board.grid.max(10.0);
+    let (mut x, mut y) = (x0, y0);
+    for p in &picked {
+        let (nx, ny) = match how {
+            // On the grid whether snapping is on or not.
+            "grid" => ((p.x / board.grid).round() * board.grid, (p.y / board.grid).round() * board.grid),
+            "column" => {
+                let at = (x0, y);
+                y += p.h + gap;
+                at
+            }
+            "row" => {
+                let at = (x, y0);
+                x += p.w + gap;
+                at
+            }
+            _ => {
+                let at = (x, y);
+                x += 30.0;
+                y += 30.0;
+                at
+            }
+        };
+        if let Some(b) = board.beats.iter_mut().find(|b| b.id == p.id) {
+            b.x = nx.clamp(0.0, CANVAS);
+            b.y = ny.clamp(0.0, CANVAS);
+        }
+    }
+    board.store(&mut s.doc);
+    Ok(json!({"arranged": picked.len()}))
+}
+
+/// `storyboard.addBoard {name?}`: a new, empty board.
+fn add_board(s: &mut Session, v: &Value) -> CmdResult {
+    let mut board = Storyboard::of_doc(&s.doc);
+    if board.boards.len() >= MAX_BOARDS {
+        return Err(CmdError::Failed(format!("a script keeps at most {MAX_BOARDS} boards")));
+    }
+    let id = board.boards.iter().map(|b| b.id).max().map_or(0, |m| m + 1);
+    let name = v
+        .get("name")
+        .and_then(Value::as_str)
+        .map(|n| clean_text(n, 60).replace('\n', " "))
+        .filter(|n| !n.trim().is_empty())
+        .unwrap_or_else(|| format!("Board {}", id + 1));
+    board.boards.push(BoardInfo { id, name: name.clone() });
+    board.store(&mut s.doc);
+    Ok(json!({"id": id, "name": name}))
+}
+
+/// `storyboard.renameBoard {id, name}`.
+fn rename_board(s: &mut Session, v: &Value) -> CmdResult {
+    let id = id_param(v, "id")?;
+    let name = v
+        .get("name")
+        .and_then(Value::as_str)
+        .map(|n| clean_text(n, 60).replace('\n', " "))
+        .filter(|n| !n.trim().is_empty())
+        .ok_or_else(|| CmdError::Params("`name` is required".into()))?;
+    let mut board = Storyboard::of_doc(&s.doc);
+    let b = board.boards.iter_mut().find(|b| b.id == id).ok_or_else(|| CmdError::Params(format!("there is no board {id}")))?;
+    b.name = name;
+    board.store(&mut s.doc);
+    Ok(Value::Null)
+}
+
+/// `storyboard.deleteBoard {id}`: a board and its beats (the last board stays).
+fn delete_board(s: &mut Session, v: &Value) -> CmdResult {
+    let id = id_param(v, "id")?;
+    let mut board = Storyboard::of_doc(&s.doc);
+    if !board.boards.iter().any(|b| b.id == id) {
+        return Err(CmdError::Params(format!("there is no board {id}")));
+    }
+    if board.boards.len() <= 1 {
+        return Err(CmdError::Failed("a script keeps at least one board".into()));
+    }
+    let gone: Vec<u32> = board.beats.iter().filter(|b| b.board == id).map(|b| b.id).collect();
+    board.beats.retain(|b| b.board != id);
+    board.links.retain(|l| !gone.contains(&l.from) && !gone.contains(&l.to));
+    board.boards.retain(|b| b.id != id);
+    board.store(&mut s.doc);
+    Ok(json!({"beats": gone.len()}))
 }
 
 /// `storyboard.configure {grid?, snap?}`.
@@ -423,9 +655,16 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("beat.update", "Change Beat", "Outline", update)
             .params(r##"{"id", "title"?, "body"?, "color"?: "#RRGGBB", "x"?, "y"?, "w"?, "h"?}"##),
         CommandSpec::new("beat.delete", "Delete Beat", "Outline", delete).params(r#"{"id": number}"#),
-        CommandSpec::new("beat.link", "Link Beats", "Outline", link).params(r#"{"from": id, "to": id}"#),
+        CommandSpec::new("beat.link", "Link Beats", "Outline", link)
+            .params(r##"{"from": id, "to": id, "style"?: "line"|"forward"|"back"|"both", "color"?: "#RRGGBB"}"##),
         CommandSpec::new("beat.unlink", "Unlink Beats", "Outline", unlink).params(r#"{"from": id, "to": id}"#),
         CommandSpec::new("storyboard.configure", "Story Board Grid", "Outline", configure).params(r#"{"grid"?: 5-200, "snap"?: bool}"#),
+        CommandSpec::new("beat.styleLink", "Link Style", "Outline", style_link)
+            .params(r##"{"from": id, "to": id, "style"?: "line"|"forward"|"back"|"both", "color"?: "#RRGGBB"}"##),
+        CommandSpec::new("beats.arrange", "Arrange Beats", "Outline", arrange).params(r#"{"ids": [id], "how": "grid"|"column"|"row"|"cascade"}"#),
+        CommandSpec::new("storyboard.addBoard", "New Board", "Outline", add_board).params(r#"{"name"?: string}"#),
+        CommandSpec::new("storyboard.renameBoard", "Rename Board", "Outline", rename_board).params(r#"{"id": number, "name": string}"#),
+        CommandSpec::new("storyboard.deleteBoard", "Delete Board", "Outline", delete_board).params(r#"{"id": number}"#),
         CommandSpec::new("beat.toScript", "Send Beat to Script", "Outline", to_script).params(r#"{"id": number}"#),
     ]
 }

@@ -130,6 +130,7 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | Scene View | `Mod+Alt+5` |
 | Story Board | `Mod+Alt+6` |
 | Outline | `Mod+Alt+7` |
+| Structure Strip | `Mod+Alt+S` |
 | Tables | `Mod+Alt+T` |
 | Focus Mode | `Mod+Shift+F` |
 | Command Palette | `Mod+Shift+P` |

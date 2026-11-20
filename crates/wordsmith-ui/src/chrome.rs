@@ -191,7 +191,7 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                     item(ed, ui, id);
                 }
                 ui.separator();
-                for id in ["view.darkTheme", "view.typewriter", "view.focusMode"] {
+                for id in ["view.strip", "view.darkTheme", "view.typewriter", "view.focusMode"] {
                     item(ed, ui, id);
                 }
                 ui.separator();

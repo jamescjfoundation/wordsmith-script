@@ -21,6 +21,7 @@ pub mod outline;
 pub mod prefs;
 pub mod reports;
 pub mod snapshot;
+pub mod strip;
 pub mod structure;
 pub mod tables;
 pub mod tools;
@@ -95,6 +96,7 @@ pub fn ui_specs() -> Vec<CommandSpec> {
         CommandSpec::new("view.sceneProperties", "Scene Properties…", "Script", |s, _| open(s, "tool.sceneProperties")).pure(),
         CommandSpec::new("view.character", "Character Details…", "Script", |s, _| open(s, "tool.character")).pure(),
         CommandSpec::new("view.highlights", "Show Character Highlights", "View", |s, _| open(s, "tool.highlights")).pure(),
+        CommandSpec::new("view.strip", "Structure Strip", "View", |s, _| open(s, "tool.strip")).key("Mod+Alt+S").pure(),
         CommandSpec::new("view.reformat", "Reformat…", "Tools", |s, _| open(s, "tool.reformat")).pure(),
         CommandSpec::new("app.preferences", "Preferences…", "File", |s, _| open(s, "preferences")).key("Mod+,").pure(),
         CommandSpec::new("edit.copy", "Copy", "Edit", |s, _| {
