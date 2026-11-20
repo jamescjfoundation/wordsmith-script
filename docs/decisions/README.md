@@ -39,3 +39,4 @@ what would make us revisit it.
 | [0031](0031-editing-additions.md) | Editing additions from SPEC-2 (Sequence, typing options, keys, bookmarks, checker) |
 | [0032](0032-macros-and-styles.md) | Macros and text styles (keys, starter set, aliases, native format 4) |
 | [0033](0033-characters-and-reports.md) | Characters, scene data and reports |
+| [0034](0034-planning.md) | Boards, the structure strip and planning PDFs |

@@ -48,3 +48,4 @@ One line per merge to `main`, newest last.
 | 2026-11-20 | m9/editing | Sequence element, Return/Tab hint, reset to element, toggle case, typing options (off by default), select/new scene, page break, Go To, bookmarks and labels, find by element, reformat tool, format checker; decision 0031 |
 | 2026-11-20 | m10/macros | Macros (20 slots, aliases, starter set, copy from a script), text styles and keys, highlighter and color, element color/highlight/strike/small letters, template formatting for all; native format 4; decision 0032 |
 | 2026-11-20 | m11/reports | Scene properties and scene data, character traits and highlights, eight reports with text/CSV/PDF, tables sort/filter/columns/own tabs, note fields and types; decision 0033 |
+| 2026-11-20 | m12/planning | Several boards, arrange, link styles, lists in beats, board and cards PDF, card view options, structure strip, outline nesting bars; decision 0034 |

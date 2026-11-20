@@ -82,10 +82,82 @@ fn act(ed: &mut Editor, action: Option<Act>, count: usize) {
 
 /// The index cards: a card per scene with its heading, its summary (or, in grey, the start of its
 /// first action) and who speaks in it.
+/// How the index cards show and print.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CardPrefs {
+    /// Cards per row, 1 to 9; 0 fits as many as the window takes.
+    pub per_row: usize,
+    /// Show the scene's text instead of its summary.
+    pub script_text: bool,
+    /// Printing: one 3 × 5 in card per page, or a grid on Letter.
+    pub stock: bool,
+    pub columns: usize,
+    pub rows: usize,
+    pub frames: bool,
+    pub grey: bool,
+    /// The print options are showing.
+    pub printing: bool,
+}
+
+impl Default for CardPrefs {
+    fn default() -> Self {
+        CardPrefs { per_row: 0, script_text: false, stock: false, columns: 2, rows: 3, frames: true, grey: false, printing: false }
+    }
+}
+
+fn cards_bar(ed: &mut Editor, ui: &mut Ui) {
+    let p = &mut ed.tools.cards;
+    ui.horizontal_wrapped(|ui| {
+        ui.label("Cards per row");
+        egui::ComboBox::from_id_salt("per-row")
+            .selected_text(if p.per_row == 0 { "Fit".to_string() } else { p.per_row.to_string() })
+            .width(60.0)
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut p.per_row, 0, "Fit");
+                for n in 1..=9 {
+                    ui.selectable_value(&mut p.per_row, n, n.to_string());
+                }
+            });
+        ui.selectable_value(&mut p.script_text, false, "Summaries");
+        ui.selectable_value(&mut p.script_text, true, "Script text");
+        ui.separator();
+        if ui.button("Print Cards…").clicked() {
+            p.printing = !p.printing;
+        }
+    });
+    if !p.printing {
+        return;
+    }
+    let mut go = false;
+    ui.horizontal_wrapped(|ui| {
+        ui.selectable_value(&mut p.stock, true, "3 × 5 cards");
+        ui.selectable_value(&mut p.stock, false, "Grid on Letter");
+        if !p.stock {
+            ui.add(egui::DragValue::new(&mut p.columns).range(1..=6).prefix("Columns "));
+            ui.add(egui::DragValue::new(&mut p.rows).range(1..=6).prefix("Rows "));
+        }
+        ui.checkbox(&mut p.frames, "Frames");
+        ui.checkbox(&mut p.grey, "Grey background");
+        if ui.button("Save PDF…").clicked() {
+            go = true;
+        }
+    });
+    if go {
+        let params =
+            json!({"stock": if p.stock { "card" } else { "grid" }, "columns": p.columns, "rows": p.rows, "frames": p.frames, "grey": p.grey});
+        ed.dialog_params = Some(params.clone());
+        ed.run("cards.exportPdf", params);
+    }
+}
+
 pub fn cards(ed: &mut Editor, ui: &mut Ui) {
     let scenes = ed.scene_list();
     let count = scenes.len();
     let mut action = None;
+    cards_bar(ed, ui);
+    let per_row = ed.tools.cards.per_row;
+    let script_text = ed.tools.cards.script_text;
+    let card = if per_row == 0 { CARD } else { vec2(((ui.available_width() - 24.0) / per_row as f32 - 12.0).max(120.0), CARD.y) };
     egui::ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
         if scenes.is_empty() {
             ui.label("The script has no scenes yet. Each Scene Heading starts one.");
@@ -94,13 +166,25 @@ pub fn cards(ed: &mut Editor, ui: &mut Ui) {
             ui.spacing_mut().item_spacing = vec2(12.0, 12.0);
             for (i, sc) in scenes.iter().enumerate() {
                 // A fixed allocation per card, so the row knows when to wrap.
-                ui.allocate_ui_with_layout(vec2(CARD.x, CARD.y + 32.0), egui::Layout::top_down(egui::Align::Min), |ui| {
-                    ui.set_width(CARD.x);
+                ui.allocate_ui_with_layout(vec2(card.x, card.y + 32.0), egui::Layout::top_down(egui::Align::Min), |ui| {
+                    ui.set_width(card.x);
                     let drag = ui.dnd_drag_source(Id::new(("scene-card", i)), i, |ui| {
                         egui::Frame::group(ui.style()).fill(ui.visuals().extreme_bg_color).show(ui, |ui| {
                             // Every card the same size: a long heading or summary is cut short.
-                            ui.set_min_size(CARD - vec2(12.0, 12.0));
-                            ui.set_max_size(CARD - vec2(12.0, 12.0));
+                            ui.set_min_size(card - vec2(12.0, 12.0));
+                            ui.set_max_size(card - vec2(12.0, 12.0));
+                            // The scene's color as a band along the top.
+                            if let Some(hex) =
+                                wordsmith_script::scene_data::SCENE_COLORS.iter().find(|(n, _)| *n == text_of(sc, "color")).map(|c| c.1)
+                                && let Some(c) = wordsmith_script::revisions::parse_color(hex)
+                            {
+                                let r = ui.max_rect();
+                                ui.painter().rect_filled(
+                                    egui::Rect::from_min_size(r.min - vec2(6.0, 6.0), vec2(r.width() + 12.0, 4.0)),
+                                    0.0,
+                                    egui::Color32::from_rgb(c.0, c.1, c.2),
+                                );
+                            }
                             ui.label(
                                 RichText::new(format!(
                                     "{}  {}",
@@ -109,7 +193,11 @@ pub fn cards(ed: &mut Editor, ui: &mut Ui) {
                                 ))
                                 .strong(),
                             );
-                            let summary = text_of(sc, "summary");
+                            let title = text_of(sc, "title");
+                            if !title.is_empty() {
+                                ui.label(RichText::new(title).italics());
+                            }
+                            let summary = if script_text { String::new() } else { text_of(sc, "summary") };
                             if summary.is_empty() {
                                 ui.label(RichText::new(preview(&text_of(sc, "firstAction"))).weak());
                             } else {
@@ -131,9 +219,14 @@ pub fn cards(ed: &mut Editor, ui: &mut Ui) {
                     } else if r.dnd_hover_payload::<usize>().is_some_and(|f| *f != i) {
                         ui.painter().rect_stroke(r.rect, 4.0, egui::Stroke::new(2.0, ui.visuals().selection.stroke.color), egui::StrokeKind::Outside);
                     }
-                    if ui.small_button("Open").clicked() {
-                        action = Some(Act::Open(i));
-                    }
+                    ui.horizontal(|ui| {
+                        if ui.small_button("Open").clicked() {
+                            action = Some(Act::Open(i));
+                        }
+                        if ui.small_button("Properties").clicked() {
+                            ed.session.push_ui_request(json!({"open": "tool.sceneProperties", "scene": i}));
+                        }
+                    });
                 });
             }
         });

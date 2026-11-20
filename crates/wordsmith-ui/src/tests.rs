@@ -948,3 +948,31 @@ fn reports_scene_properties_and_tables_open_and_work() {
     frame(&ctx, &mut ed, vec![]);
     assert_eq!(wordsmith_script::cast::highlighted_speeches(&ed.session.doc).len(), 1);
 }
+
+#[test]
+fn boards_strip_and_cards_draw_and_act() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(&ctx, &mut ed, vec![text("int"), key(Key::Tab, Modifiers::NONE), text("hall"), key(Key::Enter, Modifiers::NONE), text("Rain.")]);
+    // A second board: beats added there stay there.
+    ed.run("view.board", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    let id = ed.session.run("storyboard.addBoard", &json!({"name": "Ideas"})).unwrap()["id"].as_u64().unwrap() as u32;
+    ed.board.current = id;
+    ed.run("beat.add", json!({"board": id, "title": "Twist"}));
+    frame(&ctx, &mut ed, vec![]);
+    let b = wordsmith_script::storyboard::Storyboard::of_doc(&ed.session.doc);
+    assert_eq!(b.beats.iter().filter(|x| x.board == id).count(), 1);
+    // The structure strip shows above the script and goes to a scene on a click.
+    ed.structure = None;
+    ed.run("view.strip", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.tools.strip);
+    // The index cards, five to a row, showing script text.
+    ed.run("view.cards", json!({}));
+    ed.tools.cards.per_row = 5;
+    ed.tools.cards.script_text = true;
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.structure, Some(crate::structure::Structure::Cards));
+}
