@@ -38,3 +38,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m6/reports | Revised pages only and without marks (export and print); scene lengths in eighths; character report; M6 complete; typing 16.3–16.5 ms at 150 pages; 1734 tests pass |
 | 2026-11-19 | m7/board | Story board: beats, links, grid snap, beat window with Tab, send to script as Outline 1 and Summary; 1742 tests pass |
 | 2026-11-19 | m7/outline | Outline lanes (add, rename, move, indent, delete), beats placed in lanes, structure templates, beat page ranges, Outline view with the Script lane; 1745 tests pass |
+| 2026-11-19 | m7/show-outline | Show or hide outline elements in the pages, PDF and print; M7 complete; 1746 tests pass |

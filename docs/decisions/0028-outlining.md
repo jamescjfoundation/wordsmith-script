@@ -55,3 +55,16 @@ board" is our name; the other product's name for its canvas is a trademark.
   before it or onto a lane's end to go last; a row of beats in no lane; and
   the Script lane, the script's scenes with the page each starts on (click to
   go there). Double-click a beat to edit it in the beat window.
+
+## Showing and hiding outline elements
+
+- **One switch** (`outline.show`, View › Show Outline Elements; `app_data`
+  `wordsmith.outline`), on by default: off, the outline elements (Outline 1
+  to 3, Summary, Note) leave the page view, the PDF, print, and the page
+  counts and lengths worked out from them. The script keeps them, so turning
+  the switch back on shows them where they were. Hiding them with the caret
+  in one moves the caret to the next paragraph that shows.
+- **Scope change from the plan:** the normal and speed views keep showing
+  outline elements. Those views lay out the script itself, so leaving
+  paragraphs out would break the caret's place; they are drafting views, and
+  the page view is where the printed script is checked.

@@ -11,6 +11,37 @@ use crate::element::{ElementKind, Elements};
 use crate::paginate::{Paginated, Piece};
 use crate::storyboard::{Lane, MAX_LANES, Storyboard};
 
+/// `app_data` key of the outline settings.
+pub const OUTLINE_KEY: &str = "wordsmith.outline";
+
+/// Whether outline elements (Outline 1 to 3, Summary, Note) show in the page view, the PDF and
+/// print. On unless switched off.
+pub fn shows_outline(doc: &Document) -> bool {
+    doc.app_data.get(OUTLINE_KEY).and_then(|v| v.get("show")).and_then(Value::as_bool).unwrap_or(true)
+}
+
+/// `outline.show {show?}`: show or hide outline elements in the pages (or the other way). Hiding
+/// them with the caret in one moves the caret to the next paragraph that shows.
+fn show(s: &mut Session, v: &Value) -> CmdResult {
+    let on = v.get("show").and_then(Value::as_bool).unwrap_or(!shows_outline(&s.doc));
+    s.doc.app_data.insert(OUTLINE_KEY.into(), std::sync::Arc::new(json!({"show": on})));
+    if !on && s.sel.focus.story == wordsmith_doc::StoryRef::Body {
+        let elements = Elements::of_doc(&s.doc);
+        let hidden = |i: usize| s.doc.body.get(i).and_then(|b| b.as_para()).is_some_and(|p| elements.of_para(p).kind.is_outline());
+        let here = s.sel.focus.path.last();
+        if hidden(here)
+            && let Some(next) = (here..s.doc.body.len()).chain((0..here).rev()).find(|i| !hidden(*i))
+        {
+            s.sel = wordsmith_engine::Selection::caret(wordsmith_doc::Pos {
+                story: wordsmith_doc::StoryRef::Body,
+                path: wordsmith_doc::Path::top(next),
+                off: 0,
+            });
+        }
+    }
+    Ok(json!({"show": on}))
+}
+
 /// The structure templates: their names and lanes (name, indent).
 pub const TEMPLATES: [(&str, &str); 4] = [
     ("three-act", "Three acts"),
@@ -228,6 +259,7 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("outline.template", "Add Structure Template", "Outline", template)
             .params(r#"{"name": "three-act" | "five-act" | "sequences" | "television"}"#),
         CommandSpec::new("outline.pages", "Beat Pages", "Outline", pages).pure(),
+        CommandSpec::new("outline.show", "Show Outline Elements", "Outline", show).params(r#"{"show"?: bool}"#),
     ]
 }
 

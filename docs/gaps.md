@@ -112,8 +112,8 @@ on 2026-11-19) and are `#[ignore]`d until we decide how to supply it:
 
 - Printing index cards and the scene view to PDF (named in public material)
   is not built in v0.1.
-- Scene summaries are Summary paragraphs and print until M7 adds showing and
-  hiding outline elements.
+- Scene summaries are Summary paragraphs: they print unless outline elements
+  are hidden (View › Show Outline Elements, M7).
 - The card and scene views were tested headlessly (rendering, keys, moves
   through the commands), not with a real mouse drag in a running window.
 - The Tables panel has fixed tables (scenes, characters, notes); adding,
@@ -132,3 +132,10 @@ on 2026-11-19) and are `#[ignore]`d until we decide how to supply it:
   editing a page number by hand, locking a new page at the cursor and
   unlocking one page are not built (decision 0026). Lock Pages again adds a
   level instead.
+
+## Outlining (M7, decision 0028)
+
+- Story board images and exporting the board to PDF are not built (ROADMAP).
+- Hidden outline elements still show in the normal and speed views.
+- The story board and outline views were tested headlessly, not with a real
+  mouse.
