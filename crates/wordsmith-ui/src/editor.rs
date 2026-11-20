@@ -545,7 +545,7 @@ impl Editor {
                 Some("about") => self.show_about = true,
                 Some("recover") => self.recovery = Some(RecoveryPrompt),
                 Some("exportPdf") => self.ask_export_path(),
-                Some("open" | "import" | "saveAs" | "export") => self.ask_file(&req),
+                Some("open" | "import" | "saveAs" | "export" | "macrosFrom") => self.ask_file(&req),
                 Some("importQuestion") => {
                     let path = req.get("path").and_then(Value::as_str).unwrap_or("").to_string();
                     let guess = req.get("guess").and_then(Value::as_bool).unwrap_or(true);
@@ -583,7 +583,7 @@ impl Editor {
                     self.find = Some(FindBar { query: if query.is_empty() || query.contains('\n') { bar.query.clone() } else { query }, ..bar });
                 }
                 Some(other) => {
-                    crate::tools::open(self, other);
+                    crate::tools::open(self, other, &req);
                 }
                 None => {}
             }
@@ -629,6 +629,9 @@ impl Editor {
                     .filter("PDF", &["pdf"]),
                 "file.openPath",
             ),
+            Some("macrosFrom") => {
+                (FileDialog::open().title("Copy Macros from a Script").filter("Scripts", &["wss", "fountain", "spmd"]), "macro.copyFromPath")
+            }
             Some("saveAs") => {
                 (FileDialog::save().title("Save Script").filter("Wordsmith Script", &["wss"]).file_name(format!("{name}.wss")), "file.saveAsPath")
             }
@@ -750,6 +753,11 @@ impl Editor {
         {
             let id = def.id.clone();
             self.run("element.set", json!({"element": id}));
+            return;
+        }
+        // A macro's shortcut.
+        if let Some(slot) = wordsmith_script::macros::Macros::of_doc(&self.session.doc).by_shortcut(shortcut) {
+            self.run("macro.run", json!({"slot": slot + 1}));
             return;
         }
         let id = self.session.registry.by_shortcut(shortcut).map(|spec| spec.id);

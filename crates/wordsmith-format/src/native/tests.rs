@@ -202,3 +202,44 @@ fn the_story_board_and_sent_beats_round_trip() {
     assert_eq!(back.body, s.doc.body);
     assert_eq!(wordsmith_script::storyboard::Storyboard::of_doc(&back), wordsmith_script::storyboard::Storyboard::of_doc(&s.doc));
 }
+
+#[test]
+fn more_styles_bookmarks_and_dual_dialogue_round_trip() {
+    use wordsmith_doc::props::{Highlight, Rgb, TextColor, VertAlign};
+    let mut doc = new_script();
+    let mut p = Paragraph::with_text("a", CharProps::default()).styled("Action");
+    let styles = [
+        CharProps { underline: Some(Underline::Double), ..CharProps::default() },
+        CharProps { underline: Some(Underline::Words), strike: Some(true), ..CharProps::default() },
+        CharProps { underline: Some(Underline::Dotted), vert_align: Some(VertAlign::Superscript), ..CharProps::default() },
+        CharProps { vert_align: Some(VertAlign::Subscript), small_caps: Some(true), caps: Some(true), ..CharProps::default() },
+        CharProps { highlight: Some(Highlight::Yellow), bold: Some(true), ..CharProps::default() },
+        CharProps { shading: Some(Rgb(0x12, 0xAB, 0xEF)), color: Some(TextColor::Rgb(Rgb(1, 2, 3))), ..CharProps::default() },
+    ];
+    for (i, c) in styles.iter().enumerate() {
+        let _ = p.insert_text(p.len(), &format!("{i}{{"), c);
+    }
+    p.props.bookmark = Some(3);
+    let mut dual = paragraph("Character", "BEN");
+    dual.props.dual = Some(true);
+    doc.body = vec![para_block(p), para_block(dual)];
+    let text = write(&doc);
+    assert!(text.lines().next().is_some_and(|l| l.ends_with(&format!(" {VERSION}"))));
+    let back = read(&text).unwrap();
+    let bp = back.body[0].as_para().unwrap();
+    for (i, c) in styles.iter().enumerate() {
+        let off = 1 + i * 2;
+        let got = bp.props_at(off + 1);
+        assert_eq!(
+            (got.underline, got.strike, got.vert_align, got.caps, got.small_caps, got.highlight, got.shading, got.color, got.bold),
+            (c.underline, c.strike, c.vert_align, c.caps, c.small_caps, c.highlight, c.shading, c.color, c.bold),
+            "style {i} in {text}"
+        );
+    }
+    assert_eq!(bp.text, "a0{1{2{3{4{5{");
+    assert_eq!(bp.props.bookmark, Some(3));
+    assert_eq!(back.body[1].as_para().unwrap().props.dual, Some(true));
+    // A version 3 file reads as before.
+    let old = text.replacen(&format!(" {VERSION}\n"), " 3\n", 1);
+    assert!(read(&old).is_ok());
+}

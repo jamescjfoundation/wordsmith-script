@@ -186,11 +186,21 @@ fn export_characters_csv(s: &mut Session, v: &Value) -> CmdResult {
 }
 
 /// The file commands.
+/// `macro.copyFromPath {path}`: replace this script's macros with another script's.
+fn copy_macros_from(s: &mut Session, v: &Value) -> CmdResult {
+    let path = path_of(v).ok_or_else(|| CmdError::Params("`path` is required".into()))?;
+    let other = files::open(&path).map_err(failed)?;
+    let macros = wordsmith_script::macros::Macros::of_doc(&other);
+    s.run("macro.copyFrom", &json!({"macros": macros}))
+}
+
 pub fn specs() -> Vec<CommandSpec> {
     const PATH: &str = r#"{"path"?: string (asks for a file when left out)}"#;
     vec![
         CommandSpec::new("file.open", "Open…", "File", |s, _| ask(s, "open", json!({}))).key("Mod+O").pure(),
         CommandSpec::new("file.openPath", "Open File", "File", open_path).params(r#"{"path": string, "asScript"?: bool, "discard"?: bool}"#),
+        CommandSpec::new("macro.copyFromFile", "Copy Macros from a Script…", "Tools › Macros", |s, _| ask(s, "macrosFrom", json!({}))).pure(),
+        CommandSpec::new("macro.copyFromPath", "Copy Macros from File", "Tools › Macros", copy_macros_from).params(r#"{"path": string}"#),
         CommandSpec::new("file.import", "Import…", "File", |s, _| ask(s, "import", json!({}))).pure(),
         CommandSpec::new("file.save", "Save", "File", save).key("Mod+S").pure(),
         CommandSpec::new("file.saveAs", "Save As…", "File", |s, _| ask(s, "saveAs", json!({"name": script_name(s)}))).key("Mod+Shift+S").pure(),

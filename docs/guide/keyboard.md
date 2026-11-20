@@ -62,6 +62,15 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | End of Act | `Mod+Shift+7` |
 | Reset to Element | `Mod+Shift+R` |
 
+## Format › Style
+
+| Command | Keys |
+| --- | --- |
+| Bold | `Mod+B` |
+| Italic | `Mod+I` |
+| Plain Text | `Mod+Shift+T` |
+| Underline | `Mod+U` |
+
 ## Go
 
 | Command | Keys |

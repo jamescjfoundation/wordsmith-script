@@ -37,3 +37,4 @@ what would make us revisit it.
 | [0029](0029-release.md) | The command line, the MCP server and the release |
 | [0030](0030-spec-2.md) | SPEC-2 and what v0.1 built |
 | [0031](0031-editing-additions.md) | Editing additions from SPEC-2 (Sequence, typing options, keys, bookmarks, checker) |
+| [0032](0032-macros-and-styles.md) | Macros and text styles (keys, starter set, aliases, native format 4) |

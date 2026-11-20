@@ -14,6 +14,7 @@ pub mod character;
 pub mod editing;
 pub mod element;
 pub mod find;
+pub mod format;
 pub mod scene;
 pub mod settings;
 pub mod spelling;
@@ -83,6 +84,8 @@ pub fn specs() -> Vec<CommandSpec> {
     all.extend(crate::bookmarks::specs());
     all.extend(crate::checker::specs());
     all.extend(crate::typing::specs());
+    all.extend(crate::macros::specs());
+    all.extend(format::specs());
     all
 }
 

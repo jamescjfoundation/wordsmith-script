@@ -28,7 +28,7 @@ use wordsmith_script::template::new_script;
 use wordsmith_script::{ElementKind, Elements};
 
 /// The format version this build writes.
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 /// The first line's words before the version number.
 pub const MAGIC: &str = "Wordsmith Script";
 /// Largest native file read, bytes.
@@ -173,6 +173,8 @@ fn migrate(
         }
         // 2 → 3: revision and locked-page marks join the note marks; `{` was already escaped.
         2 => migrate(3, settings, paragraphs),
+        // 3 → 4: more character styles (`{sD,K}…{/s}`) join the marks; `{` was already escaped.
+        3 => migrate(4, settings, paragraphs),
         VERSION => Ok((settings, paragraphs)),
         v if v > VERSION => Err(ReadError::NewerVersion(v)),
         v => Err(ReadError::Damaged(format!("unknown format {v}"))),

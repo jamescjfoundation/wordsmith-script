@@ -172,6 +172,8 @@ pub enum Casing {
     /// Text is stored in capitals: typing converts it, and so does changing a paragraph into the
     /// element (`docs/decisions/0009-element-model.md`).
     Upper,
+    /// Text is stored in small letters (SPEC-2 3.2 element settings).
+    Lower,
 }
 
 impl Casing {
@@ -180,6 +182,7 @@ impl Casing {
         match self {
             Casing::AsTyped => text.to_string(),
             Casing::Upper => text.to_uppercase(),
+            Casing::Lower => text.to_lowercase(),
         }
     }
 }

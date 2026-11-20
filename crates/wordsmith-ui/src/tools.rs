@@ -28,11 +28,20 @@ pub struct Tools {
     pub bookmark_name: (String, bool),
     pub checker: Option<Checker>,
     pub reformat: bool,
+    /// The macros window: the slot shown (0-based) and its fields being edited.
+    pub macros: Option<(usize, Value)>,
+    /// "Replace this alias?": slot (1-based), alias start and the macro's name.
+    pub macro_confirm: Option<(u64, u64, String)>,
 }
 
 /// Act on a UI request to open a tool window. Returns whether it was one.
-pub fn open(ed: &mut Editor, what: &str) -> bool {
+pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
     match what {
+        "tool.macros" => ed.tools.macros = Some((0, macro_form(ed, 0))),
+        "tool.macroConfirm" => {
+            ed.tools.macro_confirm =
+                Some((req["slot"].as_u64().unwrap_or(0), req["start"].as_u64().unwrap_or(0), req["name"].as_str().unwrap_or("").to_string()))
+        }
         "tool.goto" => ed.tools.goto = Some(Default::default()),
         "tool.bookmarks" => ed.tools.bookmarks = !ed.tools.bookmarks,
         "tool.checker" => {
@@ -317,6 +326,164 @@ fn reformat_window(ed: &mut Editor, ctx: &Context) {
     ed.tools.reformat = open;
 }
 
+fn macro_form(ed: &mut Editor, slot: usize) -> Value {
+    let all = ed.session.run("macro.list", &json!({})).unwrap_or(Value::Null);
+    all["slots"].get(slot).map(|x| x["macro"].clone()).unwrap_or_else(|| json!({}))
+}
+
+fn element_choice(ui: &mut egui::Ui, salt: &str, value: &mut Value, elements: &[(String, String)]) {
+    let shown = value.as_str().and_then(|id| elements.iter().find(|(i, _)| i == id)).map_or("—".to_string(), |(_, n)| n.clone());
+    egui::ComboBox::from_id_salt(salt).selected_text(shown).show_ui(ui, |ui| {
+        if ui.selectable_label(value.is_null(), "—").clicked() {
+            *value = Value::Null;
+        }
+        for (id, name) in elements {
+            if ui.selectable_label(value.as_str() == Some(id), name.as_str()).clicked() {
+                *value = json!(id);
+            }
+        }
+    });
+}
+
+fn macros_window(ed: &mut Editor, ctx: &Context) {
+    let Some((mut slot, mut form)) = ed.tools.macros.take() else { return };
+    let mut open = true;
+    let mut action: Option<(&str, Value)> = None;
+    let mut switch: Option<usize> = None;
+    let list = ed.session.run("macro.list", &json!({})).unwrap_or(Value::Null);
+    let elements: Vec<(String, String)> = Elements::of_doc(&ed.session.doc).all().iter().map(|d| (d.id.clone(), d.name.clone())).collect();
+    egui::Window::new("Macros").open(&mut open).default_width(620.0).show(ctx, |ui| {
+        ui.horizontal_top(|ui| {
+            ui.vertical(|ui| {
+                ui.set_width(180.0);
+                egui::ScrollArea::vertical().id_salt("macro-slots").max_height(380.0).show(ui, |ui| {
+                    for (i, x) in list["slots"].as_array().cloned().unwrap_or_default().iter().enumerate() {
+                        let name = x["macro"]["name"].as_str().filter(|n| !n.is_empty()).unwrap_or("(empty)");
+                        if ui.selectable_label(i == slot, format!("{}. {name}", i + 1)).clicked() {
+                            switch = Some(i);
+                        }
+                    }
+                });
+            });
+            ui.separator();
+            ui.vertical(|ui| {
+                egui::Grid::new("macro-form").num_columns(2).show(ui, |ui| {
+                    for (key, label) in [("name", "Name"), ("shortcut", "Shortcut"), ("alias", "Alias")] {
+                        ui.label(label);
+                        let mut t = form[key].as_str().unwrap_or("").to_string();
+                        if ui.text_edit_singleline(&mut t).changed() {
+                            form[key] = if t.is_empty() && key != "name" { Value::Null } else { json!(t) };
+                        }
+                        ui.end_row();
+                    }
+                    ui.label("Make the paragraph");
+                    element_choice(ui, "macro-element", &mut form["element"], &elements);
+                    ui.end_row();
+                    ui.label("Type");
+                    let mut t = form["text"].as_str().unwrap_or("").to_string();
+                    if ui.add(egui::TextEdit::multiline(&mut t).desired_rows(2)).changed() {
+                        form["text"] = json!(t);
+                    }
+                    ui.end_row();
+                    ui.label("Then start");
+                    element_choice(ui, "macro-after", &mut form["after"], &elements);
+                    ui.end_row();
+                });
+                ui.horizontal_wrapped(|ui| {
+                    for (key, label) in [
+                        ("smartReplace", "Match the alias's capitals"),
+                        ("confirm", "Ask first"),
+                        ("wholeWord", "Whole word"),
+                        ("matchCase", "Match case"),
+                    ] {
+                        let mut b = form[key].as_bool().unwrap_or(false);
+                        if ui.checkbox(&mut b, label).changed() {
+                            form[key] = json!(b);
+                        }
+                    }
+                });
+                ui.collapsing("Works in", |ui| {
+                    let mut active: Vec<String> =
+                        form["activeIn"].as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect()).unwrap_or_default();
+                    let mut changed = false;
+                    let mut all = active.is_empty();
+                    if ui.checkbox(&mut all, "Every element").changed() && all {
+                        active.clear();
+                        changed = true;
+                    }
+                    ui.horizontal_wrapped(|ui| {
+                        for (id, name) in &elements {
+                            let mut on = active.contains(id);
+                            if ui.checkbox(&mut on, name.as_str()).changed() {
+                                if on {
+                                    active.push(id.clone())
+                                } else {
+                                    active.retain(|x| x != id)
+                                }
+                                changed = true;
+                            }
+                        }
+                    });
+                    if changed {
+                        form["activeIn"] = json!(active);
+                    }
+                });
+                ui.horizontal(|ui| {
+                    if ui.button("Save").clicked() {
+                        let mut params = form.clone();
+                        params["slot"] = json!(slot + 1);
+                        action = Some(("macro.set", params));
+                    }
+                    if ui.button("Run").clicked() {
+                        action = Some(("macro.run", json!({"slot": slot + 1})));
+                    }
+                    if ui.button("Clear").clicked() {
+                        action = Some(("macro.clear", json!({"slot": slot + 1})));
+                    }
+                    if ui.button("Copy from a script…").clicked() {
+                        action = Some(("macro.copyFromFile", json!({})));
+                    }
+                });
+            });
+        });
+    });
+    if let Some((cmd, params)) = action {
+        ed.run(cmd, params);
+        if cmd != "macro.run" {
+            form = macro_form(ed, slot);
+        }
+    }
+    if let Some(i) = switch {
+        slot = i;
+        form = macro_form(ed, i);
+    }
+    if open {
+        ed.tools.macros = Some((slot, form));
+    }
+}
+
+fn macro_confirm_window(ed: &mut Editor, ctx: &Context) {
+    let Some((slot, start, name)) = ed.tools.macro_confirm.clone() else { return };
+    let mut answer = None;
+    egui::Window::new("Replace Alias").collapsible(false).resizable(false).show(ctx, |ui| {
+        ui.label(format!("Replace the word with the macro “{name}”?"));
+        ui.horizontal(|ui| {
+            if ui.button("Replace").clicked() {
+                answer = Some(true);
+            }
+            if ui.button("Keep the word").clicked() {
+                answer = Some(false);
+            }
+        });
+    });
+    if let Some(yes) = answer {
+        if yes {
+            ed.run("macro.expand", json!({"slot": slot, "start": start}));
+        }
+        ed.tools.macro_confirm = None;
+    }
+}
+
 /// Whether a tool window wants the keyboard (the reformat tool takes digits and letters).
 pub fn has_keyboard(ed: &Editor) -> bool {
     ed.tools.reformat
@@ -327,4 +494,6 @@ pub fn show(ed: &mut Editor, ctx: &Context) {
     bookmarks_window(ed, ctx);
     checker_window(ed, ctx);
     reformat_window(ed, ctx);
+    macros_window(ed, ctx);
+    macro_confirm_window(ed, ctx);
 }

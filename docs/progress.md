@@ -46,3 +46,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | main | Version 0.1.0, tagged v0.1.0 as a starting point; remote added and pushed |
 | 2026-11-19 | spec2/intake | SPEC-2 added word for word; audit against v0.1 (11 [STD] values differ, kept), questions for the spec author, decision 0030, v0.2 plan M9–M14; docs only |
 | 2026-11-20 | m9/editing | Sequence element, Return/Tab hint, reset to element, toggle case, typing options (off by default), select/new scene, page break, Go To, bookmarks and labels, find by element, reformat tool, format checker; decision 0031 |
+| 2026-11-20 | m10/macros | Macros (20 slots, aliases, starter set, copy from a script), text styles and keys, highlighter and color, element color/highlight/strike/small letters, template formatting for all; native format 4; decision 0032 |
