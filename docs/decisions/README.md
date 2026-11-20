@@ -24,3 +24,4 @@ what would make us revisit it.
 | [0016](0016-views.md) | Views, theme and writing modes |
 | [0017](0017-native-format.md) | The native format |
 | [0018](0018-fountain.md) | Fountain reading and writing |
+| [0019](0019-import-rules.md) | Import classification rules |

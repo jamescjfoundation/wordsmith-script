@@ -14,3 +14,4 @@ and what we took from it. Add a row whenever you open something new.
 | 2026-11-19 | https://gutenberg.pglaf.org (official Project Gutenberg mirror): `1/7/9/0/17903/17903.txt` (SHA-256 `c0f571a2…a1`), `7/6/8/2/76829/76829-0.txt` (`efd10e39…a4`), `7/0/9/3/70937/70937-0.txt` (`c6bf6c2f…aa`) | The three scenarios' text, transcribed into Fountain for the golden tests; books' commentary not used |
 | 2026-11-19 | https://fountain.io/syntax (Fountain 1.1) | Element recognition rules for the Fountain reader in `wordsmith-format` |
 | 2026-11-19 | WordCraft `crates/pdf/src/tests.rs` (already copied) | The hayro-based PDF text extractor, adapted for the PDF and golden tests |
+| 2026-11-19 | craft-libs `crates/rtf/README.md`, `crates/pdf/src/read.rs`, `vendor/README.craft-reader.md` (pinned revision) | The RTF model and reader, craft-pdf's guarded interpreter, and why the Hayro crates are patched, for the imports |

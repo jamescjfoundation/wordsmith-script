@@ -7,6 +7,7 @@
 
 mod emphasis;
 pub mod fountain;
+pub mod import;
 pub mod native;
 
 /// File extension of the native format. The final choice is recorded in

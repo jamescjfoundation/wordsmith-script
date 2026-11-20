@@ -1,6 +1,6 @@
 [package]
 name = "wordsmith-format"
-description = "Native file format and Fountain support for Wordsmith Script"
+description = "Native file format, Fountain, imports and exports for Wordsmith Script"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,6 +12,11 @@ wordsmith-script.workspace = true
 wordsmith-doc.workspace = true
 serde = { workspace = true }
 serde_json = { workspace = true }
+# RTF import and export (M4).
+craft-rtf = { workspace = true }
+# Text-based PDF import: craft-pdf's guarded page interpreter.
+craft-pdf = { workspace = true, features = ["interpret"] }
+kurbo = { workspace = true }
 
 [dev-dependencies]
 hayro-syntax = "0.7.2"

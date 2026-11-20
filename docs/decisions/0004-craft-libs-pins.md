@@ -29,3 +29,10 @@ appeared by then.
 craft-libs publishes a real `v0.1.0` tag. Then decide on purpose whether to
 move the five release crates to it, keeping in mind the two-revisions problem
 above.
+
+Update (M4, PDF import): craft-pdf's reader is built against craft-libs' patched
+Hayro snapshot (`vendor/README.craft-reader.md` there: decode limits,
+cancellation, malformed-file fixes). The crates.io Hayro releases lack those
+APIs, so `hayro-syntax`, `hayro-interpret`, `hayro-cmap`, `hayro-postscript`
+and `hayro-jbig2` are patched to the same pinned revision, as `krilla` is. All
+are Apache-2.0 OR MIT.
