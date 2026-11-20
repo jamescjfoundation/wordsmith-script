@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! Dialogs: the command palette, element settings, crash recovery and About. Each one changes
-//! the script only by running commands.
+//! Dialogs: the command palette, element settings, crash recovery, About, unsaved changes,
+//! "is this a script?" and preferences. Each one changes the script only by running commands.
 
 use egui::Context;
 use serde_json::{Map, Value, json};
 use wordsmith_engine::{Registry, Session};
 use wordsmith_script::Elements;
 
-use crate::editor::Editor;
+use crate::editor::{Editor, Then, UnsavedAnswer};
 
 /// Most commands the palette lists at once.
 const PALETTE_ROWS: usize = 40;
@@ -279,10 +279,114 @@ fn about_window(ed: &mut Editor, ctx: &Context) {
     ed.show_about = open;
 }
 
+/// "Save changes first?" before New, Open, Import or closing the window.
+fn unsaved_window(ed: &mut Editor, ctx: &Context) {
+    let Some(then) = ed.unsaved else { return };
+    let name = crate::editor::script_name(&ed.session);
+    let doing = match then {
+        Then::New => "starting a new script",
+        Then::Open => "opening another script",
+        Then::Import => "importing",
+        Then::Close => "closing",
+    };
+    let mut answer = None;
+    egui::Window::new("Unsaved Changes").collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
+        ui.label(format!("Save the changes to “{name}” before {doing}?"));
+        ui.label("If you don't save, your changes since the last save are lost.");
+        ui.horizontal(|ui| {
+            if ui.button("Save").clicked() {
+                answer = Some(UnsavedAnswer::Save);
+            }
+            if ui.button("Don't Save").clicked() {
+                answer = Some(UnsavedAnswer::DontSave);
+            }
+            if ui.button("Cancel").clicked() {
+                answer = Some(UnsavedAnswer::Cancel);
+            }
+        });
+    });
+    if let Some(a) = answer {
+        ed.answer_unsaved(a);
+    }
+}
+
+/// "Is this a script?" when importing plain text or RTF (SPEC: import asks and auto-formats).
+fn import_window(ed: &mut Editor, ctx: &Context) {
+    let Some(q) = ed.import_question.clone() else { return };
+    let file = std::path::Path::new(&q.path).file_name().and_then(|n| n.to_str()).unwrap_or("the file").to_string();
+    let mut answer: Option<Option<bool>> = None;
+    egui::Window::new("Import").collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
+        ui.label(format!("Is “{file}” a script?"));
+        ui.label("A script is formatted into scene headings, action, characters and dialogue. Other text comes in as action, a paragraph at a time.");
+        ui.horizontal(|ui| {
+            let (yes, no) = (ui.button("It's a Script"), ui.button("Plain Text"));
+            // The guess is the default: it has the keyboard focus.
+            if q.guess {
+                yes.request_focus()
+            } else {
+                no.request_focus()
+            }
+            if yes.clicked() {
+                answer = Some(Some(true));
+            }
+            if no.clicked() {
+                answer = Some(Some(false));
+            }
+            if ui.button("Cancel").clicked() {
+                answer = Some(None);
+            }
+        });
+    });
+    if let Some(a) = answer {
+        ed.answer_import(a);
+    }
+}
+
+/// Preferences: auto-save and backups (the view settings are kept as they are left).
+fn prefs_window(ed: &mut Editor, ctx: &Context) {
+    let mut open = ed.show_prefs;
+    egui::Window::new("Preferences").open(&mut open).collapsible(false).resizable(false).show(ctx, |ui| {
+        ui.heading("Auto-save");
+        ui.checkbox(&mut ed.autosave.enabled, "Save scripts automatically");
+        let mut minutes = ed.autosave.every.as_secs() / 60;
+        ui.horizontal(|ui| {
+            ui.label("Every");
+            if ui.add(egui::DragValue::new(&mut minutes).range(1..=u64::from(crate::prefs::MAX_AUTOSAVE_MINUTES))).changed() {
+                ed.autosave.every = std::time::Duration::from_secs(minutes * 60);
+            }
+            ui.label("minutes, once typing pauses for");
+            let mut idle = ed.autosave.idle.as_secs();
+            if ui.add(egui::DragValue::new(&mut idle).range(1..=u64::from(crate::prefs::MAX_IDLE_SECONDS))).changed() {
+                ed.autosave.idle = std::time::Duration::from_secs(idle);
+            }
+            ui.label("seconds");
+        });
+        ui.label("Only scripts saved to a file are saved automatically; crash recovery keeps the others.");
+        ui.separator();
+        ui.heading("Backups");
+        ui.checkbox(&mut ed.backups.enabled, "Keep a backup copy of every save");
+        ui.horizontal(|ui| {
+            ui.label("Keep up to");
+            let mut keep = ed.backups.keep;
+            if ui.add(egui::DragValue::new(&mut keep).range(1..=crate::prefs::MAX_BACKUPS as usize)).changed() {
+                ed.backups.keep = keep;
+            }
+            ui.label("copies of each script; the oldest are removed");
+        });
+        if let Some(dir) = &ed.backups.dir {
+            ui.label(format!("Backups folder: {}", dir.display()));
+        }
+    });
+    ed.show_prefs = open;
+}
+
 /// Show whichever dialogs are open.
 pub fn show(ed: &mut Editor, ctx: &Context) {
     palette_window(ed, ctx);
     settings_window(ed, ctx);
     recovery_window(ed, ctx);
     about_window(ed, ctx);
+    prefs_window(ed, ctx);
+    import_window(ed, ctx);
+    unsaved_window(ed, ctx);
 }

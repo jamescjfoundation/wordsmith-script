@@ -25,11 +25,21 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
     egui::Panel::top("menu").show(ui, |ui| {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("File", |ui| {
-                item(ed, ui, "file.new");
+                for id in ["file.new", "file.open", "file.import"] {
+                    item(ed, ui, id);
+                }
                 ui.separator();
-                item(ed, ui, "file.exportPdfAs");
+                item(ed, ui, "file.save");
+                item(ed, ui, "file.saveAs");
+                ui.separator();
+                ui.menu_button("Export", |ui| {
+                    for id in ["file.exportPdfAs", "file.exportFountain", "file.exportText", "file.exportRtf", "file.exportHtml"] {
+                        item(ed, ui, id);
+                    }
+                });
                 item(ed, ui, "file.print");
                 ui.separator();
+                item(ed, ui, "app.preferences");
                 item(ed, ui, "file.recoverPrompt");
             });
             ui.menu_button("Edit", |ui| {

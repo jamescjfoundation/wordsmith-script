@@ -8,6 +8,8 @@
 
 mod emphasis;
 pub mod export;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod files;
 pub mod fountain;
 pub mod import;
 pub mod native;

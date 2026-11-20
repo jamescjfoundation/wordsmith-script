@@ -8,11 +8,15 @@
 #![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
+pub mod autosave;
 pub mod chrome;
 pub mod dialogs;
 pub mod editor;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod files;
 pub mod fonts;
 pub mod keys;
+pub mod prefs;
 
 use std::sync::Arc;
 
@@ -55,6 +59,7 @@ pub fn ui_specs() -> Vec<CommandSpec> {
         CommandSpec::new("help.about", "About Wordsmith Script", "Help", |s, _| open(s, "about")).pure(),
         CommandSpec::new("file.exportPdfAs", "Export PDF…", "File", |s, _| open(s, "exportPdf")).key("Mod+Shift+E").pure(),
         CommandSpec::new("file.recoverPrompt", "Recover Unsaved Scripts…", "File", |s, _| open(s, "recover")).pure(),
+        CommandSpec::new("app.preferences", "Preferences…", "File", |s, _| open(s, "preferences")).key("Mod+,").pure(),
         CommandSpec::new("edit.copy", "Copy", "Edit", |s, _| {
             let text = s.selected_text();
             s.push_ui_request(json!({"copy": text}));
@@ -77,6 +82,8 @@ pub fn ui_specs() -> Vec<CommandSpec> {
 pub fn registry() -> Registry {
     let mut specs = wordsmith_script::commands::specs();
     specs.extend(ui_specs());
+    #[cfg(not(target_arch = "wasm32"))]
+    specs.extend(files::specs());
     wordsmith_engine::cmd::registry_with(specs)
 }
 

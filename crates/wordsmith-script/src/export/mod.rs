@@ -7,7 +7,6 @@
 //! opens in the system's PDF viewer to print from there (`docs/decisions/0013-printing.md`).
 
 use std::io::Write;
-use std::path::Path;
 
 use serde_json::{Value, json};
 use wordsmith_doc::Document;
@@ -29,24 +28,20 @@ pub fn pdf(doc: &Document) -> Result<Vec<u8>, String> {
     pdf_of(&paginate(doc))
 }
 
-/// Write `bytes` to `path`, replacing it only once the new file is complete. The path must be
-/// one automation may write (`file_access`).
+/// Write `bytes` to `path`, replacing it only once the new file is complete (craft-atomic: the
+/// old file stays whole if anything fails). The path must be one automation may write
+/// (`file_access`).
 pub fn write_file(path: &str, bytes: &[u8]) -> Result<(), String> {
     file_access::check_write(path)?;
-    let target = Path::new(path);
-    let dir = target.parent().filter(|d| !d.as_os_str().is_empty()).unwrap_or(Path::new("."));
-    let name = target.file_name().and_then(|n| n.to_str()).ok_or_else(|| format!("{path}: not a file name"))?;
-    let tmp = dir.join(format!(".{name}.wordsmith-tmp"));
-    let result = (|| -> std::io::Result<()> {
-        let mut f = std::fs::File::create(&tmp)?;
-        f.write_all(bytes)?;
-        f.sync_all()?;
-        std::fs::rename(&tmp, target)
-    })();
-    if result.is_err() {
-        let _ = std::fs::remove_file(&tmp);
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        craft_atomic::atomic_write(std::path::Path::new(path), bytes).map_err(|e| format!("{path}: {e}"))
     }
-    result.map_err(|e| format!("{path}: {e}"))
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = bytes;
+        Err(format!("{path}: the web build cannot write files"))
+    }
 }
 
 fn export_pdf(s: &mut Session, v: &Value) -> CmdResult {

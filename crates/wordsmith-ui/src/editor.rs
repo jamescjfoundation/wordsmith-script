@@ -3,7 +3,9 @@
 //! click and menu choice turned into a command run through the session's registry.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use egui::{Color32, Event, Pos2, Rect, Sense, Stroke, TextureHandle, TextureOptions, Ui, pos2, vec2};
 use serde_json::{Value, json};
@@ -12,8 +14,67 @@ use wordsmith_engine::Session;
 use wordsmith_script::paginate::Paginated;
 use wordsmith_script::{ElementKind, Elements};
 
+use crate::autosave::AutoSave;
 use crate::dialogs::{Palette, RecoveryPrompt, SettingsDialog};
 use crate::keys;
+
+/// What to do once the writer has dealt with unsaved changes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Then {
+    New,
+    Open,
+    Import,
+    /// Close the window.
+    Close,
+}
+
+/// The writer's answer to "save changes first?".
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UnsavedAnswer {
+    Save,
+    DontSave,
+    Cancel,
+}
+
+/// "Is this a script?", asked when importing plain text or RTF, with a guess for the default.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ImportQuestion {
+    pub path: String,
+    pub guess: bool,
+}
+
+/// Backup copies made on every save.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Backups {
+    pub enabled: bool,
+    /// Backups kept per script.
+    pub keep: usize,
+    /// The backups folder; none means no backups are made.
+    pub dir: Option<PathBuf>,
+}
+
+impl Default for Backups {
+    fn default() -> Self {
+        Backups { enabled: true, keep: 1_000, dir: None }
+    }
+}
+
+/// The script's name: its file's name, the name it was given, or "Untitled".
+pub fn script_name(s: &Session) -> String {
+    s.path
+        .as_deref()
+        .and_then(|p| p.file_stem())
+        .and_then(|n| n.to_str())
+        .filter(|n| !n.is_empty())
+        .map(str::to_string)
+        .or_else(|| s.file_name.clone())
+        .unwrap_or_else(|| "Untitled".into())
+}
+
+/// Whether the script has a native file of its own to save to.
+fn has_native_file(s: &Session) -> bool {
+    s.path.as_deref().and_then(|p| p.extension()).and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("wss"))
+}
 
 /// Space between pages and around them, in points on screen.
 const GAP: f32 = 16.0;
@@ -161,6 +222,22 @@ pub struct Editor {
     /// Native file dialogs; each answer runs the command named with it, with the chosen path.
     #[cfg(not(target_arch = "wasm32"))]
     pub dialogs: craft_dialogs::Dialogs<&'static str>,
+    /// "Save changes first?", while it is asked, and what follows the answer.
+    pub unsaved: Option<Then>,
+    /// "Is this a script?", while it is asked.
+    pub import_question: Option<ImportQuestion>,
+    /// What to do once the save under way completes (after "Save" in the unsaved prompt).
+    after_save: Option<Then>,
+    /// The writer chose not to save: the next open or import may replace the changes.
+    discard_ok: bool,
+    /// The writer agreed to close the window; the app closes it.
+    pub close_confirmed: bool,
+    pub autosave: AutoSave,
+    pub backups: Backups,
+    /// The preferences window is open.
+    pub show_prefs: bool,
+    /// The revision auto-save last saw, to notice changes.
+    seen_rev: u64,
 }
 
 impl Editor {
@@ -195,11 +272,38 @@ impl Editor {
             paginated: None,
             #[cfg(not(target_arch = "wasm32"))]
             dialogs: craft_dialogs::Dialogs::new(Arc::new(|| {})),
+            unsaved: None,
+            import_question: None,
+            after_save: None,
+            discard_ok: false,
+            close_confirmed: false,
+            autosave: AutoSave::default(),
+            backups: Backups::default(),
+            show_prefs: false,
+            seen_rev: 0,
         }
     }
 
-    /// Run a command; failures go to the status bar, never panic.
+    /// Run a command; failures go to the status bar, never panic. New, Open and Import over
+    /// unsaved changes ask first ([`Editor::unsaved`]).
     pub fn run(&mut self, id: &str, params: Value) {
+        let then = match id {
+            "file.new" => Some(Then::New),
+            "file.open" => Some(Then::Open),
+            "file.import" => Some(Then::Import),
+            _ => None,
+        };
+        if let Some(then) = then
+            && self.session.dirty
+        {
+            self.unsaved = Some(then);
+            return;
+        }
+        self.run_now(id, params);
+    }
+
+    /// Run a command without asking about unsaved changes.
+    fn run_now(&mut self, id: &str, params: Value) {
         match self.session.run(id, &params) {
             Ok(_) => self.message.clear(),
             Err(e) => self.message = e.to_string(),
@@ -270,11 +374,116 @@ impl Editor {
         false
     }
 
+    /// Ask about closing the window; true when it may close now (no unsaved changes, or the
+    /// writer already answered).
+    pub fn may_close(&mut self) -> bool {
+        if self.close_confirmed || !self.session.dirty {
+            return true;
+        }
+        self.unsaved = Some(Then::Close);
+        false
+    }
+
+    /// The writer's answer to "save changes first?".
+    pub fn answer_unsaved(&mut self, answer: UnsavedAnswer) {
+        let Some(then) = self.unsaved.take() else { return };
+        match answer {
+            UnsavedAnswer::Save => {
+                self.after_save = Some(then);
+                self.run_now("file.save", json!({}));
+                if !self.message.is_empty() {
+                    // The save failed: stay put.
+                    self.after_save = None;
+                }
+            }
+            UnsavedAnswer::DontSave => {
+                self.discard_ok = true;
+                self.session.discard_recovery_copy();
+                self.proceed(then);
+            }
+            UnsavedAnswer::Cancel => {}
+        }
+    }
+
+    /// Carry on with what waited for unsaved changes.
+    fn proceed(&mut self, then: Then) {
+        match then {
+            Then::New => {
+                self.run_now("file.new", json!({}));
+                self.discard_ok = false;
+            }
+            Then::Open => self.run_now("file.open", json!({})),
+            Then::Import => self.run_now("file.import", json!({})),
+            Then::Close => self.close_confirmed = true,
+        }
+    }
+
+    /// The writer's answer to "is this a script?" (`None`: cancel the import).
+    pub fn answer_import(&mut self, as_script: Option<bool>) {
+        let Some(q) = self.import_question.take() else { return };
+        if let Some(as_script) = as_script {
+            let discard = std::mem::take(&mut self.discard_ok);
+            self.run_now("file.openPath", json!({"path": q.path, "asScript": as_script, "discard": discard}));
+        } else {
+            self.discard_ok = false;
+        }
+    }
+
+    /// A save finished: make the backup copy, restart the auto-save clock, and carry on with
+    /// whatever waited for the save.
+    fn on_saved(&mut self, path: &str) {
+        self.autosave.saved();
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.backups.enabled
+            && let Some(dir) = self.backups.dir.clone()
+            && let Err(e) = wordsmith_format::files::backup(std::path::Path::new(path), &dir, self.backups.keep, std::time::SystemTime::now())
+        {
+            self.message = format!("Saved, but the backup copy failed: {e}");
+        }
+        #[cfg(target_arch = "wasm32")]
+        let _ = path;
+        if let Some(then) = self.after_save.take() {
+            self.proceed(then);
+        }
+    }
+
+    /// Auto-save: notice changes, and save when one is due. Call every frame with the time;
+    /// returns how long until the next save is due, to wake the window then.
+    pub fn tick(&mut self, now: Instant) -> Option<Duration> {
+        let rev = self.session.rev();
+        if rev != self.seen_rev {
+            self.seen_rev = rev;
+            if self.session.dirty {
+                self.autosave.edited(now);
+            }
+        }
+        let has_file = has_native_file(&self.session);
+        if self.autosave.due(now, self.session.dirty, has_file) {
+            self.run_now("file.save", json!({}));
+            if self.session.dirty {
+                // It failed: try again after another interval, not every frame.
+                self.message = format!("Auto-save failed: {}", self.message);
+                self.autosave.saved();
+                self.autosave.edited(now);
+            }
+        }
+        self.autosave.due_at(self.session.dirty, has_file).map(|at| at.saturating_duration_since(now))
+    }
+
+    /// The window title: the script's name, marked while it has unsaved changes.
+    pub fn window_title(&self) -> String {
+        let name = script_name(&self.session);
+        if self.session.dirty { format!("{name} • — Wordsmith Script") } else { format!("{name} — Wordsmith Script") }
+    }
+
     /// Act on what commands asked of the interface (open a dialog, copy text).
     fn take_ui_requests(&mut self) {
         for req in std::mem::take(&mut self.session.ui_requests) {
             if let Some(text) = req.get("copy").and_then(Value::as_str) {
                 self.clipboard = Some(text.to_string());
+            }
+            if let Some(path) = req.get("saved").and_then(Value::as_str) {
+                self.on_saved(path);
             }
             match req.get("open").and_then(Value::as_str) {
                 Some("palette") => self.palette = Some(Palette::default()),
@@ -285,6 +494,13 @@ impl Editor {
                 Some("about") => self.show_about = true,
                 Some("recover") => self.recovery = Some(RecoveryPrompt),
                 Some("exportPdf") => self.ask_export_path(),
+                Some("open" | "import" | "saveAs" | "export") => self.ask_file(&req),
+                Some("importQuestion") => {
+                    let path = req.get("path").and_then(Value::as_str).unwrap_or("").to_string();
+                    let guess = req.get("guess").and_then(Value::as_bool).unwrap_or(true);
+                    self.import_question = Some(ImportQuestion { path, guess });
+                }
+                Some("preferences") => self.show_prefs = true,
                 Some("view.page") => self.set_view(View::Page),
                 Some("view.normal") => self.set_view(View::Normal),
                 Some("view.speed") => self.set_view(View::Speed),
@@ -317,6 +533,51 @@ impl Editor {
         self.message = "Export PDF is not available in the web build yet.".into();
     }
 
+    /// A native file dialog for a file command; its answer runs the command that takes the path.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn ask_file(&mut self, req: &Value) {
+        use craft_dialogs::FileDialog;
+        let name = req.get("name").and_then(Value::as_str).filter(|n| !n.is_empty()).unwrap_or("Untitled");
+        let (dialog, then) = match req.get("open").and_then(Value::as_str) {
+            Some("open") => (
+                FileDialog::open()
+                    .title("Open Script")
+                    .filter("Scripts", &["wss", "fountain", "spmd"])
+                    .filter("Wordsmith Script", &["wss"])
+                    .filter("Fountain", &["fountain", "spmd"]),
+                "file.openPath",
+            ),
+            Some("import") => (
+                FileDialog::open()
+                    .title("Import")
+                    .filter("Text, RTF, PDF or Fountain", &["txt", "text", "rtf", "pdf", "fountain", "spmd"])
+                    .filter("Plain Text", &["txt", "text"])
+                    .filter("Rich Text (RTF)", &["rtf"])
+                    .filter("PDF", &["pdf"]),
+                "file.openPath",
+            ),
+            Some("saveAs") => {
+                (FileDialog::save().title("Save Script").filter("Wordsmith Script", &["wss"]).file_name(format!("{name}.wss")), "file.saveAsPath")
+            }
+            Some("export") => {
+                let (label, ext, then) = match req.get("format").and_then(Value::as_str) {
+                    Some("fountain") => ("Fountain", "fountain", "file.exportFountain"),
+                    Some("rtf") => ("Rich Text (RTF)", "rtf", "file.exportRtf"),
+                    Some("html") => ("Web Page (HTML)", "html", "file.exportHtml"),
+                    _ => ("Plain Text", "txt", "file.exportText"),
+                };
+                (FileDialog::save().title(format!("Export {label}")).filter(label, &[ext]).file_name(format!("{name}.{ext}")), then)
+            }
+            _ => return,
+        };
+        self.dialogs.ask(dialog, then);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn ask_file(&mut self, _req: &Value) {
+        self.message = "Files are not available in the web build yet.".into();
+    }
+
     /// Show a waiting native dialog over `parent` (the window), and act on answers: each runs the
     /// command it was asked for, with the chosen path. Call once a frame, after [`Editor::ui`].
     #[cfg(not(target_arch = "wasm32"))]
@@ -326,10 +587,24 @@ impl Editor {
             match answer {
                 craft_dialogs::Answer::Paths(paths) => {
                     if let Some(path) = paths.first() {
-                        self.run(then, json!({"path": path}));
+                        let params = if then == "file.openPath" {
+                            json!({"path": path, "discard": std::mem::take(&mut self.discard_ok)})
+                        } else {
+                            json!({"path": path})
+                        };
+                        self.run_now(then, params);
+                        if then == "file.saveAsPath" && self.session.dirty {
+                            // The save failed: nothing waits on it any more.
+                            self.after_save = None;
+                        }
                     }
                 }
-                craft_dialogs::Answer::Cancelled | craft_dialogs::Answer::Message(_) => {}
+                craft_dialogs::Answer::Cancelled => {
+                    // Nothing waits on a dialog the writer closed.
+                    self.discard_ok = false;
+                    self.after_save = None;
+                }
+                craft_dialogs::Answer::Message(_) => {}
                 other => self.message = format!("{other:?}"),
             }
         }

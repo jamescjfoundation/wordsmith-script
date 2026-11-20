@@ -73,6 +73,7 @@ craft-dialogs = { git = "https://github.com/storytold/craft-libs", rev = "93dac7
 craft-mcp-server = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 craft-zip = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 craft-rtf = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
+craft-atomic = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 
 # Foundation (versions as WordCraft pins them)
 kurbo = { version = "0.13", features = ["serde"] }
