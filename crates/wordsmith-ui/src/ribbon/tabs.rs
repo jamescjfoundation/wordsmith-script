@@ -184,6 +184,11 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
                         }
                     }
                     ui.separator();
+                    if ui.button("Small Letters").on_hover_text("The selection in small letters").clicked() {
+                        ed.run("format.lowercase", json!({}));
+                        ui.close();
+                    }
+                    ui.separator();
                     for (name, hex) in [("Black ink", "#000000"), ("Red ink", "#C0392B"), ("Blue ink", "#1F5FA8"), ("Automatic ink", "auto")] {
                         if ui.button(name).clicked() {
                             ed.run("format.color", json!({"color": hex}));
@@ -218,6 +223,10 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
         stack(ui, |ui| {
             small(ui, ed, cmd("bookmark.add"), "", "Add Bookmark", "Bookmark this paragraph.", false);
             small(ui, ed, cmd("bookmark.next"), "bookmark", "Next Bookmark", "", false);
+            small(ui, ed, cmd("bookmark.previous"), "bookmark", "Previous Bookmark", "", false);
+        });
+        stack(ui, |ui| {
+            small(ui, ed, cmd("view.bookmarks"), "", "All Bookmarks", "The Navigator's bookmarks.", ed.chrome.left == Some(super::Panel::Bookmarks));
             small(ui, ed, cmd("select.scene"), "select", "Select Scene", "", false);
         });
     });
@@ -307,7 +316,18 @@ fn production(ed: &mut Editor, ui: &mut Ui) {
                     wordsmith_script::revisions::parse_color(&s.color).map_or(egui::Color32::WHITE, |c| egui::Color32::from_rgb(c.0, c.1, c.2)),
                 )
             });
-            chip(ui, ed, cmd("view.revisions"), color, &name, "The current set. Click for every set.");
+            let resp = chip(ui, ed, color, &name, "The current set. Click to choose another.");
+            egui::Popup::menu(&resp).show(|ui| {
+                for set in &rev.sets {
+                    if ui.selectable_label(set.name == rev.current, set.name.as_str()).clicked() {
+                        ed.run("revision.setCurrent", json!({"name": set.name}));
+                    }
+                }
+                ui.separator();
+                if ui.button("Revision Sets…").clicked() {
+                    ed.run("view.revisions", json!({}));
+                }
+            });
             small(ui, ed, cmd("revision.next"), "", "Next Set", "Start the next set in the color cycle.", false);
             small(ui, ed, cmd("revision.markRevised"), "", "Mark Revised", "", false);
         });
@@ -341,6 +361,9 @@ fn production(ed: &mut Editor, ui: &mut Ui) {
         stack(ui, |ui| {
             small(ui, ed, cmd_with("lock.adjustBreak", json!({"by": -1})), "lock", "Start Up", "Move this page's start up a paragraph.", false);
             small(ui, ed, cmd_with("lock.adjustBreak", json!({"by": 1})), "lock", "Start Down", "Move this page's start down a paragraph.", false);
+            small(ui, ed, cmd("lock.unlockLevel"), "", "Unlock a Level", "The newest lettered pages flow freely again.", false);
+        });
+        stack(ui, |ui| {
             small(ui, ed, cmd("lock.unlockAll"), "", "Unlock All", "", false);
         });
     });
@@ -351,6 +374,11 @@ fn production(ed: &mut Editor, ui: &mut Ui) {
             small(ui, ed, cmd("track.accept"), "", "Accept", "", false);
             small(ui, ed, cmd("track.reject"), "", "Reject", "", false);
             small(ui, ed, cmd("track.next"), "", "Next Change", "", false);
+        });
+        stack(ui, |ui| {
+            small(ui, ed, cmd("track.acceptAll"), "", "Accept All", "", false);
+            small(ui, ed, cmd("track.rejectAll"), "", "Reject All", "", false);
+            small(ui, ed, cmd("track.previous"), "", "Previous Change", "", false);
         });
         big(ui, ed, cmd("compare.withFile"), "", "Compare", "With an earlier version.", false);
     });
@@ -392,7 +420,31 @@ fn review(ed: &mut Editor, ui: &mut Ui) {
         });
     });
     group(ui, ed, "Reports", |ui, ed| {
-        big(ui, ed, cmd("view.reports"), "", "Reports", "Scenes, locations, cast, statistics…", false);
+        // The reports gallery: each opens the Reports window on that report.
+        egui::Grid::new("reports-gallery").spacing([3.0, 3.0]).show(ui, |ui| {
+            let kinds = [
+                ("scenes", "Scenes"),
+                ("locations", "Locations"),
+                ("cast", "Cast"),
+                ("character", "Character"),
+                ("statistics", "Statistics"),
+                ("notes", "Notes"),
+                ("filtered", "Filtered"),
+                ("representation", "Represent."),
+            ];
+            for (i, (kind, label)) in kinds.iter().enumerate() {
+                if report_tile(ui, label) {
+                    ed.run("view.reports", json!({}));
+                    if let Some(r) = ed.tools.reports.as_mut() {
+                        r.kind = kind;
+                        r.result = None;
+                    }
+                }
+                if i % 4 == 3 {
+                    ui.end_row();
+                }
+            }
+        });
         stack(ui, |ui| {
             small(ui, ed, cmd("view.character"), "", "Characters", "Traits and highlights.", false);
             small(ui, ed, cmd("report.exportCharacters"), "export", "Character CSV", "", false);
@@ -437,6 +489,10 @@ fn view(ed: &mut Editor, ui: &mut Ui) {
             small(ui, ed, cmd("view.splitOutline"), "", "Outline Beside", "", false);
         });
         stack(ui, |ui| {
+            small(ui, ed, cmd("view.splitScenes"), "", "Scenes Beside", "", false);
+            small(ui, ed, cmd("view.splitScript"), "", "Script Beside", "", false);
+        });
+        stack(ui, |ui| {
             small(ui, ed, cmd("view.splitBelow"), "view.split", "Below / Beside", "", false);
             small(ui, ed, cmd("view.splitSwap"), "view.split", "Swap", "", false);
             small(ui, ed, cmd("view.unsplit"), "", "Unsplit", "", ed.split.is_none());
@@ -462,16 +518,34 @@ fn view(ed: &mut Editor, ui: &mut Ui) {
                 ed.dark = false;
                 ed.extra_dark = false;
             }
-            if ui.selectable_label(dark && !extra, "Dark").clicked() {
-                ed.dark = true;
-                ed.extra_dark = false;
-            }
-            if ui.selectable_label(dark && extra, "Extra Dark").clicked() {
-                ed.dark = true;
-                ed.extra_dark = true;
-            }
+            small(ui, ed, cmd("view.darkTheme"), "", "Dark", "", dark && !extra);
+            small(ui, ed, cmd("view.extraDark"), "", "Extra Dark", "", dark && extra);
         });
     });
+    group(ui, ed, "Tabs", |ui, ed| {
+        stack(ui, |ui| {
+            small(ui, ed, cmd("file.newTab"), "", "New Tab", "Another script in a tab.", false);
+            small(ui, ed, cmd("view.nextTab"), "newtab", "Next Tab", "", false);
+            small(ui, ed, cmd("file.closeTab"), "close", "Close Tab", "", false);
+        });
+    });
+}
+
+/// A tile in the reports gallery.
+fn report_tile(ui: &mut Ui, label: &str) -> bool {
+    let t = crate::theme::Tokens::get(ui.ctx());
+    let (r, resp) = ui.allocate_exact_size(egui::vec2(78.0, 30.0), egui::Sense::click());
+    ui.painter().rect_filled(r, 4.0, if resp.hovered() { t.hover } else { t.surface_high });
+    ui.painter().rect_stroke(r, 4.0, egui::Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
+    crate::script_icons::paint(
+        ui.painter(),
+        egui::Rect::from_center_size(egui::pos2(r.min.x + 12.0, r.center().y), egui::vec2(15.0, 15.0)),
+        "report",
+        t.text,
+        t.accent,
+    );
+    ui.painter().text(egui::pos2(r.min.x + 23.0, r.center().y), egui::Align2::LEFT_CENTER, label, crate::theme::regular(11.0), t.text);
+    resp.on_hover_text(format!("The {} report", label.to_lowercase())).clicked()
 }
 
 /// A large toggle for a panel (no command of its own).
@@ -699,4 +773,19 @@ pub const RIBBON_COMMANDS: &[&str] = &[
     "edit.undo",
     "edit.redo",
     "view.commandPalette",
+    "bookmark.previous",
+    "view.bookmarks",
+    "format.lowercase",
+    "revision.setCurrent",
+    "lock.unlockLevel",
+    "track.acceptAll",
+    "track.rejectAll",
+    "track.previous",
+    "view.darkTheme",
+    "view.extraDark",
+    "file.newTab",
+    "view.nextTab",
+    "file.closeTab",
+    "view.splitScenes",
+    "view.splitScript",
 ];

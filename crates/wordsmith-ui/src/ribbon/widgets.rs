@@ -221,26 +221,18 @@ pub fn tile(ui: &mut Ui, ed: &mut Editor, c: Cmd, icon: &str, text: (&str, &str)
     false
 }
 
-/// A color chip (a revision set, a highlighter) that runs a command.
-pub fn chip(ui: &mut Ui, ed: &mut Editor, c: Cmd, color: Color32, label: &str, about: &str) -> bool {
+/// A color chip (the current revision set); its response, for a menu under it.
+pub fn chip(ui: &mut Ui, ed: &mut Editor, color: Color32, label: &str, about: &str) -> egui::Response {
+    let _ = ed;
     let t = Tokens::get(ui.ctx());
-    let g = ui.painter().layout_no_wrap(label.to_string(), regular(12.0), t.text);
+    let g = ui.painter().layout_no_wrap(format!("{label} ▾"), regular(12.0), t.text);
     let (r, resp) = ui.allocate_exact_size(vec2(g.size().x + 30.0, SMALL_H), Sense::click());
     bg(ui, r, resp.hovered(), false, &t);
-    ui.painter().rect_filled(Rect::from_center_size(pos2(r.min.x + 11.0, r.center().y), vec2(12.0, 12.0)), 3.0, color);
-    ui.painter().rect_stroke(
-        Rect::from_center_size(pos2(r.min.x + 11.0, r.center().y), vec2(12.0, 12.0)),
-        3.0,
-        Stroke::new(1.0, t.border),
-        egui::StrokeKind::Middle,
-    );
+    let sw = Rect::from_center_size(pos2(r.min.x + 11.0, r.center().y), vec2(12.0, 12.0));
+    ui.painter().rect_filled(sw, 3.0, color);
+    ui.painter().rect_stroke(sw, 3.0, Stroke::new(1.0, t.border), egui::StrokeKind::Middle);
     ui.painter().galley(pos2(r.min.x + 22.0, r.center().y - g.size().y / 2.0), g, t.text);
-    let resp = resp.on_hover_text(tip(ed, c.id, about));
-    if resp.clicked() {
-        ed.run(c.id, c.params);
-        return true;
-    }
-    false
+    resp.on_hover_text(about)
 }
 
 /// When key tips show (Alt), the letters that press each control of this tab (M19).
