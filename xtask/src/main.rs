@@ -11,6 +11,7 @@
 #![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
+mod bundle;
 mod layers;
 mod spdx;
 
@@ -48,6 +49,7 @@ fn main() -> ExitCode {
     let result = match task {
         "ci" => run_all(&root),
         "screenshots" => screenshots(&root),
+        "bundle" => bundle::bundle(&root),
         "help" | "--help" | "-h" => {
             print_help();
             Ok(())
@@ -75,6 +77,7 @@ fn print_help() {
         println!("  {name:<14} {about}");
     }
     println!("\n  screenshots    redraw docs/images with the app's offscreen renderer");
+    println!("  bundle         build a release bundle for this computer in dist/ (nothing is published)");
 }
 
 /// Redraw the README's pictures (docs/images) from the sample script.
