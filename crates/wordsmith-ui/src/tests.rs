@@ -200,14 +200,20 @@ fn typing_in_a_150_page_script() {
     let pages = ed.paginated().pages.len();
     ed.run("caret.docEnd", json!({}));
     frame(&ctx, &mut ed, vec![]);
-    let mut times = Vec::new();
-    for _ in 0..20 {
-        let t = std::time::Instant::now();
-        frame(&ctx, &mut ed, vec![text("x")]);
-        times.push(t.elapsed());
+    // WS_TIMING_PARTS=1 also times the frame without each part of the chrome.
+    let variants: Vec<&str> = if std::env::var("WS_TIMING_PARTS").is_ok() { vec!["all", "no-panels", "focus"] } else { vec!["all"] };
+    for v in variants {
+        ed.focus_mode = v == "focus";
+        ed.chrome.left = if v == "all" { Some(crate::ribbon::Panel::Scenes) } else { None };
+        let mut times = Vec::new();
+        for _ in 0..20 {
+            let t = std::time::Instant::now();
+            frame(&ctx, &mut ed, vec![text("x")]);
+            times.push(t.elapsed());
+        }
+        times.sort();
+        eprintln!("typing, {pages} pages ({v}): median {:?}, worst {:?} per keystroke frame", times[times.len() / 2], times[times.len() - 1]);
     }
-    times.sort();
-    eprintln!("typing, {pages} pages: median {:?}, worst {:?} per keystroke frame", times[times.len() / 2], times[times.len() - 1]);
 }
 
 /// A window that has no handle: native dialogs are answered by an override in tests.
@@ -876,7 +882,9 @@ fn the_go_to_checker_and_reformat_windows_work_through_commands() {
     frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE)]);
     ed.run("view.checker", json!({}));
     frame(&ctx, &mut ed, vec![]);
-    let issues = ed.tools.checker.as_ref().map(|c| c.issues.len());
+    // The checker is the Inspector's Check Format panel now (v0.3).
+    assert_eq!(ed.chrome.right, Some(crate::ribbon::Panel::Checker));
+    let issues = ed.session.run("check.run", &json!({})).ok().and_then(|v| v["count"].as_u64());
     assert_eq!(issues, Some(1));
     ed.run("check.fix", json!({"block": 2, "rule": "empty"}));
     assert_eq!(lines(&ed).len(), 2);
@@ -935,7 +943,7 @@ fn reports_scene_properties_and_tables_open_and_work() {
     // Scene properties for the caret's scene.
     ed.run("view.sceneProperties", json!({}));
     frame(&ctx, &mut ed, vec![]);
-    assert_eq!(ed.tools.scene_props.as_ref().map(|s| s.0), Some(0));
+    assert_eq!(ed.chrome.right, Some(crate::ribbon::Panel::Scene), "scene properties are the Inspector's Scene panel");
     ed.run("scene.setProperties", json!({"scene": 0, "title": "Arrival", "color": "Green"}));
     // The Tables panel shows the title, sorted and filtered without changing the script.
     ed.run("view.tables", json!({}));
@@ -1117,4 +1125,50 @@ fn key_tips_open_a_tab_and_run_a_control() {
     frame(&ctx, &mut ed, vec![text("a")]);
     assert_eq!(ed.view, crate::editor::View::Page);
     assert!(!ed.chrome.keytips);
+}
+
+#[test]
+fn every_side_panel_draws_and_acts_through_commands() {
+    use crate::ribbon::Panel;
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(
+        &ctx,
+        &mut ed,
+        vec![
+            text("int"),
+            key(Key::Tab, Modifiers::NONE),
+            text("hall"),
+            key(Key::Enter, Modifiers::NONE),
+            key(Key::Tab, Modifiers::NONE),
+            text("anna"),
+        ],
+    );
+    frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE), text("Hello there.")]);
+    ed.run("bookmark.add", json!({"name": "here"}));
+    for (left, right) in [
+        (Panel::Scenes, Panel::Element),
+        (Panel::Outline, Panel::Scene),
+        (Panel::Bookmarks, Panel::Revisions),
+        (Panel::Notes, Panel::Page),
+        (Panel::Characters, Panel::Changes),
+        (Panel::Find, Panel::Checker),
+        (Panel::Scenes, Panel::Goals),
+    ] {
+        ed.chrome.left = Some(left);
+        ed.chrome.right = Some(right);
+        frame(&ctx, &mut ed, vec![]);
+    }
+    // The Find panel's query marks matches; a panel action is one undo step.
+    assert!(ed.find.is_some());
+    ed.chrome.left = None;
+    ed.chrome.right = None;
+    frame(&ctx, &mut ed, vec![]);
+    // Characters: the panel opens a character's details by name.
+    ed.session.push_ui_request(json!({"open": "tool.character", "name": "ANNA"}));
+    ed.run("view.character", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.chrome.left, Some(Panel::Characters));
+    assert!(ed.panels.open.iter().any(|n| n == "ANNA"));
 }

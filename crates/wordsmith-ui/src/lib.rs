@@ -26,6 +26,7 @@ pub mod reports;
 pub mod ribbon;
 pub mod ribbon_fit;
 pub mod script_icons;
+pub mod sidebar;
 pub mod snapshot;
 pub mod strip;
 pub mod structure;

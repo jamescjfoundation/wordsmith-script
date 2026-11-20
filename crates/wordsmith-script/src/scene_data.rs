@@ -86,8 +86,13 @@ fn store(doc: &mut Document, data: &BTreeMap<u32, SceneData>) {
 
 /// The data of `scene`.
 pub fn of_scene(doc: &Document, scene: &Scene) -> SceneData {
+    of_scene_in(&all(doc), doc, scene)
+}
+
+/// The data of `scene` from `data` (every scene's, read once with [`all`]).
+pub fn of_scene_in(data: &BTreeMap<u32, SceneData>, doc: &Document, scene: &Scene) -> SceneData {
     let id = doc.body.get(scene.start).and_then(|b| b.as_para()).and_then(|p| p.props.scene_id);
-    id.and_then(|id| all(doc).remove(&id)).unwrap_or_default()
+    id.and_then(|id| data.get(&id).cloned()).unwrap_or_default()
 }
 
 /// The id of `scene`'s data, given to its heading now if it has none.
@@ -120,7 +125,11 @@ fn update(s: &mut Session, scene: &Scene, f: impl FnOnce(&mut SceneData)) -> Res
 
 /// The speakers of a scene and its cast as shown (speakers not hidden, then the non-speaking).
 pub fn cast(doc: &Document, elements: &Elements, scene: &Scene) -> (Vec<String>, Vec<String>) {
-    let data = of_scene(doc, scene);
+    cast_with(&of_scene(doc, scene), doc, elements, scene)
+}
+
+/// [`cast`], given the scene's data.
+pub fn cast_with(data: &SceneData, doc: &Document, elements: &Elements, scene: &Scene) -> (Vec<String>, Vec<String>) {
     let speaking: Vec<String> = crate::commands::scene::speakers(doc, elements, scene).into_iter().map(|n| n.to_uppercase()).collect();
     let mut shown: Vec<String> = speaking.iter().filter(|n| !data.hidden.contains(n)).cloned().collect();
     for n in &data.non_speaking {

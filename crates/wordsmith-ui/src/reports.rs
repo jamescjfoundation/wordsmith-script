@@ -238,7 +238,7 @@ pub type Drafts = std::collections::HashMap<String, String>;
 
 /// A field that shows `current` and keeps what is typed in `drafts` until focus leaves; then
 /// returns the new text if it changed.
-fn draft_field(ui: &mut egui::Ui, drafts: &mut Drafts, key: &str, current: &str, multiline: bool, width: f32) -> Option<String> {
+pub(crate) fn draft_field(ui: &mut egui::Ui, drafts: &mut Drafts, key: &str, current: &str, multiline: bool, width: f32) -> Option<String> {
     let mut text = drafts.get(key).cloned().unwrap_or_else(|| current.to_string());
     let edit = if multiline { egui::TextEdit::multiline(&mut text).desired_rows(2) } else { egui::TextEdit::singleline(&mut text) };
     let r = ui.add(edit.desired_width(width).id_salt(key));
