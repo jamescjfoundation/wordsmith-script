@@ -100,9 +100,8 @@ on 2026-11-19) and are `#[ignore]`d until we decide how to supply it:
 
 ## Files (M4, decision 0020)
 
-- The MCP bridge has no file commands yet (open, save, import, export live in
-  the interface layer); agents save through the window's session only. Saves
-  made outside the window make no backup copy. Revisit in M8.
+- Saves made outside the window (CLI, MCP) make no backup copy. (The MCP
+  server has the file commands since M8, decision 0029.)
 - The web build cannot open or save files.
 - The backups folder can be set only by editing `preferences.json`.
 - The desktop window's file dialogs, close prompt and auto-save were tested

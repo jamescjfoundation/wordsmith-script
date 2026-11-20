@@ -39,3 +39,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m7/board | Story board: beats, links, grid snap, beat window with Tab, send to script as Outline 1 and Summary; 1742 tests pass |
 | 2026-11-19 | m7/outline | Outline lanes (add, rename, move, indent, delete), beats placed in lanes, structure templates, beat page ranges, Outline view with the Script lane; 1745 tests pass |
 | 2026-11-19 | m7/show-outline | Show or hide outline elements in the pages, PDF and print; M7 complete; 1746 tests pass |
+| 2026-11-19 | m8/cli-mcp | wordsmith-cli convert, export-pdf, report, info, mcp; MCP screenplay tools; file commands shared from wordsmith-format; 1750 tests pass |

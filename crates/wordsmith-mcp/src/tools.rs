@@ -82,6 +82,50 @@ pub fn tool_definitions() -> Value {
         ),
         tool("inspect_document", "Inspect script", "The script's text, structure and selection.", obj(json!({}), &[]), true),
         tool(
+            "open_script",
+            "Open script",
+            "Open a script file: .wss or Fountain; plain text, RTF and PDF are imported as scripts. Replaces the open script, unsaved changes included.",
+            obj(json!({"path": s("File path")}), &["path"]),
+            false
+        ),
+        tool(
+            "save_script",
+            "Save script",
+            "Save the script as .wss: to `path`, or to its own file when left out.",
+            obj(json!({"path": s("File path (.wss is added)")}), &[]),
+            false
+        ),
+        tool(
+            "export_script",
+            "Export script",
+            "Export to `path` in the format its extension names: pdf, fountain, txt, rtf or html.",
+            obj(json!({"path": s("File path with its extension")}), &["path"]),
+            false
+        ),
+        tool(
+            "type_text",
+            "Type text",
+            "Type at the caret, as the keyboard does: line breaks act as Return (which picks the next element).",
+            obj(json!({"text": s("Text to type")}), &["text"]),
+            false
+        ),
+        tool(
+            "set_element",
+            "Set element",
+            "Change the caret's paragraph to an element: SceneHeading, Action, Character, Parenthetical, Dialogue, Transition, Shot, General …",
+            obj(json!({"element": s("Element id")}), &["element"]),
+            false
+        ),
+        tool("scenes", "List scenes", "The script's scenes: number, heading, summary, speakers.", obj(json!({}), &[]), true),
+        tool("characters", "List characters", "The speaking characters: speeches, scenes, first scene.", obj(json!({}), &[]), true),
+        tool(
+            "page_count",
+            "Page count",
+            "How many pages the script prints on, and their labels when the pages are locked.",
+            obj(json!({}), &[]),
+            true
+        ),
+        tool(
             "render_page",
             "Render page",
             "Render a page to PNG, as it prints, to look at the result.",
@@ -170,6 +214,38 @@ pub fn call_tool(b: &mut dyn Backend, name: &str, a: &Value) -> ToolResult {
             ToolResult::json(&Value::Array(out))
         }
         "inspect_document" => wrap(b.call("document.inspect", json!({}))),
+        "open_script" => match st("path") {
+            Some(p) => wrap(exec(b, "file.openPath", json!({"path": p, "discard": true, "asScript": true}))),
+            None => ToolResult::error("missing `path`"),
+        },
+        "save_script" => match st("path") {
+            Some(p) => wrap(exec(b, "file.saveAsPath", json!({"path": p}))),
+            None => wrap(exec(b, "file.save", json!({}))),
+        },
+        "export_script" => {
+            let Some(p) = st("path") else { return ToolResult::error("missing `path`") };
+            let ext = std::path::Path::new(p).extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase).unwrap_or_default();
+            let id = match ext.as_str() {
+                "pdf" => "file.exportPdf",
+                "fountain" | "spmd" => "file.exportFountain",
+                "txt" => "file.exportText",
+                "rtf" => "file.exportRtf",
+                "html" | "htm" => "file.exportHtml",
+                _ => return ToolResult::error("the path's extension must be pdf, fountain, txt, rtf or html"),
+            };
+            wrap(exec(b, id, json!({"path": p})))
+        }
+        "type_text" => match st("text") {
+            Some(t) => wrap(exec(b, "text.insert", json!({"text": t}))),
+            None => ToolResult::error("missing `text`"),
+        },
+        "set_element" => match st("element") {
+            Some(e) => wrap(exec(b, "element.set", json!({"element": e}))),
+            None => ToolResult::error("missing `element`"),
+        },
+        "scenes" => wrap(exec(b, "scene.list", json!({}))),
+        "characters" => wrap(exec(b, "character.list", json!({}))),
+        "page_count" => wrap(exec(b, "document.pages", json!({}))),
         // Pictures travel inside the reply (`png`), headless or through the app: no file with a
         // predictable name in the shared temporary folder.
         "render_page" => {
@@ -234,6 +310,29 @@ mod tests {
         let r = call_tool(&mut b, "batch", &json!({"commands": cmds, "keepGoing": true}));
         assert!(!r.is_error);
         assert_eq!(b.seen.len(), 3);
+    }
+
+    #[test]
+    fn screenplay_tools_run_their_commands() {
+        let mut b = Recording { seen: Vec::new(), fail: None };
+        for (tool, args, command) in [
+            ("open_script", json!({"path": "a.fountain"}), "file.openPath"),
+            ("save_script", json!({"path": "a.wss"}), "file.saveAsPath"),
+            ("save_script", json!({}), "file.save"),
+            ("export_script", json!({"path": "a.PDF"}), "file.exportPdf"),
+            ("export_script", json!({"path": "a.fountain"}), "file.exportFountain"),
+            ("type_text", json!({"text": "Hi"}), "text.insert"),
+            ("set_element", json!({"element": "Action"}), "element.set"),
+            ("scenes", json!({}), "scene.list"),
+            ("characters", json!({}), "character.list"),
+            ("page_count", json!({}), "document.pages"),
+        ] {
+            b.seen.clear();
+            assert!(!call_tool(&mut b, tool, &args).is_error, "{tool}");
+            assert_eq!(b.seen[0].1["command"], command, "{tool}");
+        }
+        assert!(call_tool(&mut b, "export_script", &json!({"path": "a.docx"})).is_error);
+        assert!(call_tool(&mut b, "type_text", &json!({})).is_error);
     }
 
     #[test]
