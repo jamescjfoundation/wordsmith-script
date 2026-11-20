@@ -1014,3 +1014,54 @@ fn production_windows_dual_dialogue_and_tracking() {
     let params = crate::production::PrintChoices { range: "scenes", from: "1".into(), to: "2".into(), which: "revised", ..p }.params();
     assert_eq!((params["scenes"].clone(), params["revisedOnly"].clone()), (json!([0, 1]), json!(true)));
 }
+
+#[test]
+fn tabs_split_keys_templates_and_statistics() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(&ctx, &mut ed, vec![text("int"), key(Key::Tab, Modifiers::NONE), text("hall"), key(Key::Enter, Modifiers::NONE), text("Rain falls.")]);
+    // Writing statistics count the words typed today.
+    frame(&ctx, &mut ed, vec![text(" Hard and long.")]);
+    let words: u64 = ed.stats.data.days.values().map(|d| d.words).sum();
+    assert!(words >= 3, "counted {words}");
+    // Mod+T: a second script in a tab; the first keeps its text.
+    frame(&ctx, &mut ed, vec![key(Key::T, cmd())]);
+    assert_eq!((ed.tabs.len(), ed.active_tab), (2, 1));
+    frame(&ctx, &mut ed, vec![text("ext"), key(Key::Tab, Modifiers::NONE), text("yard")]);
+    ed.switch_tab(0);
+    assert_eq!(lines(&ed)[1].1, "Rain falls. Hard and long.");
+    // Closing a tab with unsaved changes asks first.
+    ed.session.dirty = true;
+    frame(&ctx, &mut ed, vec![key(Key::W, cmd())]);
+    assert_eq!(ed.unsaved, Some(crate::editor::Then::CloseTab));
+    ed.answer_unsaved(crate::editor::UnsavedAnswer::DontSave);
+    assert_eq!(ed.tabs.len(), 1);
+    assert_eq!(lines(&ed)[0].1, "EXT. YARD");
+    // A key of the writer's own runs its command; "" turns a key off.
+    ed.keys.insert("Mod+Shift+Y".into(), "element.action".into());
+    ed.keys.insert("Mod+1".into(), String::new());
+    frame(&ctx, &mut ed, vec![key(Key::Y, Modifiers { shift: true, ..cmd() }), key(Key::Num1, cmd())]);
+    assert_eq!(lines(&ed)[0].0, "Action");
+    // Split: the cards beside the script; swap; unsplit.
+    ed.run("view.splitCards", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.split.map(|s| s.pane), Some(Some(crate::structure::Structure::Cards)));
+    ed.run("view.splitSwap", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.structure, Some(crate::structure::Structure::Cards));
+    ed.run("view.unsplit", json!({}));
+    // A template from the chooser, in a tab of its own when there is unsaved work.
+    ed.structure = None;
+    ed.session.dirty = true;
+    ed.tools.templates = true;
+    ed.new_tab();
+    ed.run("file.newFromTemplate", json!({"template": "stage"}));
+    assert_eq!(ed.tabs.len(), 2);
+    // A sprint starts and shows its time.
+    ed.run("view.sprint", json!({}));
+    assert!(crate::workspace::sprint_left(&ed).is_some());
+    ed.run("view.stats", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.stats.window.is_some());
+}

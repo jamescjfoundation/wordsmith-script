@@ -5,7 +5,7 @@ it. Machine: Apple Silicon Mac, release build, 2026-11-19.
 
 | What | Result | How to measure |
 | --- | --- | --- |
-| Typing in a 150-page script: one editor frame per keystroke (command, repagination, drawing the visible pages, spelling and suggestions) | median 16.0 to 17.6 ms over 20 keystrokes, four runs (end of M8; single worst frames of 18 to 180 ms vary run to run and look like machine noise); 16.3 to 16.5 ms at the end of M6; 14.7 to 15.6 ms at the end of M5; 16.3 ms at the end of M3, 14.8 ms after spelling, 14.5 ms in M2 | `cargo test -p wordsmith-ui --release typing_in_a_150_page_script -- --ignored --nocapture` |
+| Typing in a 150-page script: one editor frame per keystroke (command, repagination, drawing the visible pages, spelling and suggestions) | median 15.2 to 16.4 ms over 20 keystrokes, two runs (end of M14, 2026-11-20, worst 17.1 to 17.5 ms); median 16.0 to 17.6 ms over 20 keystrokes, four runs (end of M8; single worst frames of 18 to 180 ms vary run to run and look like machine noise); 16.3 to 16.5 ms at the end of M6; 14.7 to 15.6 ms at the end of M5; 16.3 ms at the end of M3, 14.8 ms after spelling, 14.5 ms in M2 | `cargo test -p wordsmith-ui --release typing_in_a_150_page_script -- --ignored --nocapture` |
 | Paginating a 150-page script | 109 ms with empty caches, 14 ms warm (after an edit) | `cargo test -p wordsmith-script --release a_feature_length_script -- --nocapture` |
 
 Notes:

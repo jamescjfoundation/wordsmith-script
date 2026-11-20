@@ -26,6 +26,7 @@ pub mod strip;
 pub mod structure;
 pub mod tables;
 pub mod tools;
+pub mod workspace;
 
 use std::sync::Arc;
 
@@ -61,6 +62,11 @@ pub fn now_secs() -> u64 {
 
 fn open(s: &mut Session, what: &str) -> Result<Value, CmdError> {
     s.push_ui_request(json!({"open": what}));
+    Ok(Value::Null)
+}
+
+fn zoom(s: &mut Session, by: &str) -> Result<Value, CmdError> {
+    s.push_ui_request(json!({"open": "tool.zoom", "by": by}));
     Ok(Value::Null)
 }
 
@@ -101,6 +107,26 @@ pub fn ui_specs() -> Vec<CommandSpec> {
         CommandSpec::new("view.print", "Print…", "File", |s, _| open(s, "tool.print")).key("Mod+Alt+Shift+P").pure(),
         CommandSpec::new("view.watermark", "Watermark…", "Production", |s, _| open(s, "tool.watermark")).pure(),
         CommandSpec::new("view.sceneNumbers", "Scene Numbers…", "Production", |s, _| open(s, "tool.sceneNumbers")).pure(),
+        CommandSpec::new("view.start", "Welcome…", "File", |s, _| open(s, "tool.start")).pure(),
+        CommandSpec::new("view.templates", "New from Template…", "File", |s, _| open(s, "tool.templates")).key("Mod+Shift+O").pure(),
+        CommandSpec::new("view.keys", "Keys…", "File", |s, _| open(s, "tool.keys")).pure(),
+        CommandSpec::new("view.stats", "Writing Statistics…", "Tools", |s, _| open(s, "tool.stats")).pure(),
+        CommandSpec::new("view.sprint", "Start or Stop a Sprint", "Tools", |s, _| open(s, "tool.sprint")).pure(),
+        CommandSpec::new("view.extraDark", "Extra Dark Theme", "View", |s, _| open(s, "tool.extraDark")).pure(),
+        CommandSpec::new("file.newTab", "New Tab", "File", |s, _| open(s, "tool.newTab")).key("Mod+T").pure(),
+        CommandSpec::new("file.closeTab", "Close Tab", "File", |s, _| open(s, "tool.closeTab")).key("Mod+W").pure(),
+        CommandSpec::new("view.nextTab", "Next Tab", "View", |s, _| open(s, "tool.nextTab")).key("Mod+Alt+Right").pure(),
+        CommandSpec::new("view.zoomIn", "Zoom In", "View", |s, _| zoom(s, "in")).pure(),
+        CommandSpec::new("view.zoomOut", "Zoom Out", "View", |s, _| zoom(s, "out")).pure(),
+        CommandSpec::new("view.zoomReset", "Actual Size", "View", |s, _| zoom(s, "reset")).pure(),
+        CommandSpec::new("view.splitCards", "Split: Index Cards", "View › Split", |s, _| open(s, "tool.split.cards")).pure(),
+        CommandSpec::new("view.splitBoard", "Split: Story Board", "View › Split", |s, _| open(s, "tool.split.board")).pure(),
+        CommandSpec::new("view.splitOutline", "Split: Outline", "View › Split", |s, _| open(s, "tool.split.outline")).pure(),
+        CommandSpec::new("view.splitScenes", "Split: Scene View", "View › Split", |s, _| open(s, "tool.split.scenes")).pure(),
+        CommandSpec::new("view.splitScript", "Split: Script", "View › Split", |s, _| open(s, "tool.split.script")).pure(),
+        CommandSpec::new("view.splitBelow", "Split Below or Beside", "View › Split", |s, _| open(s, "tool.split.below")).pure(),
+        CommandSpec::new("view.splitSwap", "Swap Panes", "View › Split", |s, _| open(s, "tool.split.swap")).pure(),
+        CommandSpec::new("view.unsplit", "Unsplit", "View › Split", |s, _| open(s, "tool.split.off")).pure(),
         CommandSpec::new("view.reformat", "Reformat…", "Tools", |s, _| open(s, "tool.reformat")).pure(),
         CommandSpec::new("app.preferences", "Preferences…", "File", |s, _| open(s, "preferences")).key("Mod+,").pure(),
         CommandSpec::new("edit.copy", "Copy", "Edit", |s, _| {

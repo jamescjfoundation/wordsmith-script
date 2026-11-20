@@ -46,6 +46,12 @@ pub struct Tools {
     pub watermark: Option<Value>,
     /// The scene numbers window: the number typed for the caret's scene.
     pub scene_numbers: Option<String>,
+    /// The start window is showing; and whether it shows when the app starts.
+    pub start: bool,
+    pub show_start_on_launch: bool,
+    pub templates: bool,
+    /// The keys window: the filter typed, and the command waiting for a new key.
+    pub keys: Option<(String, Option<String>)>,
 }
 
 /// Act on a UI request to open a tool window. Returns whether it was one.
@@ -69,6 +75,35 @@ pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
         }
         "tool.highlights" => ed.show_highlights = !ed.show_highlights,
         "tool.strip" => ed.tools.strip = !ed.tools.strip,
+        "tool.start" => ed.tools.start = true,
+        "tool.templates" => ed.tools.templates = true,
+        "tool.keys" => ed.tools.keys = Some(Default::default()),
+        "tool.stats" => ed.stats.window = Some(("words", "week")),
+        "tool.sprint" => crate::workspace::toggle_sprint(ed),
+        "tool.extraDark" => {
+            ed.extra_dark = !ed.extra_dark;
+            if ed.extra_dark {
+                ed.dark = true;
+            }
+        }
+        "tool.newTab" => ed.new_tab(),
+        "tool.closeTab" => {
+            ed.close_tab(false);
+        }
+        "tool.nextTab" => {
+            let n = ed.tabs.len();
+            ed.switch_tab((ed.active_tab + 1) % n.max(1));
+        }
+        "tool.zoom" => {
+            let steps = crate::editor::ZOOM_STEPS;
+            let now = ed.zoom;
+            ed.zoom = match req["by"].as_str() {
+                Some("in") => steps.iter().copied().find(|z| *z > now + 0.001).unwrap_or(now),
+                Some("out") => steps.iter().rev().copied().find(|z| *z < now - 0.001).unwrap_or(now),
+                _ => 1.0,
+            };
+        }
+        w if w.starts_with("tool.split.") => crate::workspace::set_split(ed, w.trim_start_matches("tool.split.")),
         "tool.print" => ed.tools.print = Some(ed.tools.print.take().unwrap_or_default()),
         "tool.watermark" => ed.tools.watermark = ed.session.run("watermark.get", &json!({})).ok(),
         "tool.sceneNumbers" => ed.tools.scene_numbers = Some(String::new()),
@@ -532,4 +567,5 @@ pub fn show(ed: &mut Editor, ctx: &Context) {
     macro_confirm_window(ed, ctx);
     crate::reports::show(ed, ctx);
     crate::production::show(ed, ctx);
+    crate::workspace::show(ed, ctx);
 }

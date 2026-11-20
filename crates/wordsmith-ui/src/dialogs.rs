@@ -322,6 +322,7 @@ fn unsaved_window(ed: &mut Editor, ctx: &Context) {
         Then::Open => "opening another script",
         Then::Import => "importing",
         Then::Close => "closing",
+        Then::CloseTab => "closing its tab",
     };
     let mut answer = None;
     egui::Window::new("Unsaved Changes").collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
@@ -409,6 +410,30 @@ fn prefs_window(ed: &mut Editor, ctx: &Context) {
         });
         if let Some(dir) = &ed.backups.dir {
             ui.label(format!("Backups folder: {}", dir.display()));
+        }
+        ui.separator();
+        ui.heading("Starting");
+        ui.checkbox(&mut ed.reopen_last, "Open the scripts that were open when the app last closed");
+        ui.checkbox(&mut ed.tools.show_start_on_launch, "Show the Welcome window when no script opens");
+        ui.separator();
+        ui.heading("Writer");
+        ui.horizontal(|ui| {
+            ui.label("Your name (notes and tracked changes)");
+            ui.text_edit_singleline(&mut ed.session.author);
+        });
+        ui.separator();
+        ui.heading("Writing statistics");
+        if ui.checkbox(&mut ed.stats.data.enabled, "Keep writing statistics").changed() {
+            ed.stats.dirty = true;
+        }
+        ui.horizontal(|ui| {
+            ui.label("Sprints last");
+            if ui.add(egui::DragValue::new(&mut ed.stats.data.sprint_minutes).range(1..=240).suffix(" minutes")).changed() {
+                ed.stats.dirty = true;
+            }
+        });
+        if ui.button("Keys…").clicked() {
+            ed.tools.keys = Some(Default::default());
         }
     });
     ed.show_prefs = open;

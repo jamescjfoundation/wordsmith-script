@@ -33,7 +33,10 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | Print | `Mod+P` |
 | Save | `Mod+S` |
 | Export PDF… | `Mod+Shift+E` |
+| New from Template… | `Mod+Shift+O` |
 | Save As… | `Mod+Shift+S` |
+| New Tab | `Mod+T` |
+| Close Tab | `Mod+W` |
 
 ## Format
 
@@ -139,6 +142,7 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | Scene View | `Mod+Alt+5` |
 | Story Board | `Mod+Alt+6` |
 | Outline | `Mod+Alt+7` |
+| Next Tab | `Mod+Alt+Right` |
 | Structure Strip | `Mod+Alt+S` |
 | Tables | `Mod+Alt+T` |
 | Focus Mode | `Mod+Shift+F` |

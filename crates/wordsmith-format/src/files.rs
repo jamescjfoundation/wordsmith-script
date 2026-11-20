@@ -37,7 +37,8 @@ impl Kind {
     pub fn of(path: &Path) -> Option<Kind> {
         let ext = path.extension()?.to_str()?.to_ascii_lowercase();
         Some(match ext.as_str() {
-            "wss" => Kind::Native,
+            // `.wst` is a native file saved as a template.
+            "wss" | "wst" => Kind::Native,
             "fountain" | "spmd" => Kind::Fountain,
             "txt" | "text" => Kind::Text,
             "rtf" => Kind::Rtf,

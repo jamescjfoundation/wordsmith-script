@@ -33,6 +33,10 @@ behavior; every addition below is new.
   one set, unrevised pages, sides, reverse, collated copies and preview; a
   watermark; header and footer start page and `{collated}`; change tracking;
   comparing two versions.
+- **Workspace (M14):** twelve templates of our own and templates of your own;
+  text documents for prose; the Welcome window, recent scripts and reopening
+  the last ones; revert and merge; tabs; split views; zoom steps and an
+  extra-dark theme; writing statistics, goals and sprints; your own keys.
 
 ## 0.1.0 (2026-11-19)
 

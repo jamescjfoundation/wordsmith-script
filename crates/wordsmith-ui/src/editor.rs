@@ -26,6 +26,8 @@ pub enum Then {
     Import,
     /// Close the window.
     Close,
+    /// Close the script's tab.
+    CloseTab,
 }
 
 /// The writer's answer to "save changes first?".
@@ -80,6 +82,8 @@ fn has_native_file(s: &Session) -> bool {
 const GAP: f32 = 16.0;
 /// Zoom limits.
 pub const ZOOM_RANGE: std::ops::RangeInclusive<f32> = 0.5..=3.0;
+/// The zoom steps the view menu and status bar step through (SPEC-2 8: 75 % to 300 %).
+pub const ZOOM_STEPS: [f32; 8] = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
 
 /// A tile's raster, for one document revision, scale and theme.
 struct PageTexture {
@@ -266,6 +270,23 @@ pub struct Editor {
     pub dialog_params: Option<Value>,
     /// Draw the highlighted characters' speeches.
     pub show_highlights: bool,
+    /// Open scripts as tabs: the one being edited is `session` and its slot here is empty.
+    pub tabs: Vec<Option<Session>>,
+    pub active_tab: usize,
+    /// A second view beside or below the main one.
+    pub split: Option<crate::workspace::Split>,
+    /// The darker of the two dark themes.
+    pub extra_dark: bool,
+    /// The writer's own keys: shortcut → command id ("" turns a key off).
+    pub keys: std::collections::BTreeMap<String, String>,
+    /// Recently opened or saved scripts, newest first.
+    pub recent: Vec<String>,
+    /// Writing statistics, the sprint timer and goals.
+    pub stats: crate::workspace::Stats,
+    /// The theme last put into effect (dark, extra dark).
+    applied_theme: Option<(bool, bool)>,
+    /// Open the scripts open at the last close when the app starts.
+    pub reopen_last: bool,
 }
 
 impl Editor {
@@ -322,6 +343,15 @@ impl Editor {
             tools: Default::default(),
             dialog_params: None,
             show_highlights: true,
+            tabs: vec![None],
+            active_tab: 0,
+            split: None,
+            extra_dark: false,
+            keys: Default::default(),
+            recent: Vec::new(),
+            stats: Default::default(),
+            applied_theme: None,
+            reopen_last: false,
         }
     }
 
@@ -364,9 +394,18 @@ impl Editor {
 
     /// Run a command without asking about unsaved changes.
     fn run_now(&mut self, id: &str, params: Value) {
+        let path_before = self.session.path.clone();
         match self.session.run(id, &params) {
             Ok(_) => self.message.clear(),
             Err(e) => self.message = e.to_string(),
+        }
+        // A script opened or saved under a new name joins the recent list.
+        if self.session.path != path_before
+            && let Some(p) = self.session.path.as_ref().map(|p| p.display().to_string())
+        {
+            self.recent.retain(|r| *r != p);
+            self.recent.insert(0, p);
+            self.recent.truncate(crate::workspace::MAX_RECENT);
         }
         self.scroll_to_caret = true;
         self.take_ui_requests();
@@ -437,8 +476,14 @@ impl Editor {
     /// Ask about closing the window; true when it may close now (no unsaved changes, or the
     /// writer already answered).
     pub fn may_close(&mut self) -> bool {
-        if self.close_confirmed || !self.session.dirty {
+        if self.close_confirmed {
             return true;
+        }
+        if !self.session.dirty {
+            match self.tabs.iter().position(|t| t.as_ref().is_some_and(|s| s.dirty)) {
+                None => return true,
+                Some(i) => self.switch_tab(i),
+            }
         }
         self.unsaved = Some(Then::Close);
         false
@@ -459,6 +504,10 @@ impl Editor {
             UnsavedAnswer::DontSave => {
                 self.discard_ok = true;
                 self.session.discard_recovery_copy();
+                if matches!(then, Then::Close | Then::CloseTab) {
+                    // Closing: this script's changes are let go.
+                    self.session.dirty = false;
+                }
                 self.proceed(then);
             }
             UnsavedAnswer::Cancel => {}
@@ -474,8 +523,107 @@ impl Editor {
             }
             Then::Open => self.run_now("file.open", json!({})),
             Then::Import => self.run_now("file.import", json!({})),
-            Then::Close => self.close_confirmed = true,
+            Then::Close => {
+                // Another tab with unsaved changes asks next.
+                if let Some(i) = self.tabs.iter().position(|t| t.as_ref().is_some_and(|s| s.dirty)) {
+                    self.switch_tab(i);
+                    self.unsaved = Some(Then::Close);
+                } else {
+                    self.close_confirmed = true;
+                }
+            }
+            Then::CloseTab => {
+                self.close_tab(true);
+            }
         }
+    }
+
+    /// Forget everything shown for the script before (after a tab switch).
+    fn reset_caches(&mut self) {
+        self.paginated = None;
+        self.pages.clear();
+        self.normal_doc = None;
+        self.speed = None;
+        self.scene_cache = None;
+        self.suggestions = None;
+        self.dismissed = None;
+        self.table_edit = None;
+        self.board = Default::default();
+        self.structure = None;
+        self.scroll_to_caret = true;
+        self.seen_rev = self.session.rev();
+        self.autosave.saved();
+        self.stats.forget_counts();
+    }
+
+    /// Show tab `i`'s script.
+    pub fn switch_tab(&mut self, i: usize) {
+        if i == self.active_tab || i >= self.tabs.len() {
+            return;
+        }
+        let Some(mut other) = self.tabs.get_mut(i).and_then(Option::take) else { return };
+        std::mem::swap(&mut self.session, &mut other);
+        if let Some(slot) = self.tabs.get_mut(self.active_tab) {
+            *slot = Some(other);
+        }
+        self.active_tab = i;
+        self.reset_caches();
+    }
+
+    /// A new, empty script in a tab of its own.
+    pub fn new_tab(&mut self) {
+        let mut s = crate::new_session();
+        s.author = self.session.author.clone();
+        self.tabs.push(Some(s));
+        self.switch_tab(self.tabs.len() - 1);
+    }
+
+    /// Close the script's tab (the last one stays). With unsaved changes, ask first unless
+    /// `force`. Returns whether it closed.
+    pub fn close_tab(&mut self, force: bool) -> bool {
+        if self.tabs.len() <= 1 {
+            return false;
+        }
+        if self.session.dirty && !force {
+            self.unsaved = Some(Then::CloseTab);
+            return false;
+        }
+        self.session.discard_recovery_copy();
+        self.tabs.remove(self.active_tab);
+        let j = self.active_tab.min(self.tabs.len() - 1);
+        if let Some(s) = self.tabs.get_mut(j).and_then(Option::take) {
+            self.session = s;
+        }
+        self.active_tab = j;
+        self.reset_caches();
+        true
+    }
+
+    /// The files of the open scripts that have one, in tab order.
+    pub fn open_paths(&self) -> Vec<String> {
+        self.tabs
+            .iter()
+            .enumerate()
+            .filter_map(|(i, t)| match t {
+                Some(s) => s.path.as_ref(),
+                None if i == self.active_tab => self.session.path.as_ref(),
+                None => None,
+            })
+            .map(|p| p.display().to_string())
+            .collect()
+    }
+
+    /// Each tab's name and whether it has unsaved changes.
+    pub fn tab_names(&self) -> Vec<(String, bool)> {
+        self.tabs
+            .iter()
+            .enumerate()
+            .map(|(i, t)| match t {
+                Some(s) => (script_name(s), s.dirty),
+                None if i == self.active_tab => (script_name(&self.session), self.session.dirty),
+                None => (String::new(), false),
+            })
+            .collect()
     }
 
     /// The writer's answer to "is this a script?" (`None`: cancel the import).
@@ -544,6 +692,9 @@ impl Editor {
             }
             if let Some(path) = req.get("saved").and_then(Value::as_str) {
                 self.on_saved(path);
+            }
+            if let Some(notice) = req.get("notice").and_then(Value::as_str) {
+                self.message = notice.to_string();
             }
             match req.get("open").and_then(Value::as_str) {
                 Some("palette") => self.palette = Some(Palette::default()),
@@ -630,8 +781,9 @@ impl Editor {
             Some("open") => (
                 FileDialog::open()
                     .title("Open Script")
-                    .filter("Scripts", &["wss", "fountain", "spmd"])
+                    .filter("Scripts", &["wss", "wst", "fountain", "spmd"])
                     .filter("Wordsmith Script", &["wss"])
+                    .filter("Templates", &["wst"])
                     .filter("Fountain", &["fountain", "spmd"]),
                 "file.openPath",
             ),
@@ -663,6 +815,7 @@ impl Editor {
                     Some("report-csv") => ("CSV", "csv", "report.export"),
                     Some("pdf-filtered") => ("PDF", "pdf", "report.exportFilteredPdf"),
                     Some("pdf-board") => ("PDF", "pdf", "storyboard.exportPdf"),
+                    Some("template") => ("Wordsmith Script Template", "wst", "file.saveAsTemplate"),
                     Some("pdf-cards") => ("PDF", "pdf", "cards.exportPdf"),
                     _ => ("Plain Text", "txt", "file.exportText"),
                 };
@@ -774,6 +927,13 @@ impl Editor {
     /// Run the command bound to `shortcut`: a custom element's own shortcut first, then the
     /// registry's.
     pub fn press(&mut self, shortcut: &str) {
+        // The writer's own keys come first.
+        if let Some(id) = self.keys.get(shortcut).cloned() {
+            if !id.is_empty() {
+                self.run(&id, json!({}));
+            }
+            return;
+        }
         let elements = Elements::of_doc(&self.session.doc);
         if let Some(def) =
             elements.all().iter().find(|d| d.kind == ElementKind::Custom && d.shortcut.as_deref().is_some_and(|k| k.eq_ignore_ascii_case(shortcut)))
@@ -791,6 +951,11 @@ impl Editor {
         if let Some(id) = id {
             self.run(id, json!({}));
         }
+    }
+
+    /// The script view in `ui` (for a split pane).
+    pub fn script_pane(&mut self, ui: &mut Ui) {
+        egui::ScrollArea::both().id_salt("script-pane").auto_shrink(false).show(ui, |ui| self.page_view(ui));
     }
 
     /// Bring the caret into view on the next frame.
@@ -1250,6 +1415,17 @@ impl Editor {
         if ui.ctx().theme() != theme {
             ui.ctx().set_theme(theme);
         }
+        if self.applied_theme != Some((self.dark, self.extra_dark)) {
+            let mut v = if self.dark { egui::Visuals::dark() } else { egui::Visuals::light() };
+            if self.dark && self.extra_dark {
+                v.panel_fill = Color32::from_gray(6);
+                v.window_fill = Color32::from_gray(12);
+                v.extreme_bg_color = Color32::BLACK;
+                v.faint_bg_color = Color32::from_gray(14);
+            }
+            ui.ctx().set_visuals(v);
+            self.applied_theme = Some((self.dark, self.extra_dark));
+        }
         // Tracked changes record the time.
         self.session.now = crate::now_secs();
         self.handle_keys(ui);
@@ -1258,8 +1434,10 @@ impl Editor {
             crate::chrome::toolbar(self, ui);
             crate::chrome::find_bar(self, ui);
             crate::chrome::status_bar(self, ui);
+            crate::workspace::tab_bar(self, ui);
             crate::tables::panel(self, ui);
             crate::strip::panel(self, ui);
+            crate::workspace::split_panel(self, ui);
         }
         egui::CentralPanel::default().show(ui, |ui| match self.structure {
             Some(crate::structure::Structure::Cards) => crate::structure::cards(self, ui),
@@ -1272,6 +1450,7 @@ impl Editor {
         });
         self.suggestion_list(ui.ctx());
         crate::dialogs::show(self, ui.ctx());
+        crate::workspace::track(self);
     }
 
     /// The suggestion list, just below the caret. Clicking an entry accepts it.

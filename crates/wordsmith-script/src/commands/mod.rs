@@ -95,6 +95,7 @@ pub fn specs() -> Vec<CommandSpec> {
     all.extend(crate::locks::more_specs());
     all.extend(crate::tracking::specs());
     all.extend(crate::watermark::specs());
+    all.extend(crate::templates::specs());
     all
 }
 

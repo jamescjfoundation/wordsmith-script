@@ -25,12 +25,27 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
     egui::Panel::top("menu").show(ui, |ui| {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("File", |ui| {
-                for id in ["file.new", "file.open", "file.import"] {
+                for id in ["file.new", "view.templates", "file.newTab", "file.open", "file.import"] {
                     item(ed, ui, id);
                 }
+                if !ed.recent.is_empty() {
+                    ui.menu_button("Open Recent", |ui| {
+                        for r in ed.recent.clone() {
+                            let name = std::path::Path::new(&r).file_name().and_then(|n| n.to_str()).unwrap_or(&r).to_string();
+                            if ui.button(name).on_hover_text(&r).clicked() {
+                                ed.run("file.openPath", json!({"path": r}));
+                                ui.close();
+                            }
+                        }
+                    });
+                }
+                item(ed, ui, "view.start");
                 ui.separator();
                 item(ed, ui, "file.save");
                 item(ed, ui, "file.saveAs");
+                item(ed, ui, "file.saveAsTemplate");
+                item(ed, ui, "file.revert");
+                item(ed, ui, "file.closeTab");
                 ui.separator();
                 ui.menu_button("Export", |ui| {
                     for id in
@@ -45,6 +60,7 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 item(ed, ui, "file.printRevised");
                 ui.separator();
                 item(ed, ui, "app.preferences");
+                item(ed, ui, "view.keys");
                 item(ed, ui, "file.recoverPrompt");
             });
             ui.menu_button("Edit", |ui| {
@@ -219,8 +235,25 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                     item(ed, ui, id);
                 }
                 ui.separator();
-                for id in ["view.strip", "view.darkTheme", "view.typewriter", "view.focusMode"] {
+                for id in ["view.strip", "view.darkTheme", "view.extraDark", "view.typewriter", "view.focusMode"] {
                     item(ed, ui, id);
+                }
+                ui.menu_button("Split", |ui| {
+                    for id in [
+                        "view.splitCards",
+                        "view.splitBoard",
+                        "view.splitOutline",
+                        "view.splitScenes",
+                        "view.splitScript",
+                        "view.splitBelow",
+                        "view.splitSwap",
+                        "view.unsplit",
+                    ] {
+                        item(ed, ui, id);
+                    }
+                });
+                if ed.tabs.len() > 1 {
+                    item(ed, ui, "view.nextTab");
                 }
                 ui.separator();
                 item(ed, ui, "view.commandPalette");
@@ -230,9 +263,17 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 if ui.button("Zoom Out").clicked() {
                     ed.zoom = (ed.zoom / 1.25).clamp(*ZOOM_RANGE.start(), *ZOOM_RANGE.end());
                 }
+                ui.menu_button("Zoom To", |ui| {
+                    for z in crate::editor::ZOOM_STEPS {
+                        if ui.selectable_label((ed.zoom - z).abs() < 0.01, format!("{:.0}%", z * 100.0)).clicked() {
+                            ed.zoom = z;
+                            ui.close();
+                        }
+                    }
+                });
             });
             ui.menu_button("Tools", |ui| {
-                for id in ["view.reports", "view.checker", "view.reformat", "view.macros"] {
+                for id in ["view.reports", "view.stats", "view.sprint", "view.checker", "view.reformat", "view.macros"] {
                     item(ed, ui, id);
                 }
                 ui.menu_button("Run Macro", |ui| {
@@ -369,6 +410,34 @@ pub fn status_bar(ed: &mut Editor, ui: &mut Ui) {
             if wordsmith_script::tracking::is_on(&ed.session.doc) {
                 ui.separator();
                 ui.label("Tracking changes");
+            }
+            if wordsmith_script::templates::is_text(&ed.session.doc) {
+                ui.separator();
+                ui.label("Text document");
+            }
+            // The sprint's time left; a click stops it.
+            ui.separator();
+            match crate::workspace::sprint_left(ed) {
+                Some(left) => {
+                    if ui.link(format!("Sprint {}:{:02}", left.as_secs() / 60, left.as_secs() % 60)).on_hover_text("Stop the sprint").clicked() {
+                        crate::workspace::toggle_sprint(ed);
+                    }
+                }
+                None => {
+                    if ui.link("Sprint").on_hover_text("Start a writing sprint").clicked() {
+                        crate::workspace::toggle_sprint(ed);
+                    }
+                }
+            }
+            if ui.link(if ed.focus_mode { "Focus: on" } else { "Focus" }).clicked() {
+                ed.focus_mode = !ed.focus_mode;
+            }
+            if ui.link(if ed.dark { "Light" } else { "Dark" }).on_hover_text("Theme").clicked() {
+                ed.dark = !ed.dark;
+            }
+            let mut pct = ed.zoom * 100.0;
+            if ui.add(egui::Slider::new(&mut pct, 75.0..=300.0).step_by(25.0).suffix("%").show_value(true)).changed() {
+                ed.zoom = (pct / 100.0).clamp(*ZOOM_RANGE.start(), *ZOOM_RANGE.end());
             }
             if !ed.message.is_empty() {
                 ui.separator();
