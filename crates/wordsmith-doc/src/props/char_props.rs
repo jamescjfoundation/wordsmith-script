@@ -355,6 +355,12 @@ pub struct CharProps {
     /// moves with the text through every edit.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub note: Option<u32>,
+    /// The revision set (by index) this text was revised in. A mark, like `note`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revised: Option<u32>,
+    /// A locked page starts at this character (the lock's id). A mark, like `note`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page_lock: Option<u32>,
     /// Tracked insertion: index into `Document::revisions`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ins: Option<u32>,
@@ -518,7 +524,7 @@ impl CharProps {
     }
 
     fn minus_document_marks(&mut self, base: &CharProps) {
-        drop_same_fields!(self, base; link, note, ins, del, ligatures);
+        drop_same_fields!(self, base; link, note, revised, page_lock, ins, del, ligatures);
     }
 
     /// Apply every `Some` field of `patch` on top of `self`.
@@ -549,7 +555,7 @@ impl CharProps {
     }
 
     fn overlay_document_marks(&mut self, patch: &CharProps) {
-        overlay_fields!(self, patch; link, note, ins, del, fmt_change, ligatures);
+        overlay_fields!(self, patch; link, note, revised, page_lock, ins, del, fmt_change, ligatures);
     }
     pub fn overlaid(mut self, patch: &CharProps) -> CharProps {
         self.overlay(patch);
@@ -575,6 +581,8 @@ impl CharProps {
         CharProps {
             link: self.link.clone(),
             note: self.note,
+            revised: self.revised,
+            page_lock: self.page_lock,
             ins: self.ins,
             del: self.del,
             fmt_change: self.fmt_change.clone(),
@@ -585,6 +593,6 @@ impl CharProps {
     }
     /// Just the formatting: without the link, revision marks and tracked formatting change.
     pub fn formatting(&self) -> CharProps {
-        CharProps { link: None, note: None, ins: None, del: None, fmt_change: None, ..self.clone() }
+        CharProps { link: None, note: None, revised: None, page_lock: None, ins: None, del: None, fmt_change: None, ..self.clone() }
     }
 }

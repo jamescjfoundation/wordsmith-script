@@ -23,6 +23,7 @@ pub(crate) fn delete_selection(s: &mut Session) -> Result<Pos, CmdError> {
     }
     let (a, b) = s.sel.ordered();
     let at = s.doc.delete_range(&a, &b)?;
+    crate::revisions::touch(&mut s.doc, &at);
     s.sel = Selection::caret(at.clone());
     Ok(at)
 }
@@ -30,13 +31,18 @@ pub(crate) fn delete_selection(s: &mut Session) -> Result<Pos, CmdError> {
 /// The formatting new text takes at `at`: what is waiting at the caret, else the text before it.
 /// A note's mark goes on only inside the note, so typing at its edge does not extend it.
 fn typing_props(s: &Session, at: &Pos) -> CharProps {
+    // In revision mode typed text is revised in the current set; out of it, it is not, even
+    // next to revised text. A locked page's start mark stays on its one character.
+    let revised = crate::revisions::typing_set(&s.doc);
     if let Some(p) = &s.pending {
-        return CharProps { note: None, ..p.clone() };
+        return CharProps { note: None, revised, page_lock: None, ..p.clone() };
     }
     let mut props = s.doc.para_at(at).map(|p| p.props_at(at.off).clone()).unwrap_or_default();
     if props.note.is_some() && crate::notes::note_at_char(&s.doc, at) != props.note {
         props.note = None;
     }
+    props.revised = revised;
+    props.page_lock = None;
     props
 }
 
@@ -199,11 +205,13 @@ pub fn backspace(s: &mut Session, _: &Value) -> CmdResult {
     if at.off > 0 {
         let from = Pos { off: para.backspace_from(at.off), ..at.clone() };
         let end = s.doc.delete_range(&from, &at)?;
+        crate::revisions::touch(&mut s.doc, &end);
         s.sel = Selection::caret(end);
     } else if let Some(prev) = s.doc.prev_para(at.story, &at.path) {
         let prev_len = s.doc.para(at.story, &prev).map_or(0, |p| p.len());
         let from = Pos { story: at.story, path: prev, off: prev_len };
         let end = s.doc.delete_range(&from, &at)?;
+        crate::revisions::touch(&mut s.doc, &end);
         s.sel = Selection::caret(end);
     }
     sel_result(s)
@@ -221,10 +229,12 @@ pub fn delete(s: &mut Session, _: &Value) -> CmdResult {
     if at.off < para.len() {
         let to = Pos { off: para.next_boundary(at.off), ..at.clone() };
         let end = s.doc.delete_range(&at, &to)?;
+        crate::revisions::touch(&mut s.doc, &end);
         s.sel = Selection::caret(end);
     } else if let Some(next) = s.doc.next_para(at.story, &at.path) {
         let to = Pos { story: at.story, path: next, off: 0 };
         let end = s.doc.delete_range(&at, &to)?;
+        crate::revisions::touch(&mut s.doc, &end);
         s.sel = Selection::caret(end);
     }
     sel_result(s)

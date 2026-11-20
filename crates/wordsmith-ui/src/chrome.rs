@@ -69,6 +69,13 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 item(ed, ui, "view.titlePage");
                 item(ed, ui, "view.headerFooter");
             });
+            ui.menu_button("Production", |ui| {
+                for id in ["revision.mode", "revision.next", "revision.markRevised", "revision.clearRevised"] {
+                    item(ed, ui, id);
+                }
+                ui.separator();
+                item(ed, ui, "view.revisions");
+            });
             ui.menu_button("View", |ui| {
                 for id in ["view.normal", "view.page", "view.speed", "view.cards", "view.scenes", "view.tables"] {
                     item(ed, ui, id);
@@ -179,6 +186,11 @@ pub fn status_bar(ed: &mut Editor, ui: &mut Ui) {
             ui.label(format!("Page {page} of {}", pag.layout.pages.len()));
             ui.separator();
             ui.label(format!("{scenes} scene{}", if scenes == 1 { "" } else { "s" }));
+            let rev = wordsmith_script::revisions::Revisions::of_doc(&ed.session.doc);
+            if rev.mode {
+                ui.separator();
+                ui.label(format!("Revising: {}", rev.current));
+            }
             if !ed.message.is_empty() {
                 ui.separator();
                 ui.colored_label(egui::Color32::from_rgb(200, 60, 60), ed.message.as_str());

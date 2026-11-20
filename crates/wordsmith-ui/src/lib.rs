@@ -63,6 +63,7 @@ pub fn ui_specs() -> Vec<CommandSpec> {
         CommandSpec::new("view.find", "Find and Replace…", "Edit", |s, _| open(s, "find")).key("Mod+F").pure(),
         CommandSpec::new("view.elementSettings", "Element Settings…", "Format › Elements", |s, _| open(s, "elementSettings")).pure(),
         CommandSpec::new("view.titlePage", "Title Page…", "Format", |s, _| open(s, "titlePage")).pure(),
+        CommandSpec::new("view.revisions", "Revision Sets…", "Production", |s, _| open(s, "revisions")).pure(),
         CommandSpec::new("view.headerFooter", "Header and Footer…", "Format", |s, _| open(s, "headerFooter")).pure(),
         CommandSpec::new("help.about", "About Wordsmith Script", "Help", |s, _| open(s, "about")).pure(),
         CommandSpec::new("file.exportPdfAs", "Export PDF…", "File", |s, _| open(s, "exportPdf")).key("Mod+Shift+E").pure(),

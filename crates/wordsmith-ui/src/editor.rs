@@ -238,6 +238,8 @@ pub struct Editor {
     pub show_prefs: bool,
     /// The title page fields being edited, while the title page window is open.
     pub title_page: Option<Value>,
+    /// The revision sets window is open.
+    pub show_revisions: bool,
     /// The header and footer settings being edited, while their window is open.
     pub header_footer: Option<Value>,
     /// The index cards or the scene view, when one shows instead of the script.
@@ -296,6 +298,7 @@ impl Editor {
             show_prefs: false,
             title_page: None,
             header_footer: None,
+            show_revisions: false,
             structure: None,
             tables: None,
             table_edit: None,
@@ -541,6 +544,7 @@ impl Editor {
                     self.import_question = Some(ImportQuestion { path, guess });
                 }
                 Some("preferences") => self.show_prefs = true,
+                Some("revisions") => self.show_revisions = true,
                 Some("titlePage") => self.title_page = self.session.run("titlePage.get", &json!({})).ok(),
                 Some("headerFooter") => self.header_footer = self.session.run("headerFooter.get", &json!({})).ok(),
                 Some("view.page") => self.set_view(View::Page),
@@ -892,6 +896,7 @@ impl Editor {
         self.draw_gutter(ui, &painter, &pag, &origins, zoom);
         self.draw_find_matches(&painter, &pag, &origins, zoom);
         self.draw_notes(&painter, &pag, &origins, zoom);
+        self.draw_revised_pages(&painter, &pag, &origins);
 
         // Selection, then the caret.
         if !self.session.sel.is_collapsed() {
@@ -1026,6 +1031,21 @@ impl Editor {
                     }
                 }
             }
+        }
+    }
+
+    /// Revised pages: their side margins tinted in the color of the newest revision set on them.
+    fn draw_revised_pages(&self, painter: &egui::Painter, pag: &Shown, origins: &[Rect]) {
+        let Some(paginated) = &pag.pag else { return };
+        let rev = wordsmith_script::revisions::Revisions::of_doc(&self.session.doc);
+        for (page, set) in paginated.page_revisions.iter().enumerate() {
+            let (Some(set), Some(r)) = (set.and_then(|i| rev.set(i)), origins.get(page)) else { continue };
+            let Some(c) = wordsmith_script::revisions::parse_color(&set.color) else { continue };
+            // White pages have no tint to show; a thin grey edge says they are revised.
+            let color = if (c.0, c.1, c.2) == (255, 255, 255) { Color32::from_gray(200) } else { Color32::from_rgb(c.0, c.1, c.2) };
+            let band = (r.width() * 0.035).max(4.0);
+            painter.rect_filled(Rect::from_min_size(r.min, vec2(band, r.height())), 0.0, color);
+            painter.rect_filled(Rect::from_min_size(pos2(r.max.x - band, r.min.y), vec2(band, r.height())), 0.0, color);
         }
     }
 

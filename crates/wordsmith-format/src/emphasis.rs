@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Emphasis as text markers, shared by the native format and Fountain: `**` bold, `*` italic,
 //! `_` underline, and `\` escapes for the marker characters themselves. The native format (from
-//! version 2) also marks notes' anchors: `{n12}` starts note 12's text and `{/n}` ends it, with
-//! `{` escaped as `\{`.
+//! version 2) also marks notes' anchors: `{n12}` starts note 12's text and `{/n}` ends it; from
+//! version 3, revised text (`{r2}` … `{/r}`, set 2) and locked page starts (`{p7}` before the
+//! page's first character). `{` in the text is escaped as `\{`.
 
 use wordsmith_doc::Paragraph;
 use wordsmith_doc::props::{CharProps, Underline};
@@ -26,16 +27,18 @@ fn toggles(out: &mut String, from: (bool, bool, bool), to: (bool, bool, bool)) {
     }
 }
 
-/// [`encode`], with note markers when `notes` (the native format), and `after_note`'s text, if
-/// any, written where a note's text ends (Fountain writes the note there, outside any emphasis).
-pub(crate) fn encode_with(p: &Paragraph, notes: bool, after_note: &dyn Fn(u32) -> Option<String>) -> String {
+/// [`encode`], with the native format's marks when `marks` (notes, revisions, locked page
+/// starts), and `after_note`'s text, if any, written where a note's text ends (Fountain writes the
+/// note there, outside any emphasis).
+pub(crate) fn encode_with(p: &Paragraph, marks: bool, after_note: &dyn Fn(u32) -> Option<String>) -> String {
     const PLAIN: (bool, bool, bool) = (false, false, false);
     let mut out = String::with_capacity(p.text.len() + 8);
     let mut style = PLAIN;
     let mut note: Option<u32> = None;
+    let mut revised: Option<u32> = None;
     // Close a note: its marker, then the text written after it, outside any emphasis.
     let end_note = |out: &mut String, style: &mut (bool, bool, bool), old: u32| {
-        if notes {
+        if marks {
             out.push_str("{/n}");
         }
         if let Some(t) = after_note(old) {
@@ -49,21 +52,35 @@ pub(crate) fn encode_with(p: &Paragraph, notes: bool, after_note: &dyn Fn(u32) -
             if let Some(old) = note {
                 end_note(&mut out, &mut style, old);
             }
-            if notes && let Some(new) = props.note {
+            if marks && let Some(new) = props.note {
                 out.push_str(&format!("{{n{new}}}"));
             }
             note = props.note;
         }
+        if marks && props.revised != revised {
+            match props.revised {
+                Some(set) => out.push_str(&format!("{{r{set}}}")),
+                None => out.push_str("{/r}"),
+            }
+            revised = props.revised;
+        }
         let next = (props.bold == Some(true), props.italic == Some(true), props.underline.is_some_and(|x| x != Underline::None));
         toggles(&mut out, style, next);
         style = next;
-        for c in p.text.get(range).unwrap_or("").chars() {
+        for (k, c) in p.text.get(range).unwrap_or("").chars().enumerate() {
+            // A locked page starts at this run's first character.
+            if marks
+                && k == 0
+                && let Some(id) = props.page_lock
+            {
+                out.push_str(&format!("{{p{id}}}"));
+            }
             match c {
                 '\\' | '*' | '_' => {
                     out.push('\\');
                     out.push(c);
                 }
-                '{' if notes => out.push_str("\\{"),
+                '{' if marks => out.push_str("\\{"),
                 // Inline objects (pictures, fields) are not kept in a script.
                 wordsmith_doc::para::OBJ => {}
                 _ => out.push(c),
@@ -73,6 +90,9 @@ pub(crate) fn encode_with(p: &Paragraph, notes: bool, after_note: &dyn Fn(u32) -
     if let Some(old) = note {
         end_note(&mut out, &mut style, old);
     }
+    if marks && revised.is_some() {
+        out.push_str("{/r}");
+    }
     toggles(&mut out, style, PLAIN);
     out
 }
@@ -80,45 +100,102 @@ pub(crate) fn encode_with(p: &Paragraph, notes: bool, after_note: &dyn Fn(u32) -
 /// Which markers are read as plain characters (bold, italic, underline).
 type Literal = [bool; 3];
 
-/// A note marker at the start of `rest` (just after a `{`): the note it opens (`Some(Some(id))`)
-/// or closes (`Some(None)`), and its length after the `{`.
-fn note_marker(rest: &str) -> Option<(Option<u32>, usize)> {
+/// A native mark, read just after a `{`.
+enum Mark {
+    /// `{n12}` / `{/n}`: a note's text starts or ends.
+    Note(Option<u32>),
+    /// `{r2}` / `{/r}`: revised text (set 2) starts or ends.
+    Revised(Option<u32>),
+    /// `{p7}`: a locked page starts at the next character.
+    Lock(u32),
+}
+
+/// The mark at the start of `rest` (just after a `{`), and its length after the `{`.
+fn mark_at(rest: &str) -> Option<(Mark, usize)> {
     if rest.starts_with("/n}") {
-        return Some((None, 3));
+        return Some((Mark::Note(None), 3));
     }
-    let r = rest.strip_prefix('n')?;
+    if rest.starts_with("/r}") {
+        return Some((Mark::Revised(None), 3));
+    }
+    let kind = rest.chars().next()?;
+    let r = rest.get(1..)?;
     let digits: String = r.chars().take_while(char::is_ascii_digit).take(9).collect();
     if digits.is_empty() || !r[digits.len()..].starts_with('}') {
         return None;
     }
-    Some((Some(digits.parse().ok()?), 1 + digits.len() + 1))
+    let n: u32 = digits.parse().ok()?;
+    let len = 1 + digits.len() + 1;
+    match kind {
+        'n' => Some((Mark::Note(Some(n)), len)),
+        'r' => Some((Mark::Revised(Some(n)), len)),
+        'p' => Some((Mark::Lock(n), len)),
+        _ => None,
+    }
+}
+
+/// The formatting being read: emphasis and marks.
+#[derive(Clone, Copy, Default)]
+struct State {
+    b: bool,
+    i: bool,
+    u: bool,
+    note: Option<u32>,
+    revised: Option<u32>,
+}
+
+impl State {
+    fn props(self, lock: Option<u32>) -> CharProps {
+        CharProps {
+            bold: self.b.then_some(true),
+            italic: self.i.then_some(true),
+            underline: self.u.then_some(Underline::Single),
+            note: self.note,
+            revised: self.revised,
+            page_lock: lock,
+            ..CharProps::default()
+        }
+    }
+}
+
+fn flush(p: &mut Paragraph, piece: &mut String, st: State) {
+    if piece.is_empty() {
+        return;
+    }
+    let at = p.len();
+    let _ = p.insert_text(at, piece, &st.props(None));
+    piece.clear();
 }
 
 /// One decoding pass; also returns which styles were still open at the end.
-fn decode_pass(style: &str, text: &str, literal: Literal, notes: bool) -> (Paragraph, Literal) {
+fn decode_pass(style: &str, text: &str, literal: Literal, marks: bool) -> (Paragraph, Literal) {
     let mut p = Paragraph::new();
     p.props.style = Some(style.to_string());
-    let (mut b, mut i, mut u) = (false, false, false);
-    let mut note: Option<u32> = None;
+    let mut st = State::default();
+    let mut lock: Option<u32> = None;
     let mut piece = String::new();
-    let flush = |p: &mut Paragraph, piece: &mut String, b: bool, i: bool, u: bool, note: Option<u32>| {
-        if piece.is_empty() {
-            return;
+    // A plain character; the one after a lock mark goes in on its own, with the mark.
+    let push = |p: &mut Paragraph, piece: &mut String, st: State, lock: &mut Option<u32>, c: char| {
+        if let Some(id) = lock.take() {
+            flush(p, piece, st);
+            let at = p.len();
+            let _ = p.insert_text(at, &c.to_string(), &st.props(Some(id)));
+        } else {
+            piece.push(c);
         }
-        let props =
-            CharProps { bold: b.then_some(true), italic: i.then_some(true), underline: u.then_some(Underline::Single), note, ..CharProps::default() };
-        let at = p.len();
-        let _ = p.insert_text(at, piece, &props);
-        piece.clear();
     };
     let mut chars = text.char_indices().peekable();
     while let Some((at, c)) = chars.next() {
-        if notes
+        if marks
             && c == '{'
-            && let Some((next, len)) = text.get(at + 1..).and_then(note_marker)
+            && let Some((mark, len)) = text.get(at + 1..).and_then(mark_at)
         {
-            flush(&mut p, &mut piece, b, i, u, note);
-            note = next;
+            flush(&mut p, &mut piece, st);
+            match mark {
+                Mark::Note(n) => st.note = n,
+                Mark::Revised(r) => st.revised = r,
+                Mark::Lock(id) => lock = Some(id),
+            }
             for _ in 0..len {
                 chars.next();
             }
@@ -127,33 +204,34 @@ fn decode_pass(style: &str, text: &str, literal: Literal, notes: bool) -> (Parag
         match c {
             '\\' => {
                 if let Some((_, n)) = chars.next() {
-                    piece.push(n);
+                    push(&mut p, &mut piece, st, &mut lock, n);
                 }
             }
             '*' if chars.peek().map(|x| x.1) == Some('*') => {
                 chars.next();
                 if literal[0] {
-                    piece.push_str("**");
+                    push(&mut p, &mut piece, st, &mut lock, '*');
+                    push(&mut p, &mut piece, st, &mut lock, '*');
                 } else {
-                    flush(&mut p, &mut piece, b, i, u, note);
-                    b = !b;
+                    flush(&mut p, &mut piece, st);
+                    st.b = !st.b;
                 }
             }
-            '*' if literal[1] => piece.push('*'),
+            '*' if literal[1] => push(&mut p, &mut piece, st, &mut lock, '*'),
             '*' => {
-                flush(&mut p, &mut piece, b, i, u, note);
-                i = !i;
+                flush(&mut p, &mut piece, st);
+                st.i = !st.i;
             }
-            '_' if literal[2] => piece.push('_'),
+            '_' if literal[2] => push(&mut p, &mut piece, st, &mut lock, '_'),
             '_' => {
-                flush(&mut p, &mut piece, b, i, u, note);
-                u = !u;
+                flush(&mut p, &mut piece, st);
+                st.u = !st.u;
             }
-            _ => piece.push(c),
+            _ => push(&mut p, &mut piece, st, &mut lock, c),
         }
     }
-    flush(&mut p, &mut piece, b, i, u, note);
-    (p, [b, i, u])
+    flush(&mut p, &mut piece, st);
+    (p, [st.b, st.i, st.u])
 }
 
 /// A paragraph of element `style` from marked-up text: markers toggle bold, italic and
@@ -163,11 +241,12 @@ pub(crate) fn decode(style: &str, text: &str, lenient: bool) -> Paragraph {
     decode_with(style, text, lenient, false)
 }
 
-/// [`decode`], reading note markers when `notes` (the native format from version 2).
-pub(crate) fn decode_with(style: &str, text: &str, lenient: bool, notes: bool) -> Paragraph {
+/// [`decode`], reading the native format's marks when `marks` (notes from version 2;
+/// revisions and locked page starts from version 3).
+pub(crate) fn decode_with(style: &str, text: &str, lenient: bool, marks: bool) -> Paragraph {
     let mut literal = [false; 3];
     loop {
-        let (p, open) = decode_pass(style, text, literal, notes);
+        let (p, open) = decode_pass(style, text, literal, marks);
         if !lenient || !open.iter().any(|o| *o) {
             return p;
         }
@@ -179,6 +258,22 @@ pub(crate) fn decode_with(style: &str, text: &str, lenient: bool, notes: bool) -
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn revision_and_lock_marks_round_trip() {
+        let src = r"Old {r0}new **bold{/r}** {p7}Page {r1}{p8}x{/r}";
+        let p = super::decode_with("Action", src, false, true);
+        assert_eq!(p.text, "Old new bold Page x");
+        let runs: Vec<(String, Option<u32>, Option<u32>)> = p.run_ranges().map(|(r, c)| (p.text[r].to_string(), c.revised, c.page_lock)).collect();
+        assert!(
+            runs.contains(&("new ".into(), Some(0), None))
+                && runs.contains(&("P".into(), None, Some(7)))
+                && runs.contains(&("x".into(), Some(1), Some(8))),
+            "{runs:?}"
+        );
+        let again = super::encode_with(&p, true, &|_| None);
+        assert_eq!(super::decode_with("Action", &again, false, true), p, "{again}");
+    }
+
     #[test]
     fn note_marks_round_trip_in_the_native_form() {
         let p = super::decode_with("Action", r"Rain {n3}hits **the**{/n} window \{n1} {oops}", false, true);

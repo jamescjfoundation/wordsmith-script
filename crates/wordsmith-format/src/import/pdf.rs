@@ -67,6 +67,9 @@ fn page_lines(mut glyphs: Vec<(f64, f64, String)>) -> Vec<(f64, f64, String)> {
             let mut steps: Vec<f64> = row.windows(2).map(|w| w[1].0 - w[0].0).filter(|d| *d > 0.5).collect();
             steps.sort_by(f64::total_cmp);
             let advance = steps.get(steps.len() / 4).copied().unwrap_or(7.2).clamp(2.0, 30.0);
+            // Margin marks (revision marks, scene numbers) are not script text: a short run of
+            // text left of the action column or right of the right margin, set apart by a gap.
+            let row = without_margin_marks(row, advance);
             let left = row.first().map(|g| g.0)?;
             let mut text = String::new();
             let mut last_x: Option<f64> = None;
@@ -81,6 +84,28 @@ fn page_lines(mut glyphs: Vec<(f64, f64, String)>) -> Vec<(f64, f64, String)> {
             (!text.is_empty()).then_some((y, left, text))
         })
         .collect()
+}
+
+/// Most characters a margin mark has.
+const MARGIN_MARK_CHARS: usize = 6;
+
+/// `row` (sorted left to right) without short runs of text in the side margins: left of 1.3 in
+/// or starting right of 7.55 in, at least six characters' width away from the rest.
+fn without_margin_marks(row: Vec<(f64, String)>, advance: f64) -> Vec<(f64, String)> {
+    let mut runs: Vec<Vec<(f64, String)>> = Vec::new();
+    for g in row {
+        match runs.last_mut() {
+            Some(r) if r.last().is_some_and(|l| g.0 - l.0 <= advance * 6.0) => r.push(g),
+            _ => runs.push(vec![g]),
+        }
+    }
+    let is_mark = |r: &Vec<(f64, String)>| {
+        let chars: usize = r.iter().map(|g| g.1.chars().count()).sum();
+        let (start, end) = (r.first().map_or(0.0, |g| g.0), r.last().map_or(0.0, |g| g.0 + advance));
+        chars <= MARGIN_MARK_CHARS && (end <= 1.3 * 72.0 || start >= 7.55 * 72.0)
+    };
+    runs.retain(|r| !is_mark(r));
+    runs.into_iter().flatten().collect()
 }
 
 /// Import a text-based PDF as a script, placing each line by its left edge.

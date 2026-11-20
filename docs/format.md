@@ -1,6 +1,6 @@
 # The Wordsmith Script file format (`.wss`)
 
-Format version 2. A `.wss` file is UTF-8 plain text made to be read by people,
+Format version 3. A `.wss` file is UTF-8 plain text made to be read by people,
 compared with `diff`, and kept in version control. Every script setting lives
 in the file: element definitions, autocomplete lists, scene-heading
 separators, more-and-continued texts, and (as later milestones add them)
@@ -62,6 +62,10 @@ ANNA
   text note 12 is attached to and `{/n}` ends it; a `{` in the text is
   written `\{`. The notes themselves are in `appData` under
   `wordsmith.notes` (`{"12": {"text": "…", "author": "…"}}`).
+- From version 3, revised text is marked `{r2}…{/r}` (revision set 2, an
+  index into `appData` `wordsmith.revisions`), a locked page's first
+  character has `{p7}` before it (lock 7), and a paragraph with a deletion in
+  set 2 has `revised=2` on its `@` line.
 - Inline pictures and fields are not part of a script and are not written.
 
 ## Versions and migrations
@@ -76,6 +80,7 @@ version-1 file that the tests read on every build.
 | --- | --- | --- |
 | 1 | The first format (M4) | — |
 | 2 | Note anchors in the text (`{n12}…{/n}`, `\{` for a brace), M5 | Every `{` in version-1 text is escaped, so it stays a brace |
+| 3 | Revision marks (`{r2}…{/r}`, `revised=2`) and locked page starts (`{p7}`), M6 | None needed: braces were already escaped |
 
 ## Limits
 

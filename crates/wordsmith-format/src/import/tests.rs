@@ -200,3 +200,17 @@ fn hostile_text_never_panics() {
     }
     assert_eq!(text(&"x".repeat(MAX_IMPORT_BYTES + 1), true).unwrap_err(), ImportError::TooLarge);
 }
+
+#[test]
+fn revision_marks_in_a_pdf_are_not_read_as_text() {
+    let doc = script(&[("SceneHeading", "INT. KITCHEN - NIGHT"), ("Action", "Rain hits the window."), ("Character", "ANNA"), ("Dialogue", "Hello.")]);
+    let mut s = wordsmith_script::session_for(doc);
+    s.run("revision.mode", &serde_json::json!({"on": true})).unwrap();
+    for block in [1, 3] {
+        let len = s.doc.body[block].as_para().map_or(0, |p| p.len());
+        s.sel = wordsmith_engine::Selection::caret(wordsmith_doc::Pos { off: len, path: wordsmith_doc::Path::top(block), ..s.sel.focus.clone() });
+        s.run("text.insert", &serde_json::json!({"text": " Yes."})).unwrap();
+    }
+    let bytes = wordsmith_script::export::pdf(&s.doc).unwrap();
+    assert_eq!(lines(&pdf(&bytes).unwrap()), lines(&s.doc));
+}
