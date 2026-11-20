@@ -101,6 +101,11 @@ fn bare_heading(t: &str) -> bool {
     is_upper(t) && !t.ends_with(['.', '!', '?', ':', ';', ',', '"', '\'', '\u{201d}', '-'])
 }
 
+/// A cue with an extension in brackets ("ANNA (V.O.)"), which is never a heading.
+fn is_cue_with_extension(t: &str) -> bool {
+    t.ends_with(')') && t.contains('(') && is_cue(t)
+}
+
 fn is_transition(t: &str) -> bool {
     is_upper(t) && t.ends_with("TO:")
 }
@@ -212,18 +217,24 @@ fn by_position(lines: &[Line]) -> Vec<(ElementKind, String)> {
         .collect()
 }
 
-/// Paragraphs from lines without positions, by convention. Blank lines separate paragraphs.
+/// Paragraphs from lines without positions, by convention. Blank lines separate paragraphs. A
+/// line in capitals on its own without closing punctuation is a heading with no intro, as on a
+/// laid-out page.
 fn by_convention(lines: &[Line]) -> Vec<(ElementKind, String)> {
     let mut out = Vec::new();
     for block in blocks(lines) {
         let Some(first) = block.first() else { continue };
         if scene_heading(first).is_some() && is_upper(first) {
-            out.push((ElementKind::SceneHeading, first.to_string()));
-            if block.len() > 1 {
-                out.push((ElementKind::Action, joined(&block[1..])));
+            // A long heading wraps: the lines in capitals after it are still the heading.
+            let k = 1 + block[1..].iter().take_while(|l| is_upper(l)).count();
+            out.push((ElementKind::SceneHeading, joined(&block[..k])));
+            if block.len() > k {
+                out.push((ElementKind::Action, joined(&block[k..])));
             }
         } else if block.len() == 1 && is_transition(first) {
             out.push((ElementKind::Transition, first.to_string()));
+        } else if block.len() == 1 && bare_heading(first) && !is_cue_with_extension(first) {
+            out.push((ElementKind::SceneHeading, first.to_string()));
         } else if block.len() > 1 && is_cue(first) {
             out.push((ElementKind::Character, without_contd(first)));
             let mut in_paren = false;
@@ -398,7 +409,8 @@ pub fn rtf(bytes: &[u8], as_script: bool) -> Result<Document, ImportError> {
     rtf_paras(&doc.blocks, &mut paras);
     let indented = paras.iter().filter(|p| p.left_indent + p.first_line_indent >= 720 && !rtf_text(p).trim().is_empty()).count();
     if indented < 3 {
-        let plain: Vec<String> = paras.iter().map(rtf_text).collect();
+        // Space before of half a line or more is a blank line, as below.
+        let plain: Vec<String> = paras.iter().map(|p| if p.space_before >= 120 { format!("\n{}", rtf_text(p)) } else { rtf_text(p) }).collect();
         return text(&plain.join("\n").replace('\u{c}', "\n"), as_script);
     }
     let mut lines = Vec::new();

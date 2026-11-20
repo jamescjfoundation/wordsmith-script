@@ -27,12 +27,15 @@ inches. Then:
 - **Flat lines** (text with no layout): by convention, as Fountain does
   without its forcing marks: an intro starts a scene heading, a name in
   capitals with lines under it is a cue followed by parentheticals and
-  dialogue, a capitals line on its own ending `TO:` is a transition, the rest
-  is Action.
+  dialogue, a capitals line on its own ending `TO:` is a transition, a
+  capitals line on its own without closing punctuation is a heading with no
+  intro (as on a laid-out page), the rest is Action. Capitals lines after a
+  heading's first line are the rest of a wrapped heading.
 
 **Positions per source.** Plain text: 10 characters per inch, tabs every 8
 columns. RTF: the paragraph's left and first-line indents (an RTF with
-indents on fewer than three paragraphs is read as plain text). PDF: each
+indents on fewer than three paragraphs is read as plain text, with space
+before of half a line or more as a blank line). PDF: each
 line's left edge, from glyphs read with craft-pdf's guarded interpreter and
 grouped by baseline; a gap over one and a half line pitches (measured across
 the whole script) is a blank line.
@@ -53,8 +56,19 @@ that ends exactly at its last line with a whole paragraph would then be
 merged wrongly, and losing a paragraph boundary is worse than keeping an
 extra one.
 
+**Exports** (`wordsmith-format::export`) are made to come back through these
+rules. Plain text puts each element at its style's indent in spaces at 10
+characters per inch, wraps it at the style's width, right-aligns or centres
+it as the style says, writes the style's space before as blank lines and a
+form feed before a paragraph that starts a page. RTF (craft-rtf) writes each
+paragraph with its style's indents, alignment and space before, emphasis
+kept, in Courier Prime 12 pt. HTML writes one `<p>` per paragraph with an
+`el-<element>` class and a stylesheet made from the element styles, emphasis
+as `<b>`, `<i>`, `<u>`, everything escaped. None has mores or continueds.
+
 Tests: each element from flat text, indented text, RTF with and without
 indents; marks and split speeches; the guess; a long script this app printed
 comes back as exactly the same elements; the three golden scripts come back
-from their PDFs with only the two ambiguities above (5 of 736 paragraphs);
+from their PDFs with only the two ambiguities above (5 of 736 paragraphs), and
+from their plain-text and RTF exports with only the first (2 of 736);
 bad and hostile files are refused or read without a panic.
