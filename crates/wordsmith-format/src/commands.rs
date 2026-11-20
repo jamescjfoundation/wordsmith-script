@@ -237,6 +237,27 @@ fn export_cards_pdf(s: &mut Session, v: &Value) -> CmdResult {
     write_pdf(&path, &wordsmith_script::planning_pdf::cards_document(&s.doc, &opts))
 }
 
+/// `compare.withFile {path, open?, discard?}`: compare this script (the newer version) with the
+/// one at `path` (the older). Without `open`, report what changed; with it, the marked-up copy
+/// becomes the script in the window (an unsaved one), refused over unsaved changes unless
+/// `discard`.
+fn compare_with(s: &mut Session, v: &Value) -> CmdResult {
+    let Some(path) = path_of(v) else { return ask(s, "compare", json!({})) };
+    let old = files::open(&path).map_err(failed)?;
+    let (marked, summary) = wordsmith_script::compare::compare(&old, &s.doc);
+    if v.get("open").and_then(Value::as_bool) == Some(true) {
+        if s.dirty && v.get("discard").and_then(Value::as_bool) != Some(true) {
+            return Err(failed("save the script first: the comparison replaces it in the window".into()));
+        }
+        let name = format!("{} compared", script_name(s));
+        s.set_document(marked);
+        s.path = None;
+        s.file_name = Some(name);
+        s.dirty = true;
+    }
+    Ok(summary.to_json())
+}
+
 /// `macro.copyFromPath {path}`: replace this script's macros with another script's.
 fn copy_macros_from(s: &mut Session, v: &Value) -> CmdResult {
     let path = path_of(v).ok_or_else(|| CmdError::Params("`path` is required".into()))?;
@@ -265,6 +286,9 @@ pub fn specs() -> Vec<CommandSpec> {
             .params(
                 r#"{"stock"?: "card"|"grid", "columns"?: 1-6, "rows"?: 1-6, "frames"?: bool, "grey"?: bool, "scenes"?: [index], "path"?: string}"#,
             )
+            .pure(),
+        CommandSpec::new("compare.withFile", "Compare with Another Version…", "Production", compare_with)
+            .params(r#"{"path"?: string, "open"?: bool, "discard"?: bool}"#)
             .pure(),
         CommandSpec::new("file.import", "Import…", "File", |s, _| ask(s, "import", json!({}))).pure(),
         CommandSpec::new("file.save", "Save", "File", save).key("Mod+S").pure(),

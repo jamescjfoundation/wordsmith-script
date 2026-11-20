@@ -57,48 +57,174 @@ pub fn write_file(path: &str, bytes: &[u8]) -> Result<(), String> {
 }
 
 /// What to print or export.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PrintOptions {
     /// Only the pages with revised text (no title page).
     pub revised_only: bool,
     /// The revision marks in the margins.
     pub marks: bool,
+    /// Only the pages without revised text (SPEC-2 11.3).
+    pub unrevised_only: bool,
+    /// Only the pages with text revised in this set (its index).
+    pub set: Option<u32>,
+    /// Only these pages (1-based, inclusive).
+    pub pages: Option<(usize, usize)>,
+    /// Only the pages these scenes are on (scene indices, inclusive).
+    pub scenes: Option<(usize, usize)>,
+    /// Last page first.
+    pub reverse: bool,
+    /// The title page, when there is one and every page prints.
+    pub title_page: bool,
+    /// Sides: only the scenes this character is in, with the name on every page.
+    pub sides: Option<String>,
+    /// A name at the top of every page.
+    pub page_name: Option<String>,
 }
 
 impl Default for PrintOptions {
     fn default() -> Self {
-        PrintOptions { revised_only: false, marks: true }
-    }
-}
-
-impl PrintOptions {
-    fn of(v: &Value) -> Self {
         PrintOptions {
-            revised_only: v.get("revisedOnly").and_then(Value::as_bool).unwrap_or(false),
-            marks: v.get("marks").and_then(Value::as_bool).unwrap_or(true),
+            revised_only: false,
+            marks: true,
+            unrevised_only: false,
+            set: None,
+            pages: None,
+            scenes: None,
+            reverse: false,
+            title_page: true,
+            sides: None,
+            page_name: None,
         }
     }
 }
 
+impl PrintOptions {
+    pub fn of(v: &Value) -> Self {
+        let range = |k: &str| {
+            let a = v.get(k)?.as_array()?;
+            let lo = a.first()?.as_u64()? as usize;
+            let hi = a.get(1).and_then(Value::as_u64).map_or(lo, |x| x as usize);
+            Some((lo.min(hi), lo.max(hi)))
+        };
+        let text =
+            |k: &str| v.get(k).and_then(Value::as_str).map(str::trim).filter(|t| !t.is_empty()).map(|t| t.chars().take(80).collect::<String>());
+        PrintOptions {
+            revised_only: v.get("revisedOnly").and_then(Value::as_bool).unwrap_or(false),
+            marks: v.get("marks").and_then(Value::as_bool).unwrap_or(true),
+            unrevised_only: v.get("unrevisedOnly").and_then(Value::as_bool).unwrap_or(false),
+            set: v.get("set").and_then(Value::as_u64).and_then(|x| u32::try_from(x).ok()),
+            pages: range("pages"),
+            scenes: range("scenes"),
+            reverse: v.get("reverse").and_then(Value::as_bool).unwrap_or(false),
+            title_page: v.get("titlePage").and_then(Value::as_bool).unwrap_or(true),
+            sides: text("sides"),
+            page_name: text("pageName"),
+        }
+    }
+
+    /// Whether every page prints, in order (so the title page goes first).
+    fn whole(&self) -> bool {
+        !self.revised_only && !self.unrevised_only && self.set.is_none() && self.pages.is_none() && self.scenes.is_none() && !self.reverse
+    }
+}
+
+/// `doc` reduced to the scenes `who` is in, each keeping the number it has in the whole script.
+pub fn sides_of(doc: &Document, who: &str) -> Document {
+    let who = who.trim().to_uppercase();
+    let elements = crate::element::Elements::of_doc(doc);
+    let numbers = crate::scene_numbers::numbers(doc);
+    let mut out = doc.clone();
+    let mut keep = Vec::new();
+    for sc in crate::scenes::scenes(doc) {
+        let (_, cast) = crate::scene_data::cast(doc, &elements, &sc);
+        if !cast.contains(&who) {
+            continue;
+        }
+        for i in sc.start..sc.end {
+            if let Some(b) = doc.body.get(i) {
+                let mut b = b.clone();
+                if i == sc.start
+                    && let wordsmith_doc::Block::Para(p) = std::sync::Arc::make_mut(&mut b)
+                {
+                    p.props.scene_number = numbers.get(sc.index).cloned();
+                }
+                keep.push(b);
+            }
+        }
+    }
+    out.body = keep;
+    out.ensure_nonempty();
+    let mut n = crate::scene_numbers::SceneNumbers::of_doc(&out);
+    n.locked = true;
+    n.store(&mut out);
+    out
+}
+
 /// The PDF of `doc` as `opts` ask, and how many pages it has.
 pub fn pdf_with(doc: &Document, opts: PrintOptions) -> Result<(Vec<u8>, usize), String> {
-    let doc = if opts.marks {
-        std::borrow::Cow::Borrowed(doc)
-    } else {
-        let mut copy = doc.clone();
-        let mut r = crate::revisions::Revisions::of_doc(&copy);
+    let mut doc = std::borrow::Cow::Borrowed(doc);
+    if !opts.marks {
+        let copy = doc.to_mut();
+        let mut r = crate::revisions::Revisions::of_doc(copy);
         r.show_marks = false;
-        r.store(&mut copy);
-        std::borrow::Cow::Owned(copy)
-    };
+        r.store(copy);
+    }
+    if let Some(who) = &opts.sides {
+        let reduced = sides_of(&doc, who);
+        *doc.to_mut() = reduced;
+    }
+    if let Some(name) = opts.page_name.clone().or_else(|| opts.sides.clone()) {
+        let copy = doc.to_mut();
+        let mut w = crate::watermark::Watermark::of_doc(copy);
+        w.page_name = name.to_uppercase();
+        w.store(copy);
+    }
     let pag = paginate(&doc);
-    if !opts.revised_only {
-        let bytes = printed(&doc, &pag)?;
+    if opts.whole() {
+        let bytes = if opts.title_page { printed(&doc, &pag)? } else { pdf_of(&pag)? };
         return Ok((bytes, pag.pages.len()));
     }
-    let pages: Vec<usize> = pag.page_revisions.iter().enumerate().filter(|(_, r)| r.is_some()).map(|(i, _)| i).collect();
+    let n_pages = pag.pages.len();
+    let mut pages: Vec<usize> = (0..n_pages).collect();
+    if opts.revised_only {
+        pages.retain(|i| pag.page_revisions.get(*i).is_some_and(Option::is_some));
+    }
+    if opts.unrevised_only {
+        pages.retain(|i| pag.page_revisions.get(*i).is_some_and(Option::is_none));
+    }
+    if let Some(set) = opts.set {
+        // Pages with any text marked in that set.
+        let on: std::collections::HashSet<usize> = pag
+            .pages
+            .iter()
+            .enumerate()
+            .filter(|(_, pg)| {
+                pg.iter().any(|pc| match pc {
+                    crate::paginate::Piece::Para { block, start, end, .. } => doc.body.get(*block).and_then(|b| b.as_para()).is_some_and(|p| {
+                        p.mark.revised == Some(set) || p.run_ranges().any(|(r, c)| c.revised == Some(set) && r.end > *start && r.start < *end)
+                    }),
+                    _ => false,
+                })
+            })
+            .map(|(i, _)| i)
+            .collect();
+        pages.retain(|i| on.contains(i));
+    }
+    if let Some((a, b)) = opts.pages {
+        pages.retain(|i| (a..=b).contains(&(i + 1)));
+    }
+    if let Some((a, b)) = opts.scenes {
+        let all = crate::scenes::scenes(&doc);
+        let blocks: std::collections::HashSet<usize> = all.iter().filter(|s| (a..=b).contains(&s.index)).flat_map(|s| s.start..s.end).collect();
+        pages.retain(|i| {
+            pag.pages.get(*i).is_some_and(|pg| pg.iter().any(|pc| matches!(pc, crate::paginate::Piece::Para { block, .. } if blocks.contains(block))))
+        });
+    }
+    if opts.reverse {
+        pages.reverse();
+    }
     if pages.is_empty() {
-        return Err("no page has revised text".into());
+        return Err(if opts.revised_only { "no page has revised text".into() } else { "no page matches what was asked to print".into() });
     }
     let n = pages.len();
     let bytes = wordsmith_pdf::export_layout(&pag.doc, &pag.layout, &PdfOptions { pages: Some(pages), ..PdfOptions::default() })
@@ -150,10 +276,14 @@ pub fn lp_args(printer: Option<&str>, copies: u32, title: &str) -> Vec<String> {
 }
 
 #[cfg(not(windows))]
-fn send_to_printer(pdf: &[u8], printer: Option<&str>, copies: u32, title: &str) -> Result<String, String> {
+fn send_to_printer(pdf: &[u8], printer: Option<&str>, copies: u32, title: &str, collate: bool) -> Result<String, String> {
     use std::process::{Command, Stdio};
+    let mut args = lp_args(printer, copies, title);
+    if collate && copies > 1 {
+        args.splice(0..0, ["-o".to_string(), "collate=true".to_string()]);
+    }
     let mut child = Command::new("lp")
-        .args(lp_args(printer, copies, title))
+        .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -171,7 +301,7 @@ fn send_to_printer(pdf: &[u8], printer: Option<&str>, copies: u32, title: &str) 
 }
 
 #[cfg(windows)]
-fn send_to_printer(pdf: &[u8], _printer: Option<&str>, _copies: u32, title: &str) -> Result<String, String> {
+fn send_to_printer(pdf: &[u8], _printer: Option<&str>, _copies: u32, title: &str, _collate: bool) -> Result<String, String> {
     // Open the PDF in the system's viewer, where the person prints it.
     let name: String = title.chars().filter(|c| c.is_alphanumeric() || *c == ' ').take(40).collect();
     let path = std::env::temp_dir().join(format!("{} {}.pdf", if name.trim().is_empty() { "Script" } else { name.trim() }, stamp()));
@@ -193,22 +323,49 @@ fn print(s: &mut Session, v: &Value) -> CmdResult {
     let printer = p::str(v, "printer");
     let (bytes, pages) = pdf_with(&s.doc, PrintOptions::of(v)).map_err(CmdError::Failed)?;
     let title = if s.doc.core.title.is_empty() { "Script".to_string() } else { s.doc.core.title.clone() };
-    let job = send_to_printer(&bytes, printer, copies as u32, &title).map_err(CmdError::Failed)?;
+    let collate = v.get("collate").and_then(Value::as_bool).unwrap_or(true);
+    let job = send_to_printer(&bytes, printer, copies as u32, &title, collate).map_err(CmdError::Failed)?;
     Ok(json!({"job": job, "pages": pages}))
+}
+
+/// `file.printPreview {…print options}`: the pages as they will print, opened in the system's
+/// PDF viewer.
+fn print_preview(s: &mut Session, v: &Value) -> CmdResult {
+    let (bytes, pages) = pdf_with(&s.doc, PrintOptions::of(v)).map_err(CmdError::Failed)?;
+    let secs = s.now;
+    let path = std::env::temp_dir().join(format!("Wordsmith Script preview {secs}-{}.pdf", bytes.len()));
+    std::fs::write(&path, &bytes).map_err(|e| CmdError::Failed(format!("{}: {e}", path.display())))?;
+    open_with_system(&path).map_err(CmdError::Failed)?;
+    Ok(json!({"path": path, "pages": pages}))
+}
+
+/// Open `path` in the program the system uses for it.
+fn open_with_system(path: &std::path::Path) -> Result<(), String> {
+    let mut cmd = if cfg!(target_os = "macos") {
+        std::process::Command::new("open")
+    } else if cfg!(windows) {
+        let mut c = std::process::Command::new("cmd");
+        c.args(["/C", "start", ""]);
+        c
+    } else {
+        std::process::Command::new("xdg-open")
+    };
+    cmd.arg(path).spawn().map(|_| ()).map_err(|e| format!("opening the preview: {e}"))
 }
 
 pub fn specs() -> Vec<CommandSpec> {
     vec![
         CommandSpec::new("file.exportPdf", "Export PDF", "File", export_pdf)
-            .params(r#"{"path": string ending in .pdf, "revisedOnly"?: bool, "marks"?: bool}"#)
+            .params(r#"{"path": string ending in .pdf, "revisedOnly"?: bool, "unrevisedOnly"?: bool, "set"?: index, "pages"?: [from, to], "scenes"?: [from, to], "reverse"?: bool, "titlePage"?: bool, "sides"?: character, "pageName"?: string, "marks"?: bool}"#)
             .pure(),
         CommandSpec::new("file.exportRevisedPdf", "Export Revised Pages", "File", export_revised_pdf)
             .params(r#"{"path": string ending in .pdf, "marks"?: bool}"#)
             .pure(),
         CommandSpec::new("file.print", "Print", "File", print)
-            .params(r#"{"printer"?: string, "copies"?: 1-999, "revisedOnly"?: bool, "marks"?: bool}"#)
+            .params(r#"{"printer"?: string, "copies"?: 1-999, "collate"?: bool, "revisedOnly"?: bool, "unrevisedOnly"?: bool, "set"?: index, "pages"?: [from, to], "scenes"?: [from, to], "reverse"?: bool, "titlePage"?: bool, "sides"?: character, "marks"?: bool}"#)
             .key("Mod+P")
             .pure(),
+        CommandSpec::new("file.printPreview", "Print Preview", "File", print_preview).params(r#"{…the print options}"#).key("Mod+Alt+P").pure(),
         CommandSpec::new("file.printRevised", "Print Revised Pages", "File", print_revised)
             .params(r#"{"printer"?: string, "copies"?: 1-999, "marks"?: bool}"#)
             .pure(),

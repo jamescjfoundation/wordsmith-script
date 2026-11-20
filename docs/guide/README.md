@@ -19,3 +19,4 @@
 11. [Macros and text styles](macros-and-styles.md).
 12. [Characters, scenes and reports](characters-and-reports.md).
 13. [Boards, cards and the structure strip](planning.md).
+14. [More production tools](production-more.md): dual dialogue, sides, track changes, comparing versions, watermark.

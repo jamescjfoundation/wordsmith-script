@@ -150,15 +150,17 @@ fn part_of(src: &Paragraph, start: usize, end: usize) -> Paragraph {
 
 /// Which of the output paragraph's lines are revised (for the margin marks), and the newest set
 /// on it: its revised characters, and, on its first line, a deletion in the paragraph.
-fn revised_lines(doc: &Document, sp: &Paragraph, start: usize, end: usize, para: &Paragraph) -> (Vec<bool>, Option<u32>) {
-    let deleted = if start == 0 { sp.mark.revised } else { None };
-    let newest = para.run_ranges().filter_map(|(_, c)| c.revised).chain(deleted).max();
+fn revised_lines(doc: &Document, sp: &Paragraph, start: usize, end: usize, para: &Paragraph, only: Option<u32>) -> (Vec<bool>, Option<u32>) {
+    // With the current set alone showing, other sets' marks are left out.
+    let counts = |x: Option<u32>| x.filter(|i| only.is_none_or(|o| o == *i));
+    let deleted = if start == 0 { counts(sp.mark.revised) } else { None };
+    let newest = para.run_ranges().filter_map(|(_, c)| counts(c.revised)).chain(deleted).max();
     if newest.is_none() {
         return (Vec::new(), None);
     }
     let (lines, _) = super::measure::measure_text(doc, sp, sp.text.get(start..end).unwrap_or(""));
     let mut flags: Vec<bool> =
-        lines.iter().map(|&(a, b)| para.run_ranges().any(|(r, c)| c.revised.is_some() && r.start < b.max(a + 1) && r.end > a)).collect();
+        lines.iter().map(|&(a, b)| para.run_ranges().any(|(r, c)| counts(c.revised).is_some() && r.start < b.max(a + 1) && r.end > a)).collect();
     if deleted.is_some()
         && let Some(f) = flags.first_mut()
     {
@@ -299,9 +301,16 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds, labe
             {
                 let y = out.styles.resolve_para(&para.props).space_before.max(0.0);
                 let lines = [number.clone()];
-                let left = super::margin::margin_box(&mut out, 0.7 * template::INCH, y, 0.55 * template::INCH, &lines, Align::Right);
-                let right = super::margin::margin_box(&mut out, 7.55 * template::INCH, y, 0.45 * template::INCH, &lines, Align::Left);
-                for obj in [left, right] {
+                let numbering = crate::scene_numbers::SceneNumbers::of_doc(doc);
+                let font = Some(numbering.font.as_str()).filter(|f| !f.is_empty());
+                let mut objs = Vec::new();
+                if numbering.sides != "right" {
+                    objs.push(super::margin::margin_box_in(&mut out, 0.7 * template::INCH, y, 0.55 * template::INCH, &lines, Align::Right, font));
+                }
+                if numbering.sides != "left" {
+                    objs.push(super::margin::margin_box_in(&mut out, 7.55 * template::INCH, y, 0.45 * template::INCH, &lines, Align::Left, font));
+                }
+                for obj in objs {
                     let at = para.len();
                     let _ = para.insert_object(at, obj, &CharProps::default());
                 }
@@ -311,14 +320,18 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds, labe
             if let Piece::Para { block, start, end, .. } = piece
                 && let Some(sp) = doc.body.get(*block).and_then(|b| b.as_para())
             {
-                let (flags, newest) = revised_lines(doc, sp, *start, *end, &para);
+                let only = if rev.active_only { Some(rev.current_index().unwrap_or(u32::MAX)) } else { None };
+                let (flags, newest) = revised_lines(doc, sp, *start, *end, &para, only);
                 if newest.is_some() {
                     page_newest = page_newest.max(newest);
                     set_styles(&mut para, &rev);
                 }
                 if newest.is_some() && rev.show_marks {
                     let y = out.styles.resolve_para(&para.props).space_before.max(0.0);
-                    let lines: Vec<String> = flags.iter().map(|f| if *f { rev.mark.clone() } else { String::new() }).collect();
+                    // The newest set's own mark, else the script's.
+                    let mark =
+                        newest.and_then(|i| rev.set(i)).map(|set| set.mark.clone()).filter(|m| !m.is_empty()).unwrap_or_else(|| rev.mark.clone());
+                    let lines: Vec<String> = flags.iter().map(|f| if *f { mark.clone() } else { String::new() }).collect();
                     let mark = super::margin::margin_box(&mut out, rev.mark_at * template::INCH, y, 0.5 * template::INCH, &lines, Align::Left);
                     let at = para.len();
                     let _ = para.insert_object(at, mark, &CharProps::default());
@@ -387,14 +400,33 @@ pub fn paginate(doc: &Document) -> Paginated {
 
 fn paginate_with(doc: &Document, measure: &mut MeasureCache, cache: &mut LayoutCache) -> Paginated {
     let marks = MoresContinueds::of_doc(doc);
-    let mut m = measure_cached(doc, measure);
+    // Dual dialogue: the first speech narrowed, the second left out and drawn beside it.
+    let dual = super::dual::prepare(doc);
+    let src = dual.as_ref().map_or(doc, |d| &d.doc);
+    let mut m = measure_cached(src, measure);
     // Hidden outline elements are left out of the pages (decision 0028).
     if !crate::outline::shows_outline(doc) {
         m.retain(|p| !p.kind.is_outline());
     }
-    let pages = plan(doc, &m, &marks, Rules::default());
-    let (pages, labels) = crate::locks::label_pages(doc, pages);
-    let Built { doc: out, map, page_revisions } = build(doc, &pages, &marks, labels.as_deref());
+    if let Some(d) = &dual {
+        m.retain(|p| !d.dropped.contains(&p.block));
+    }
+    let pages = plan(src, &m, &marks, Rules::default());
+    let (pages, labels) = crate::locks::label_pages(src, pages);
+    let Built { doc: mut out, map, page_revisions } = build(src, &pages, &marks, labels.as_deref());
+    if let Some(d) = dual {
+        for (block, paras) in d.boxes {
+            let Some(o) = map.iter().position(|m| m.is_some_and(|m| m.block == block && m.start == 0)) else { continue };
+            let y = out.body.get(o).and_then(|b| b.as_para()).map_or(0.0, |p| out.styles.resolve_para(&p.props).space_before.max(0.0));
+            let obj = super::dual::speech_box(&mut out, &paras, y);
+            if let Some(wordsmith_doc::Block::Para(p)) = out.body.get_mut(o).map(std::sync::Arc::make_mut) {
+                // At the end, so the text's offsets (and the caret's mapping) stay as they are.
+                let at = p.len();
+                let _ = p.insert_object(at, obj, &CharProps::default());
+            }
+        }
+    }
+    crate::watermark::apply(&mut out, &crate::watermark::Watermark::of_doc(doc));
     let layout = print_layout(&out, cache);
     let matches_plan = layout.pages.len() == pages.len();
     if !matches_plan {

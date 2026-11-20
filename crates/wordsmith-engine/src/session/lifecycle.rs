@@ -32,6 +32,7 @@ impl Session {
             dirty: false,
             registry,
             author: String::new(),
+            now: 0,
             status: String::new(),
             view_mode: ViewMode::Print,
             view_width: DEFAULT_VIEW_WIDTH,

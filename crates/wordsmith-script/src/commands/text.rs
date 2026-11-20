@@ -22,6 +22,11 @@ pub(crate) fn delete_selection(s: &mut Session) -> Result<Pos, CmdError> {
         return Ok(s.sel.focus.clone());
     }
     let (a, b) = s.sel.ordered();
+    if a.story == StoryRef::Body && crate::tracking::is_on(&s.doc) {
+        let at = crate::tracking::delete(s, &a, &b, false)?;
+        s.sel = Selection::caret(at.clone());
+        return Ok(at);
+    }
     let locks = crate::locks::marks_in(&s.doc, &a, &b);
     let at = s.doc.delete_range(&a, &b)?;
     crate::locks::keep_marks(&mut s.doc, &locks, &at);
@@ -45,6 +50,8 @@ fn typing_props(s: &Session, at: &Pos) -> CharProps {
     }
     props.revised = revised;
     props.page_lock = None;
+    props.del = None;
+    props.ins = None;
     props
 }
 
@@ -61,7 +68,11 @@ fn insert_line(s: &mut Session, text: &str) -> Result<(), CmdError> {
     let before = s.doc.para_at(&at).and_then(|p| p.text.get(..at.off)).unwrap_or("").to_string();
     let typed = crate::typing::Typing::of_doc(&s.doc).transform(text, &before, element.kind, casing);
     let text = typed.as_str();
-    let props = typing_props(s, &at);
+    let mut props = typing_props(s, &at);
+    // While changes are tracked, typed text is a tracked insertion.
+    if at.story == StoryRef::Body && crate::tracking::is_on(&s.doc) {
+        props.ins = crate::tracking::record(s, wordsmith_doc::RevisionKind::Insert);
+    }
     // Typing at the start of a locked page goes on that page: the page's mark moves to the
     // typed text's first character.
     let lock = s
@@ -235,6 +246,12 @@ pub fn backspace(s: &mut Session, _: &Value) -> CmdResult {
     }
     let at = s.sel.focus.clone();
     let Some(para) = s.doc.para_at(&at) else { return sel_result(s) };
+    if at.off > 0 && at.story == StoryRef::Body && crate::tracking::is_on(&s.doc) {
+        let from = Pos { off: para.backspace_from(at.off), ..at.clone() };
+        let to = crate::tracking::delete(s, &from, &at, false)?;
+        s.sel = Selection::caret(to);
+        return sel_result(s);
+    }
     if at.off > 0 {
         let from = Pos { off: para.backspace_from(at.off), ..at.clone() };
         let locks = crate::locks::marks_in(&s.doc, &from, &at);
@@ -261,6 +278,12 @@ pub fn delete(s: &mut Session, _: &Value) -> CmdResult {
     }
     let at = s.sel.focus.clone();
     let Some(para) = s.doc.para_at(&at) else { return sel_result(s) };
+    if at.off < para.len() && at.story == StoryRef::Body && crate::tracking::is_on(&s.doc) {
+        let to = Pos { off: para.next_boundary(at.off), ..at.clone() };
+        let end = crate::tracking::delete(s, &at, &to, true)?;
+        s.sel = Selection::caret(end);
+        return sel_result(s);
+    }
     if at.off < para.len() {
         let to = Pos { off: para.next_boundary(at.off), ..at.clone() };
         let locks = crate::locks::marks_in(&s.doc, &at, &to);

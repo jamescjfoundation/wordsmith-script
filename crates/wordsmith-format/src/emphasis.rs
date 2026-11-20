@@ -116,7 +116,8 @@ pub(crate) fn encode_with(p: &Paragraph, marks: bool, after_note: &dyn Fn(u32) -
 /// The native format's code for the styles beyond bold, italic and plain underline (format 4):
 /// comma-separated tokens. `D` double, `W` words-only and `O` dotted underline; `K` strike;
 /// `U` superscript, `L` subscript; `C` capitals, `M` small capitals; `H` and a highlighter
-/// name; `S#RRGGBB` a highlight of any color; `F#RRGGBB` the text color. Empty when none apply.
+/// name; `S#RRGGBB` a highlight of any color; `F#RRGGBB` the text color; `I3` and `X3` text
+/// inserted or deleted as tracked change 3. Empty when none apply.
 pub(crate) fn extra_code(c: &CharProps) -> String {
     use wordsmith_doc::props::{TextColor, VertAlign};
     let mut t: Vec<String> = Vec::new();
@@ -151,6 +152,13 @@ pub(crate) fn extra_code(c: &CharProps) -> String {
     if let Some(TextColor::Rgb(wordsmith_doc::props::Rgb(r, g, b))) = c.color {
         t.push(format!("F#{r:02X}{g:02X}{b:02X}"));
     }
+    // Tracked changes: the inserted or deleted text's record.
+    if let Some(n) = c.ins {
+        t.push(format!("I{n}"));
+    }
+    if let Some(n) = c.del {
+        t.push(format!("X{n}"));
+    }
     t.join(",")
 }
 
@@ -171,6 +179,8 @@ pub(crate) fn apply_extra(code: &str, c: &mut CharProps) {
             "H" => c.highlight = serde_json::from_value(serde_json::json!(rest)).ok(),
             "S" => c.shading = Rgb::parse(rest),
             "F" => c.color = Rgb::parse(rest).map(TextColor::Rgb),
+            "I" => c.ins = rest.parse().ok().filter(|n: &u32| *n < 100_000),
+            "X" => c.del = rest.parse().ok().filter(|n: &u32| *n < 100_000),
             _ => {}
         }
     }

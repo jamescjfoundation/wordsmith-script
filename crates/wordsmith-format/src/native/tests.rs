@@ -243,3 +243,19 @@ fn more_styles_bookmarks_and_dual_dialogue_round_trip() {
     let old = text.replacen(&format!(" {VERSION}\n"), " 3\n", 1);
     assert!(read(&old).is_ok());
 }
+
+#[test]
+fn tracked_changes_round_trip() {
+    let mut s = wordsmith_script::new_session();
+    s.run("text.insert", &json!({"text": "int. hall\nRain falls."})).unwrap();
+    s.author = "Ana".into();
+    s.run("track.toggle", &json!({"on": true})).unwrap();
+    s.run("text.insert", &json!({"text": " Hard."})).unwrap();
+    s.sel = wordsmith_engine::Selection { anchor: wordsmith_script::data::body_pos(1, 0), focus: wordsmith_script::data::body_pos(1, 4) };
+    s.run("text.backspace", &json!({})).unwrap();
+    let back = read(&write(&s.doc)).unwrap();
+    assert_eq!(back.revisions, s.doc.revisions);
+    let changes = |d: &Document| wordsmith_script::tracking::changes(d);
+    assert_eq!(changes(&back), changes(&s.doc));
+    assert_eq!(changes(&back).len(), 2);
+}

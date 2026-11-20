@@ -39,6 +39,8 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                         item(ed, ui, id);
                     }
                 });
+                item(ed, ui, "view.print");
+                item(ed, ui, "file.printPreview");
                 item(ed, ui, "file.print");
                 item(ed, ui, "file.printRevised");
                 ui.separator();
@@ -142,6 +144,7 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                         ui.close();
                     }
                 });
+                item(ed, ui, "dialogue.dual");
                 item(ed, ui, "element.reset");
                 item(ed, ui, "text.toggleCase");
                 ui.separator();
@@ -160,19 +163,44 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 item(ed, ui, "view.headerFooter");
             });
             ui.menu_button("Production", |ui| {
-                for id in ["revision.mode", "revision.next", "revision.markRevised", "revision.clearRevised"] {
+                for id in
+                    ["revision.mode", "revision.next", "revision.markRevised", "revision.clearRevised", "revision.gotoNext", "revision.gotoPrevious"]
+                {
                     item(ed, ui, id);
                 }
                 ui.separator();
                 item(ed, ui, "view.revisions");
                 ui.separator();
-                for id in ["scene.showNumbers", "scene.lockNumbers", "scene.renumber", "scene.omit", "scene.recall"] {
+                for id in ["view.sceneNumbers", "scene.showNumbers", "scene.lockNumbers", "scene.renumber", "scene.omit", "scene.recall"] {
                     item(ed, ui, id);
                 }
                 ui.separator();
-                for id in ["lock.pages", "lock.unlockLevel", "lock.unlockAll"] {
-                    item(ed, ui, id);
-                }
+                ui.menu_button("Locked Pages", |ui| {
+                    for id in ["lock.pages", "lock.relock", "lock.lockPage", "lock.unlockPage", "lock.unlockLevel", "lock.unlockAll"] {
+                        item(ed, ui, id);
+                    }
+                    let enabled = ed.session.why_disabled("lock.adjustBreak").is_none();
+                    if ui.add_enabled(enabled, egui::Button::new("Move Page Start Down")).clicked() {
+                        ed.run("lock.adjustBreak", json!({"by": 1}));
+                        ui.close();
+                    }
+                    if ui.add_enabled(enabled, egui::Button::new("Move Page Start Up")).clicked() {
+                        ed.run("lock.adjustBreak", json!({"by": -1}));
+                        ui.close();
+                    }
+                });
+                ui.menu_button("Track Changes", |ui| {
+                    let on = wordsmith_script::tracking::is_on(&ed.session.doc);
+                    let mut checked = on;
+                    if ui.checkbox(&mut checked, "Track Changes").clicked() {
+                        ed.run("track.toggle", json!({}));
+                    }
+                    for id in ["track.next", "track.previous", "track.accept", "track.reject", "track.acceptAll", "track.rejectAll"] {
+                        item(ed, ui, id);
+                    }
+                });
+                item(ed, ui, "compare.withFile");
+                item(ed, ui, "view.watermark");
                 ui.separator();
                 item(ed, ui, "report.exportCharacters");
             });
@@ -337,6 +365,10 @@ pub fn status_bar(ed: &mut Editor, ui: &mut Ui) {
             if rev.mode {
                 ui.separator();
                 ui.label(format!("Revising: {}", rev.current));
+            }
+            if wordsmith_script::tracking::is_on(&ed.session.doc) {
+                ui.separator();
+                ui.label("Tracking changes");
             }
             if !ed.message.is_empty() {
                 ui.separator();

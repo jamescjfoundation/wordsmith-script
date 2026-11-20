@@ -976,3 +976,41 @@ fn boards_strip_and_cards_draw_and_act() {
     frame(&ctx, &mut ed, vec![]);
     assert_eq!(ed.structure, Some(crate::structure::Structure::Cards));
 }
+
+#[test]
+fn production_windows_dual_dialogue_and_tracking() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(
+        &ctx,
+        &mut ed,
+        vec![
+            text("int"),
+            key(Key::Tab, Modifiers::NONE),
+            text("hall"),
+            key(Key::Enter, Modifiers::NONE),
+            key(Key::Tab, Modifiers::NONE),
+            text("anna"),
+        ],
+    );
+    frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE), text("Go."), key(Key::Enter, Modifiers::NONE), key(Key::Tab, Modifiers::NONE)]);
+    frame(&ctx, &mut ed, vec![text("ben"), key(Key::Enter, Modifiers::NONE), text("Stay.")]);
+    // Mod+Shift+D sets Ben's speech beside Anna's; the page view still draws.
+    frame(&ctx, &mut ed, vec![key(Key::D, Modifiers { shift: true, ..cmd() })]);
+    assert_eq!(wordsmith_script::paginate::dual::pairs(&ed.session.doc).len(), 1);
+    frame(&ctx, &mut ed, vec![]);
+    // Tracking: typed text is marked, and the status bar says so.
+    ed.run("track.toggle", json!({"on": true}));
+    frame(&ctx, &mut ed, vec![text(" Now.")]);
+    assert_eq!(wordsmith_script::tracking::changes(&ed.session.doc).len(), 1);
+    // The print, watermark and scene number windows open.
+    for id in ["view.print", "view.watermark", "view.sceneNumbers"] {
+        ed.run(id, json!({}));
+    }
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.tools.print.is_some() && ed.tools.watermark.is_some() && ed.tools.scene_numbers.is_some());
+    let p = ed.tools.print.clone().unwrap_or_default();
+    let params = crate::production::PrintChoices { range: "scenes", from: "1".into(), to: "2".into(), which: "revised", ..p }.params();
+    assert_eq!((params["scenes"].clone(), params["revisedOnly"].clone()), (json!([0, 1]), json!(true)));
+}

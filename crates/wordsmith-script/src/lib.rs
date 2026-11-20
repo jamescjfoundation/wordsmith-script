@@ -14,6 +14,7 @@ pub mod bookmarks;
 pub mod cast;
 pub mod checker;
 pub mod commands;
+pub mod compare;
 pub mod data;
 pub mod element;
 pub mod export;
@@ -36,7 +37,9 @@ pub mod storyboard;
 pub mod strip;
 pub mod template;
 pub mod title_page;
+pub mod tracking;
 pub mod typing;
+pub mod watermark;
 
 pub use commands::{new_session, registry, session_for};
 pub use element::{Casing, ElementDef, ElementKind, Elements};

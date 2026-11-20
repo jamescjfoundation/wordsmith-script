@@ -14,6 +14,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use wordsmith_doc::Document;
 
+pub mod dual;
 pub mod margin;
 pub mod measure;
 pub mod output;

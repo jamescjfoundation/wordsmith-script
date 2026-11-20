@@ -5,7 +5,7 @@
 //! Recognised: title page (`Key: value`, indented continuation lines), scene headings (`INT`,
 //! `EXT`, `EST`, `INT./EXT`, `INT/EXT`, `I/E`, or forced with `.`; `#n#` scene numbers),
 //! characters (all capitals with a blank line before and text after, or forced with `@`, which
-//! needs no dialogue after it; `^` dual dialogue is read as ordinary dialogue), parentheticals,
+//! needs no dialogue after it; `^` marks the second speech of dual dialogue), parentheticals,
 //! dialogue, transitions (capitals ending in `TO:`, or forced with `>`), centered text
 //! (`>text<`, read as Action), action (forced with `!`; line breaks kept), lyrics (`~`, read as
 //! Action), page breaks (`===`: the next paragraph starts a new page), sections (`#` to `###`,
@@ -155,6 +155,15 @@ fn with_page_breaks(body: Vec<Paragraph>) -> Vec<Paragraph> {
 }
 
 /// Read Fountain text into a script.
+/// A Character cue; `^` after the name marks the second speech of dual dialogue.
+fn cue(element: &str, name: &str, line: &str) -> Paragraph {
+    let mut p = paragraph(element, &name.to_uppercase());
+    if line.trim_end().ends_with('^') {
+        p.props.dual = Some(true);
+    }
+    p
+}
+
 pub fn read(text: &str) -> Result<FountainScript, String> {
     if text.len() > MAX_FOUNTAIN_BYTES {
         return Err(format!("the file is larger than {} MB", MAX_FOUNTAIN_BYTES >> 20));
@@ -286,7 +295,7 @@ pub fn read(text: &str) -> Result<FountainScript, String> {
         let looks_like_character = forced_character || (is_upper(name_only) && !name_only.is_empty() && !t.starts_with('!'));
         // A forced cue counts even with nothing after it.
         if before_blank && looks_like_character && (forced_character || !blank(i + 1)) {
-            body.push(paragraph(&id(ElementKind::Character), &plain(name_part).to_uppercase()));
+            body.push(cue(&id(ElementKind::Character), &plain(name_part), t));
             i += 1;
             let mut dialogue: Vec<String> = Vec::new();
             let flush = |dialogue: &mut Vec<String>, body: &mut Vec<Paragraph>| {
@@ -331,7 +340,7 @@ pub fn read(text: &str) -> Result<FountainScript, String> {
     }
     // Numbers in the file: they are the script's locked numbers, shown.
     if !scene_numbers.is_empty() {
-        wordsmith_script::scene_numbers::SceneNumbers { show: true, locked: true }.store(&mut doc);
+        wordsmith_script::scene_numbers::SceneNumbers { show: true, locked: true, ..Default::default() }.store(&mut doc);
     }
     if let Some(title) = title_page.get("title") {
         doc.core.title = plain(title).replace('\n', " ");
@@ -544,7 +553,8 @@ pub fn write(doc: &Document) -> String {
                     && scene_heading(&t).is_none()
                     && !t.ends_with("TO:")
                     && !t.ends_with('^');
-                blocks.push(if plain_ok { t } else { format!("@{t}") });
+                let cue = if plain_ok { t } else { format!("@{t}") };
+                blocks.push(if paras.get(n).is_some_and(|p| p.props.dual == Some(true)) { format!("{cue} ^") } else { cue });
                 in_speech = true;
                 continue;
             }

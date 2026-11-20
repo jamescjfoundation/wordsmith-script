@@ -41,6 +41,11 @@ pub struct Tools {
     /// The structure strip above the script, and its zoom (points per page).
     pub strip: bool,
     pub strip_zoom: f32,
+    pub print: Option<crate::production::PrintChoices>,
+    /// The watermark window's fields.
+    pub watermark: Option<Value>,
+    /// The scene numbers window: the number typed for the caret's scene.
+    pub scene_numbers: Option<String>,
 }
 
 /// Act on a UI request to open a tool window. Returns whether it was one.
@@ -64,6 +69,9 @@ pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
         }
         "tool.highlights" => ed.show_highlights = !ed.show_highlights,
         "tool.strip" => ed.tools.strip = !ed.tools.strip,
+        "tool.print" => ed.tools.print = Some(ed.tools.print.take().unwrap_or_default()),
+        "tool.watermark" => ed.tools.watermark = ed.session.run("watermark.get", &json!({})).ok(),
+        "tool.sceneNumbers" => ed.tools.scene_numbers = Some(String::new()),
         "tool.macroConfirm" => {
             ed.tools.macro_confirm =
                 Some((req["slot"].as_u64().unwrap_or(0), req["start"].as_u64().unwrap_or(0), req["name"].as_str().unwrap_or("").to_string()))
@@ -523,4 +531,5 @@ pub fn show(ed: &mut Editor, ctx: &Context) {
     macros_window(ed, ctx);
     macro_confirm_window(ed, ctx);
     crate::reports::show(ed, ctx);
+    crate::production::show(ed, ctx);
 }

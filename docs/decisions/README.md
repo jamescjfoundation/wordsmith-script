@@ -40,3 +40,4 @@ what would make us revisit it.
 | [0032](0032-macros-and-styles.md) | Macros and text styles (keys, starter set, aliases, native format 4) |
 | [0033](0033-characters-and-reports.md) | Characters, scene data and reports |
 | [0034](0034-planning.md) | Boards, the structure strip and planning PDFs |
+| [0035](0035-production.md) | Production additions (dual dialogue, locks, numbers, printing, watermark, tracking, comparison) |

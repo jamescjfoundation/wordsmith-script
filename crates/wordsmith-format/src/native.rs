@@ -29,6 +29,8 @@ use wordsmith_script::{ElementKind, Elements};
 
 /// The format version this build writes.
 pub const VERSION: u32 = 4;
+/// Most tracked-change records kept.
+pub const MAX_REVISIONS: usize = 100_000;
 /// The first line's words before the version number.
 pub const MAGIC: &str = "Wordsmith Script";
 /// Largest native file read, bytes.
@@ -53,6 +55,9 @@ struct Settings {
     core: Option<CoreProps>,
     /// The script's own data: elements, autocomplete, settings of every feature, by key.
     app_data: BTreeMap<String, Value>,
+    /// Tracked changes' authors and dates (format 4; marked in the text as `{sI3}`, `{sX3}`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    revisions: Vec<wordsmith_doc::Revision>,
 }
 
 /// Why a file could not be read.
@@ -89,6 +94,7 @@ pub fn write(doc: &Document) -> String {
         styles: Some((*doc.styles).clone()),
         core: Some(doc.core.clone()),
         app_data: doc.app_data.iter().map(|(k, v)| (k.clone(), (**v).clone())).collect(),
+        revisions: doc.revisions.iter().take(MAX_REVISIONS).cloned().collect(),
     };
     let json = sorted(serde_json::to_value(&settings).unwrap_or(Value::Null));
     let mut out = format!("{MAGIC} {VERSION}\n{SETTINGS_MARK}\n");
@@ -257,6 +263,7 @@ pub fn read(text: &str) -> Result<Document, ReadError> {
         doc.core = core;
     }
     doc.app_data = settings.app_data.into_iter().map(|(k, v)| (k, Arc::new(v))).collect();
+    doc.revisions = settings.revisions.into_iter().take(MAX_REVISIONS).collect();
     if !doc.app_data.contains_key(wordsmith_script::element::ELEMENTS_KEY) {
         Elements::defaults().store(&mut doc);
     }

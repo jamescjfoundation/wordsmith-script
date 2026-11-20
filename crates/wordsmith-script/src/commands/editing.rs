@@ -333,3 +333,74 @@ mod tests {
         assert_eq!(para_text(&s, 1), "Sun.");
     }
 }
+
+/// `dialogue.dual`: set the speech at the caret beside the one before it, or back under it.
+fn dual(s: &mut Session, _: &Value) -> CmdResult {
+    let block = s.sel.focus.path.last();
+    let start = crate::paginate::dual::speech_start(&s.doc, block);
+    let on = s.doc.body.get(start).and_then(|b| b.as_para()).is_some_and(|p| p.props.dual == Some(true));
+    if !on && let Some(why) = crate::paginate::dual::why_not(&s.doc, block) {
+        return Err(CmdError::Failed(why.into()));
+    }
+    let para = s.doc.para_mut(StoryRef::Body, &Path::top(start))?;
+    para.props.dual = if on { None } else { Some(true) };
+    para.touch();
+    Ok(json!({"dual": !on}))
+}
+
+pub fn dual_specs() -> Vec<CommandSpec> {
+    vec![CommandSpec::new("dialogue.dual", "Dual Dialogue", "Format", dual).key("Mod+Shift+D")]
+}
+
+#[cfg(test)]
+mod dual_tests {
+    use super::*;
+    use crate::commands::new_session;
+    use crate::paginate::{Piece, paginate};
+    use crate::template::paragraph;
+
+    fn speeches() -> Session {
+        let mut s = new_session();
+        s.doc.body = [
+            ("SceneHeading", "INT. HALL - DAY"),
+            ("Character", "ANNA"),
+            ("Dialogue", "We go now."),
+            ("Character", "BEN"),
+            ("Parenthetical", "(at once)"),
+            ("Dialogue", "No, we stay here a while longer, because the rain will stop and then we can walk home dry."),
+            ("Action", "They glare."),
+        ]
+        .iter()
+        .map(|(e, t)| para_block(paragraph(e, t)))
+        .collect();
+        s
+    }
+
+    #[test]
+    fn the_second_speech_goes_beside_the_first() {
+        let mut s = speeches();
+        s.sel = Selection::caret(body_pos(5, 3));
+        assert_eq!(s.run("dialogue.dual", &json!({})).unwrap()["dual"], true);
+        assert_eq!(crate::paginate::dual::pairs(&s.doc).len(), 1);
+        let pag = paginate(&s.doc);
+        let printed: Vec<usize> = pag.pages[0].iter().filter_map(|p| if let Piece::Para { block, .. } = p { Some(*block) } else { None }).collect();
+        assert_eq!(printed, vec![0, 1, 2, 6], "the second speech is drawn in a box, not as paragraphs");
+        let anna = pag.map.iter().position(|m| m.is_some_and(|m| m.block == 1)).unwrap_or(0);
+        let obj = pag.doc.body[anna].as_para().map(|p| p.objects.len()).unwrap_or(0);
+        assert_eq!(obj, 1, "the second speech's box sits on the first speech's name");
+        // Toggled off from anywhere in the second speech.
+        s.sel = Selection::caret(body_pos(4, 0));
+        assert_eq!(s.run("dialogue.dual", &json!({})).unwrap()["dual"], false);
+        assert!(crate::paginate::dual::pairs(&s.doc).is_empty());
+    }
+
+    #[test]
+    fn dual_needs_a_speech_just_before() {
+        let mut s = speeches();
+        s.sel = Selection::caret(body_pos(2, 0));
+        let err = s.run("dialogue.dual", &json!({})).unwrap_err().to_string();
+        assert!(err.contains("no speech straight before"), "{err}");
+        s.sel = Selection::caret(body_pos(6, 0));
+        assert!(s.run("dialogue.dual", &json!({})).unwrap_err().to_string().contains("second of two speeches"));
+    }
+}

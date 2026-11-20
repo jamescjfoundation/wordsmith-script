@@ -28,18 +28,49 @@ pub const OMITTED: &str = "OMITTED";
 /// Longest scene number kept.
 pub const MAX_NUMBER: usize = 12;
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
 pub struct SceneNumbers {
     /// Print and show the numbers beside the headings.
     pub show: bool,
     /// Scenes keep the numbers stored on their headings.
     pub locked: bool,
+    /// The first number (unlocked numbering), 1 by default (SPEC-2 11.1).
+    pub start: u32,
+    /// Start again from `start` every this many scenes; 0 never.
+    pub restart_every: u32,
+    /// A scene added after the lock takes a letter before the next number (A2) instead of
+    /// after the one before (1A).
+    pub prefix: bool,
+    /// Where numbers show: "both", "left" or "right".
+    pub sides: String,
+    /// The numbers' own font; empty for the script's.
+    pub font: String,
+}
+
+impl Default for SceneNumbers {
+    fn default() -> Self {
+        SceneNumbers { show: false, locked: false, start: 1, restart_every: 0, prefix: false, sides: "both".into(), font: String::new() }
+    }
 }
 
 impl SceneNumbers {
     pub fn of_doc(doc: &Document) -> Self {
-        doc.app_data.get(SCENE_NUMBERS_KEY).and_then(|v| serde_json::from_value((**v).clone()).ok()).unwrap_or_default()
+        let mut s: SceneNumbers = doc.app_data.get(SCENE_NUMBERS_KEY).and_then(|v| serde_json::from_value((**v).clone()).ok()).unwrap_or_default();
+        s.start = s.start.clamp(1, 100_000);
+        s.restart_every = s.restart_every.min(10_000);
+        if !matches!(s.sides.as_str(), "both" | "left" | "right") {
+            s.sides = "both".into();
+        }
+        s.font = s.font.chars().filter(|c| !c.is_control()).take(64).collect();
+        s
+    }
+
+    /// The number of the `i`th scene (from 0) when the numbers are not locked.
+    pub fn unlocked(&self, i: usize) -> String {
+        let i = i as u32;
+        let n = if self.restart_every > 0 { i % self.restart_every } else { i };
+        (self.start + n).to_string()
     }
 
     pub fn store(&self, doc: &mut Document) {
@@ -100,13 +131,16 @@ pub fn numbers(doc: &Document) -> Vec<String> {
     let stored: Vec<Option<String>> =
         all.iter().map(|sc| doc.body.get(sc.start).and_then(|b| b.as_para()).and_then(|p| p.props.scene_number.as_deref()).and_then(clean)).collect();
     if !settings.locked {
-        return (1..=all.len()).map(|n| n.to_string()).collect();
+        return (0..all.len()).map(|i| settings.unlocked(i)).collect();
     }
     let mut used: HashSet<String> = stored.iter().flatten().cloned().collect();
     let mut out: Vec<String> = Vec::with_capacity(all.len());
     for (i, s) in stored.iter().enumerate() {
+        let next_stored = || stored[i..].iter().flatten().next().cloned();
         let n = match s {
             Some(n) => n.clone(),
+            // With prefix letters, an added scene takes a letter before the next number.
+            None if settings.prefix && next_stored().is_some() => before(&next_stored().unwrap_or_default(), &used),
             None => match out.last() {
                 Some(prev) => after(prev, &used),
                 None => {
@@ -159,12 +193,76 @@ fn lock(s: &mut Session, v: &Value) -> CmdResult {
     Ok(json!({"locked": lock}))
 }
 
-/// `scene.renumber`: number every scene 1, 2, 3 … again, keeping the lock as it is.
-fn renumber(s: &mut Session, _: &Value) -> CmdResult {
+/// `scene.renumber {fromCaret?, keepExisting?}`: number the scenes again from the start
+/// number, keeping the lock as it is. `fromCaret` leaves scenes before the caret's alone and
+/// carries on from the number before; `keepExisting` numbers only scenes without a stored
+/// number.
+fn renumber(s: &mut Session, v: &Value) -> CmdResult {
     let settings = SceneNumbers::of_doc(&s.doc);
-    for (i, sc) in scenes(&s.doc).iter().enumerate() {
-        set_number(&mut s.doc, sc.start, settings.locked.then(|| (i + 1).to_string()));
+    let all = scenes(&s.doc);
+    let shown = numbers(&s.doc);
+    let from = if v.get("fromCaret").and_then(Value::as_bool) == Some(true) {
+        crate::scenes::scene_at(&all, s.sel.focus.path.last()).map_or(0, |sc| sc.index)
+    } else {
+        0
+    };
+    let keep = v.get("keepExisting").and_then(Value::as_bool) == Some(true);
+    // Carry on from the number before (its digits), or the start.
+    let mut n: u32 = from
+        .checked_sub(1)
+        .and_then(|i| shown.get(i))
+        .and_then(|x| x.trim_end_matches(|c: char| !c.is_ascii_digit()).trim_start_matches(|c: char| !c.is_ascii_digit()).parse().ok())
+        .map_or(settings.start, |x: u32| x + 1);
+    for sc in all.iter().skip(from) {
+        let has = s.doc.body.get(sc.start).and_then(|b| b.as_para()).is_some_and(|p| p.props.scene_number.is_some());
+        if keep && has {
+            continue;
+        }
+        set_number(&mut s.doc, sc.start, settings.locked.then(|| n.to_string()));
+        n += 1;
     }
+    Ok(json!({"numbers": numbers(&s.doc)}))
+}
+
+/// `scene.configureNumbers {start?, restartEvery?, prefix?, sides?, font?}`.
+fn configure(s: &mut Session, v: &Value) -> CmdResult {
+    let mut settings = SceneNumbers::of_doc(&s.doc);
+    if let Some(n) = v.get("start").and_then(Value::as_u64) {
+        settings.start = (n as u32).clamp(1, 100_000);
+    }
+    if let Some(n) = v.get("restartEvery").and_then(Value::as_u64) {
+        settings.restart_every = (n as u32).min(10_000);
+    }
+    if let Some(b) = v.get("prefix").and_then(Value::as_bool) {
+        settings.prefix = b;
+    }
+    if let Some(side) = v.get("sides").and_then(Value::as_str) {
+        if !matches!(side, "both" | "left" | "right") {
+            return Err(CmdError::Params("`sides` is both, left or right".into()));
+        }
+        settings.sides = side.into();
+    }
+    if let Some(f) = v.get("font").and_then(Value::as_str) {
+        settings.font = f.trim().chars().take(64).collect();
+    }
+    settings.store(&mut s.doc);
+    Ok(serde_json::to_value(&settings).unwrap_or_default())
+}
+
+/// `scene.setNumber {scene?, number}`: give one scene a number by hand. The numbers are locked
+/// first if they are not, so it stays.
+fn set_one(s: &mut Session, v: &Value) -> CmdResult {
+    let number =
+        v.get("number").and_then(Value::as_str).and_then(clean).ok_or_else(|| CmdError::Params("`number` is letters and digits, up to 12".into()))?;
+    let sc = scene_param(s, v)?;
+    let shown = numbers(&s.doc);
+    if shown.iter().enumerate().any(|(i, n)| i != sc.index && *n == number) {
+        return Err(CmdError::Params(format!("another scene is already {number}")));
+    }
+    if !SceneNumbers::of_doc(&s.doc).locked {
+        lock(s, &json!({"lock": true}))?;
+    }
+    set_number(&mut s.doc, sc.start, Some(number));
     Ok(json!({"numbers": numbers(&s.doc)}))
 }
 
@@ -272,7 +370,10 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("scene.numbers", "Scene Numbers", "Production", list).pure(),
         CommandSpec::new("scene.showNumbers", "Show Scene Numbers", "Production", show).params(r#"{"show"?: bool}"#),
         CommandSpec::new("scene.lockNumbers", "Lock Scene Numbers", "Production", lock).params(r#"{"lock"?: bool}"#),
-        CommandSpec::new("scene.renumber", "Renumber Scenes", "Production", renumber),
+        CommandSpec::new("scene.renumber", "Renumber Scenes", "Production", renumber).params(r#"{"fromCaret"?: bool, "keepExisting"?: bool}"#),
+        CommandSpec::new("scene.configureNumbers", "Scene Number Options", "Production", configure)
+            .params(r#"{"start"?: number, "restartEvery"?: number, "prefix"?: bool, "sides"?: "both"|"left"|"right", "font"?: string}"#),
+        CommandSpec::new("scene.setNumber", "Set Scene Number", "Production", set_one).params(r#"{"scene"?: index, "number": string}"#),
         CommandSpec::new("scene.omit", "Omit Scene", "Production", omit).params(r#"{"scene"?: number (the caret's scene when left out)}"#),
         CommandSpec::new("scene.recall", "Recall Omitted Scene", "Production", recall)
             .params(r#"{"scene"?: number (the caret's scene when left out)}"#),
@@ -295,6 +396,30 @@ mod tests {
 
     fn add_scene_before(s: &mut Session, block: usize, heading: &str) {
         s.doc.body.insert(block, para_block(paragraph("SceneHeading", heading)));
+    }
+
+    #[test]
+    fn start_restart_prefix_and_one_number_by_hand() {
+        let mut s = session(&["INT. A - DAY", "INT. B - DAY", "INT. C - DAY", "INT. D - DAY"]);
+        s.run("scene.configureNumbers", &json!({"start": 10, "restartEvery": 3})).unwrap();
+        assert_eq!(numbers(&s.doc), ["10", "11", "12", "10"]);
+        s.run("scene.configureNumbers", &json!({"restartEvery": 0, "prefix": true})).unwrap();
+        s.run("scene.lockNumbers", &json!({"lock": true})).unwrap();
+        // A scene added between 11 and 12 takes A12 (a letter before the next number).
+        add_scene_before(&mut s, 4, "INT. NEW - DAY");
+        assert_eq!(numbers(&s.doc), ["10", "11", "A12", "12", "13"]);
+        s.run("scene.setNumber", &json!({"scene": 2, "number": "11X"})).unwrap();
+        assert_eq!(numbers(&s.doc)[2], "11X");
+        assert!(s.run("scene.setNumber", &json!({"scene": 0, "number": "13"})).is_err(), "unique");
+        // Renumber from the caret keeps the scenes before it.
+        s.sel = wordsmith_engine::Selection::caret(crate::data::body_pos(4, 0));
+        s.run("scene.renumber", &json!({"fromCaret": true})).unwrap();
+        assert_eq!(numbers(&s.doc), ["10", "11", "12", "13", "14"]);
+        assert!(s.run("scene.configureNumbers", &json!({"sides": "middle"})).is_err());
+        s.run("scene.configureNumbers", &json!({"sides": "left", "font": "Inter"})).unwrap();
+        let pag = crate::paginate::paginate(&s.doc);
+        let heading = pag.doc.body[0].as_para().map(|p| p.objects.len()).unwrap_or(0);
+        assert_eq!(heading, 1, "one side only");
     }
 
     #[test]

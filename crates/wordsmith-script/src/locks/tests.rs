@@ -121,3 +121,35 @@ fn locked_labels_print_in_the_header() {
     assert_eq!(rows[0][0], "Line 0.", "no number on page 1");
     assert_eq!((rows[1][0].as_str(), rows[2][0].as_str(), rows[3][0].as_str()), ("1A.", "2.", "3."));
 }
+
+#[test]
+fn page_tools_move_relabel_add_and_remove_locked_pages() {
+    let mut s = session();
+    s.run("lock.pages", &json!({})).unwrap();
+    let start2 = firsts(&s)[1].clone();
+    // On page 2: its start moves down a paragraph, then back.
+    let (b2, _) = lock_marks(&s.doc).values().copied().filter(|(b, _)| *b > 0).min().unwrap_or((0, 0));
+    s.sel = Selection::caret(at(b2 + 1, 0));
+    // Page 1 is full: moving page 2's start up a paragraph takes that line onto page 2.
+    s.run("lock.adjustBreak", &json!({"by": -1})).unwrap();
+    assert_eq!(firsts(&s)[1], s.doc.body[b2 - 1].as_para().map(|p| p.text.clone()).unwrap_or_default());
+    s.run("lock.adjustBreak", &json!({"by": 1})).unwrap();
+    assert_eq!(firsts(&s)[1], start2);
+    assert_eq!(labels(&s), ["1", "2", "3"]);
+    // Its number by hand.
+    s.run("lock.setLabel", &json!({"label": "2X"})).unwrap();
+    assert_eq!(labels(&s), ["1", "2X", "3"]);
+    assert!(s.run("lock.setLabel", &json!({"label": "3"})).is_err(), "numbers stay unique");
+    // A new locked page in the middle of page 1.
+    s.sel = Selection::caret(at(10, 0));
+    assert_eq!(s.run("lock.lockPage", &json!({})).unwrap()["label"], "1A");
+    assert_eq!(labels(&s), ["1", "1A", "2X", "3"]);
+    // Unlocking it lets its text flow back.
+    s.run("lock.unlockPage", &json!({})).unwrap();
+    assert_eq!(labels(&s), ["1", "2X", "3"]);
+    s.sel = Selection::caret(at(0, 0));
+    assert!(s.run("lock.unlockPage", &json!({})).is_err(), "the first locked page stays");
+    // Relock numbers from 1 again.
+    s.run("lock.relock", &json!({})).unwrap();
+    assert_eq!(labels(&s), ["1", "2", "3"]);
+}
