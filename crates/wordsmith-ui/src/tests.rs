@@ -646,3 +646,42 @@ fn index_cards_and_the_scene_view_show_the_script_and_keep_typing_out() {
     frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE)]);
     assert_eq!(ed.structure, None);
 }
+
+#[test]
+fn the_tables_panel_edits_the_script_and_exports_csv() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(
+        &ctx,
+        &mut ed,
+        vec![
+            text("int"),
+            key(Key::Tab, Modifiers::NONE),
+            text("kitchen"),
+            key(Key::Enter, Modifiers::NONE),
+            text("Anna waits."),
+            key(Key::Enter, Modifiers::NONE),
+        ],
+    );
+    ed.run("element.character", json!({}));
+    frame(&ctx, &mut ed, vec![text("anna"), key(Key::Enter, Modifiers::NONE), text("Hello.")]);
+    ed.run("view.tables", json!({}));
+    assert_eq!(ed.tables, Some(crate::tables::Table::Scenes));
+    frame(&ctx, &mut ed, vec![]);
+    // A finished heading edit sets the heading; a finished name edit renames everywhere.
+    let mut e = crate::tables::CellEdit::new(crate::tables::Table::Scenes, 0, "heading", "INT. KITCHEN");
+    e.text = "ext. garden".into();
+    let (id, params) = crate::tables::commit(&e).unwrap();
+    ed.run(id, params);
+    assert_eq!(ed.scene_list()[0]["heading"], "EXT. GARDEN");
+    ed.tables = Some(crate::tables::Table::Characters);
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("character.rename", json!({"from": "ANNA", "to": "Zoe"}));
+    assert_eq!(lines(&ed)[1].1, "Zoe waits.");
+    assert_eq!(lines(&ed)[2].1, "ZOE");
+    let dir = temp_dir("csv");
+    ed.run("tables.exportCharactersCsv", json!({"path": dir.join("Cast")}));
+    assert_eq!(std::fs::read_to_string(dir.join("Cast.csv")).unwrap(), "Character,Speeches,Scenes,First scene\r\nZOE,1,1,1\r\n");
+    let _ = std::fs::remove_dir_all(&dir);
+}
