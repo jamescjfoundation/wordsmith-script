@@ -57,3 +57,4 @@ One line per merge to `main`, newest last.
 | 2026-11-20 | m17/ribbon | Reports gallery, revision set menu, every menu command on the ribbon or File page (tested) |
 | 2026-11-20 | m18/backstage | The File page: new with template cards, open, save, export, print, compare, preferences, keys, about |
 | 2026-11-20 | m19/polish | First-run tour, window layout in preferences, README pictures and guide page for the new window, typing measured |
+| 2026-11-20 | m20/updates | Update checks with craft-update, release files named for it, draft-then-publish release workflow; v0.1.0 published from it, then version 0.1.1 (macOS sent to the release page) |

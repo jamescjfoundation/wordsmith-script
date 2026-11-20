@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 (2026-11-20)
+
+The first version that checks for its own updates. It also carries
+everything built since 0.1.0: the v0.2 features from SPEC-2 and the v0.3
+interface, listed below.
 
 ### Releases and updates (decision 0038)
 
