@@ -79,6 +79,10 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 for id in ["scene.showNumbers", "scene.lockNumbers", "scene.renumber", "scene.omit", "scene.recall"] {
                     item(ed, ui, id);
                 }
+                ui.separator();
+                for id in ["lock.pages", "lock.unlockLevel", "lock.unlockAll"] {
+                    item(ed, ui, id);
+                }
             });
             ui.menu_button("View", |ui| {
                 for id in ["view.normal", "view.page", "view.speed", "view.cards", "view.scenes", "view.tables"] {
@@ -187,7 +191,11 @@ pub fn status_bar(ed: &mut Editor, ui: &mut Ui) {
             let scenes = wordsmith_script::scenes(&ed.session.doc).len();
             let pag = ed.paginated();
             let page = pag.to_output(&ed.session.sel.focus).and_then(|at| pag.layout.caret(&at)).map_or(1, |c| c.page + 1);
-            ui.label(format!("Page {page} of {}", pag.layout.pages.len()));
+            // A locked script's pages go by their labels (12A).
+            match pag.labels.as_ref().and_then(|l| l.get(page - 1)) {
+                Some(label) => ui.label(format!("Page {label} ({page} of {}), locked", pag.layout.pages.len())),
+                None => ui.label(format!("Page {page} of {}", pag.layout.pages.len())),
+            };
             ui.separator();
             ui.label(format!("{scenes} scene{}", if scenes == 1 { "" } else { "s" }));
             let rev = wordsmith_script::revisions::Revisions::of_doc(&ed.session.doc);

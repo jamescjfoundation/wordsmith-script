@@ -35,6 +35,8 @@ pub enum Piece {
     ContinuedTop { page: usize },
     /// (CONTINUED) at the foot of a page whose scene goes on.
     ContinuedBottom,
+    /// The one line of a placeholder page left by locked pages whose text was deleted.
+    Blank,
 }
 
 /// A paragraph, or what is left of one, waiting to be placed.
@@ -42,6 +44,8 @@ pub enum Piece {
 struct Item {
     idx: usize,
     start: usize,
+    /// Byte where this item ends: the paragraph's end, or a locked page start inside it.
+    end: usize,
     lines: Vec<(usize, usize)>,
     heights: Vec<f32>,
     /// Space before applies (not for the rest of a split paragraph).
@@ -127,6 +131,8 @@ struct Planner<'a> {
     last: Option<usize>,
     /// Pages each scene has started on so far, by heading index.
     scene_pages: std::collections::HashMap<usize, usize>,
+    /// Locked page starts (decision 0026): body block → byte offsets where a page must start.
+    locks: std::collections::BTreeMap<usize, Vec<usize>>,
 }
 
 impl Planner<'_> {
@@ -170,7 +176,7 @@ impl Planner<'_> {
         let end_line = end_line.min(item.lines.len());
         let h: f32 = item.heights.iter().take(end_line).sum();
         let sb = self.sb(item);
-        let end = end.min(p.text.len()).max(item.start);
+        let end = end.min(item.end).min(p.text.len()).max(item.start);
         self.cur.push(Piece::Para { block: p.block, start: item.start, end, lines: end_line, space_before: sb > 0.0 });
         let whole = end_line >= item.lines.len();
         self.placed.push(whole.then(|| (item.clone(), sb + h)));
@@ -267,15 +273,34 @@ impl Planner<'_> {
             .m
             .iter()
             .enumerate()
-            .map(|(idx, p)| Item { idx, start: 0, lines: p.lines.clone(), heights: p.heights.clone(), space_before: true })
+            .map(|(idx, p)| Item { idx, start: 0, end: p.text.len(), lines: p.lines.clone(), heights: p.heights.clone(), space_before: true })
             .collect();
         let mut guard = 0usize;
-        while let Some(item) = queue.pop_front() {
+        while let Some(mut item) = queue.pop_front() {
             guard += 1;
             if self.pages.len() >= MAX_PAGES || guard > 10 * MAX_PAGES {
                 break;
             }
             let Some(p) = self.m.get(item.idx) else { continue };
+            // A locked page starting inside this item: the item ends there, and the rest starts
+            // the page.
+            let inside = self.locks.get(&p.block).and_then(|offs| offs.iter().copied().find(|o| *o > item.start && *o < item.end));
+            if let Some(off) = inside
+                && let Some(sp) = self.doc.story(wordsmith_doc::StoryRef::Body).and_then(|b| b.get(p.block)).and_then(|b| b.as_para())
+            {
+                let measure = |a: usize, b: usize| {
+                    let (lines, heights) = measure_text(self.doc, sp, p.text.get(a..b).unwrap_or(""));
+                    (lines.into_iter().map(|(s, e)| (s + a, e + a)).collect::<Vec<_>>(), heights)
+                };
+                let (rest_lines, rest_heights) = measure(off, item.end);
+                queue.push_front(Item { idx: item.idx, start: off, end: item.end, lines: rest_lines, heights: rest_heights, space_before: false });
+                let (lines, heights) = measure(item.start, off);
+                item = Item { end: off, lines, heights, ..item };
+            }
+            let locked_here = self.locks.get(&p.block).is_some_and(|offs| offs.contains(&item.start));
+            if locked_here && !self.top() {
+                self.break_page(item.idx);
+            }
             if p.page_break_before && item.start == 0 && !self.top() {
                 self.break_page(item.idx);
             }
@@ -284,7 +309,7 @@ impl Planner<'_> {
             let speech_reserve = if self.continues_speech(item.idx) { LINE } else { 0.0 };
             let keep = if p.keep_next { self.min_start(item.idx + 1, 0) } else { speech_reserve };
             if sb + whole + keep <= self.room() + 0.01 || (self.top() && sb + whole <= self.room() + 0.01) {
-                self.place(&item, item.lines.len(), usize::MAX);
+                self.place(&item, item.lines.len(), item.end);
                 continue;
             }
             let top = self.top();
@@ -296,20 +321,20 @@ impl Planner<'_> {
                 if let Some((kept, end, rest)) = self.split_point(&item, avail, forced) {
                     self.place(&item, kept, end);
                     let src = self.doc.story(wordsmith_doc::StoryRef::Body).and_then(|b| b.get(p.block)).and_then(|b| b.as_para());
-                    let remainder = p.text.get(rest..).unwrap_or("");
+                    let remainder = p.text.get(rest..item.end).unwrap_or("");
                     let (lines, heights) = match src {
                         Some(sp) => measure_text(self.doc, sp, remainder),
                         None => (vec![(0, remainder.len())], vec![LINE]),
                     };
                     let lines = lines.into_iter().map(|(s, e)| (s + rest, e + rest)).collect();
                     self.break_page(item.idx);
-                    queue.push_front(Item { idx: item.idx, start: rest, lines, heights, space_before: false });
+                    queue.push_front(Item { idx: item.idx, start: rest, end: item.end, lines, heights, space_before: false });
                     continue;
                 }
             }
             if top {
                 // Nothing fits and nothing can split: place it anyway rather than loop.
-                self.place(&item, item.lines.len(), usize::MAX);
+                self.place(&item, item.lines.len(), item.end);
                 continue;
             }
             // Paragraphs kept with this one (a Character, a Scene Heading) go with it, unless that
@@ -341,6 +366,20 @@ impl Planner<'_> {
     }
 }
 
+/// Where locked pages start: body block → byte offsets of characters with a `page_lock` mark.
+pub fn lock_starts(doc: &Document) -> std::collections::BTreeMap<usize, Vec<usize>> {
+    let mut out: std::collections::BTreeMap<usize, Vec<usize>> = Default::default();
+    for (block, b) in doc.body.iter().enumerate() {
+        let Some(p) = b.as_para() else { continue };
+        for (range, c) in p.run_ranges() {
+            if c.page_lock.is_some() {
+                out.entry(block).or_default().push(range.start);
+            }
+        }
+    }
+    out
+}
+
 /// Plan the pages of `doc` from its measured paragraphs.
 pub fn plan(doc: &Document, m: &[Measured], marks: &MoresContinueds, rules: Rules) -> Vec<Vec<Piece>> {
     let s = &doc.last_section;
@@ -359,6 +398,7 @@ pub fn plan(doc: &Document, m: &[Measured], marks: &MoresContinueds, rules: Rule
         used: 0.0,
         last: None,
         scene_pages: std::collections::HashMap::new(),
+        locks: lock_starts(doc),
     }
     .run()
 }

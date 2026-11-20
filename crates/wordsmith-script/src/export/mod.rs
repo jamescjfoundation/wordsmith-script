@@ -143,4 +143,4 @@ pub fn specs() -> Vec<CommandSpec> {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

@@ -43,6 +43,8 @@ pub struct Paginated {
     pub matches_plan: bool,
     /// Each page's newest revision set, if it has revised text.
     pub page_revisions: Vec<Option<u32>>,
+    /// Each page's label, when the pages are locked (decision 0026).
+    pub labels: Option<Vec<String>>,
 }
 
 impl Paginated {
@@ -195,7 +197,7 @@ pub struct Built {
 }
 
 /// Build the output script for `pages` of `doc`.
-pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> Built {
+pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds, labels: Option<&[String]>) -> Built {
     let elements = Elements::of_doc(doc);
     let rev = crate::revisions::Revisions::of_doc(doc);
     let rev_hash = stable_rev(&[serde_json::to_string(&rev)
@@ -260,6 +262,10 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> B
                 Piece::More => {
                     identity.push(2);
                     (text_para(MORE_STYLE, &marks.more), None)
+                }
+                Piece::Blank => {
+                    identity.push(7);
+                    (text_para(elements.id_of(ElementKind::General), ""), None)
                 }
                 Piece::ContinuedBottom => {
                     identity.push(3);
@@ -342,7 +348,7 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> B
         map.push(None);
     }
     out.body = body;
-    crate::header_footer::apply(&mut out);
+    crate::header_footer::apply(&mut out, labels);
     Built { doc: out, map, page_revisions }
 }
 
@@ -381,11 +387,12 @@ fn paginate_with(doc: &Document, measure: &mut MeasureCache, cache: &mut LayoutC
     let marks = MoresContinueds::of_doc(doc);
     let m = measure_cached(doc, measure);
     let pages = plan(doc, &m, &marks, Rules::default());
-    let Built { doc: out, map, page_revisions } = build(doc, &pages, &marks);
+    let (pages, labels) = crate::locks::label_pages(doc, pages);
+    let Built { doc: out, map, page_revisions } = build(doc, &pages, &marks, labels.as_deref());
     let layout = print_layout(&out, cache);
     let matches_plan = layout.pages.len() == pages.len();
     if !matches_plan {
         log::warn!("pagination: planned {} pages, the layout made {}", pages.len(), layout.pages.len());
     }
-    Paginated { doc: out, pages, map, layout, matches_plan, page_revisions }
+    Paginated { doc: out, pages, map, layout, matches_plan, page_revisions, labels }
 }

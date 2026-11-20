@@ -14,6 +14,7 @@ pub mod commands;
 pub mod element;
 pub mod export;
 pub mod header_footer;
+pub mod locks;
 pub mod notes;
 pub mod paginate;
 pub mod revisions;
