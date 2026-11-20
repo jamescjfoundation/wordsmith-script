@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Releases and updates (decision 0038)
+
+- Help ▸ Check for Updates, an Updates section on the About page, and a check
+  at start (a preference, on by default). A newer release is offered in a
+  Software Update window; where this copy can replace itself it installs the
+  update, verified against its SHA-256, and restarts. Otherwise it opens the
+  release page.
+- Release files are named `wordsmith-script-<version>-<os>-<arch>`; macOS ships
+  a disk image.
+- The release workflow drafts a GitHub release with `SHA256SUMS.txt` and
+  publishes it only when asked, refusing one with fewer files than the last.
+
 ### The interface (v0.3 plan, M15 to M19)
 
 - A ribbon of tabs named for screenplay work, every control a command with its

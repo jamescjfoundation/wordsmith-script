@@ -1254,3 +1254,40 @@ fn the_window_layout_and_the_tour_keep_through_preferences() {
     bad.apply(&mut again);
     assert_eq!((again.chrome.left, again.chrome.left_w, again.chrome.right_w), (None, 260.0, 480.0));
 }
+
+#[test]
+fn check_for_updates_asks_the_app_and_the_window_shows_every_status() {
+    use crate::updates::{Offer, Request, Status};
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("help.checkForUpdates", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.updates.status, Status::Checking);
+    assert!(ed.updates.prompt);
+    assert_eq!(ed.updates.take_requests(), vec![Request::Check]);
+    // A second request while one runs asks nothing more.
+    ed.updates.check_now();
+    assert!(ed.updates.take_requests().is_empty());
+    let offer = |installs| Status::Available(Offer { version: "9.0.0".into(), page: "https://github.com/x/y/releases/tag/v9.0.0".into(), installs });
+    for status in [
+        Status::Idle,
+        Status::Current,
+        offer(true),
+        offer(false),
+        Status::Installing("Downloading…".into()),
+        Status::Ready("9.0.0".into()),
+        Status::Failed("offline".into()),
+        Status::Updated("9.0.0".into()),
+    ] {
+        ed.updates.status = status;
+        ed.chrome.backstage = Some(crate::backstage::Page::About);
+        frame(&ctx, &mut ed, vec![]);
+    }
+    assert!(ed.updates.describe().0.contains("9.0.0"));
+    // The preference round-trips.
+    ed.updates.check_at_start = false;
+    let p = crate::prefs::Prefs::default().of(&ed);
+    assert!(!p.workspace.check_updates);
+    assert!(crate::prefs::Prefs::default().workspace.check_updates, "on by default");
+}

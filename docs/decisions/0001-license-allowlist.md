@@ -42,6 +42,7 @@ licenses, and the copied core cannot build without them. They are listed as
 | `Zlib` | zlib-rs (compression under flate2, used by image codecs, zip and the PDF test reader); foldhash (hashing under hashbrown) | none beyond keeping notices in source distributions |
 | `Unicode-3.0` | unicode-ident (needed by every Rust derive macro); unicode-normalization (craft-proof); yoke, zerofrom (krilla PDF writer, hayro test reader) | keep the notice with distributed data and software |
 | `BSL-1.0` | clipboard-win, error-code (Windows clipboard, through arboard and egui-winit; approved 2026-11-19 at the start of the M1 editor) | none for binaries; keep the notice in source distributions |
+| `CDLA-Permissive-2.0` | webpki-root-certs (Mozilla's root certificates, through rustls-platform-verifier and ureq in craft-update; approved 2026-11-20 for updates, decision 0038) | the certificate data is shared under this license; `NOTICE` says so and links its text |
 | `IJG` | jpeg-encoder (craft-image-codecs, reached from wordsmith-geom) | the documentation must say the software is based in part on the work of the Independent JPEG Group; this is in `NOTICE` |
 
 Still waiting for a decision: the SCOWL and Kuenning notices on craft-i18n's

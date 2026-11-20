@@ -287,7 +287,10 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                     }
                 });
             });
-            ui.menu_button("Help", |ui| item(ed, ui, "help.about"));
+            ui.menu_button("Help", |ui| {
+                item(ed, ui, "help.checkForUpdates");
+                item(ed, ui, "help.about");
+            });
         });
     });
 }

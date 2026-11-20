@@ -50,6 +50,9 @@ into `docs/images`. Looking at them found two layout bugs in the index cards
 
 ## Bundles
 
+(File names, the macOS disk image and the release workflow changed in
+decision 0038.)
+
 `cargo xtask bundle` builds the app and the command-line tool in release mode
 and packs them for the computer it runs on, in `dist/` (ignored by git):
 

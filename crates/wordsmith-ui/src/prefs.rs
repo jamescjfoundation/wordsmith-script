@@ -90,6 +90,8 @@ pub struct WorkspacePrefs {
     pub ribbon_collapsed: bool,
     pub menu_bar: bool,
     pub tour_seen: bool,
+    /// Check for a newer release when the app starts (decision 0038).
+    pub check_updates: bool,
 }
 
 impl Default for WorkspacePrefs {
@@ -109,6 +111,7 @@ impl Default for WorkspacePrefs {
             ribbon_collapsed: false,
             menu_bar: false,
             tour_seen: false,
+            check_updates: true,
         }
     }
 }
@@ -148,6 +151,7 @@ impl Prefs {
         ed.keys = w.keys.iter().take(MAX_KEYS).filter(|(k, v)| k.len() <= 40 && v.len() <= 80).map(|(k, v)| (k.clone(), v.clone())).collect();
         ed.tools.show_start_on_launch = w.show_start;
         ed.reopen_last = w.reopen_last;
+        ed.updates.check_at_start = w.check_updates;
         ed.chrome.left = crate::ribbon::Panel::from_key(&w.left_panel);
         ed.chrome.right = crate::ribbon::Panel::from_key(&w.right_panel);
         ed.chrome.left_w = if w.left_width.is_finite() { w.left_width.clamp(200.0, 480.0) } else { 260.0 };
@@ -203,6 +207,7 @@ impl Prefs {
                 ribbon_collapsed: ed.chrome.collapsed,
                 menu_bar: ed.chrome.menu_bar,
                 tour_seen: ed.chrome.tour.is_none() && (self.workspace.tour_seen || ed.chrome.tour_done),
+                check_updates: ed.updates.check_at_start,
             },
         }
     }

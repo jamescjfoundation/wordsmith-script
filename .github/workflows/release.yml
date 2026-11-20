@@ -1,29 +1,83 @@
-# Builds release bundles for macOS, Windows and Linux with `cargo xtask bundle`
-# and keeps them as workflow artifacts. It publishes nothing: it runs only when
-# started by hand, and making a GitHub release from the artifacts is a separate,
-# deliberate step for the project owner. Not yet run: the project has no remote.
-name: Bundles
+# Builds the release files for macOS, Windows and Linux with `cargo xtask bundle`, checksums
+# them, and puts them on a DRAFT GitHub release (decision 0038, after the pattern the ArtCraft
+# apps use). The in-app update reads published releases only, so nothing reaches anyone until
+# the release is published: by hand on GitHub, or by starting this workflow on the `release`
+# branch with "publish" ticked. Publishing refuses a release with fewer files than the last one.
+#
+# Uses only GitHub's own actions and the gh CLI that runners carry; nothing from other
+# organisations runs with the release token.
+name: Release
 
 on:
+  push:
+    branches: [release]
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the release once every file is on it (release branch only)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
 
 jobs:
+  version:
+    name: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - id: v
+        name: Read and check the version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          v="$(sed -n '/^\[workspace.package\]/,/^\[/{s/^version *= *"\(.*\)"/\1/p;}' Cargo.toml)"
+          semver='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+          if [[ ! "$v" =~ $semver ]]; then
+            echo "::error::'$v' in Cargo.toml is not a version like 1.2.3 or 1.2.3-rc.1"
+            exit 1
+          fi
+          if draft="$(gh release view "v$v" --json isDraft --jq .isDraft 2>/dev/null)" && [ "$draft" != "true" ]; then
+            echo "::error::v$v is already published. Raise the version in Cargo.toml first."
+            exit 1
+          fi
+          case "$v" in *-*) pre=true ;; *) pre=false ;; esac
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$pre" >> "$GITHUB_OUTPUT"
+          echo "### Wordsmith Script v$v (\`${GITHUB_SHA::9}\`)" >> "$GITHUB_STEP_SUMMARY"
+
   bundle:
     name: bundle (${{ matrix.os }})
+    needs: version
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # macos-latest is Apple silicon; macos-15-intel is Intel.
+        os: [ubuntu-latest, macos-latest, macos-15-intel, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install toolchain
         shell: bash
@@ -37,11 +91,75 @@ jobs:
       - name: cargo xtask bundle
         run: cargo xtask bundle
 
-      - name: Keep the bundle
+      - name: Keep the files
         uses: actions/upload-artifact@v4
         with:
-          name: wordsmith-script-${{ matrix.os }}
+          name: release-${{ matrix.os }}
           path: |
+            dist/*.dmg
             dist/*.zip
             dist/*.tar.gz
           if-no-files-found: error
+
+  release:
+    name: Draft the GitHub release
+    needs: [version, bundle]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only this job writes to the repository.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: files
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: files
+        run: sha256sum -- * | tee SHA256SUMS.txt
+
+      - name: Create or refresh the draft
+        working-directory: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.version.outputs.version }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            # Still a draft (the version job refuses a published tag): replace its files.
+            gh release view "$tag" --json assets --jq '.assets[].name' | while read -r asset; do
+              gh release delete-asset "$tag" "$asset" --yes
+            done
+            gh release edit "$tag" --draft --title "Wordsmith Script $tag" --target "$GITHUB_SHA" --prerelease="$PRERELEASE"
+            gh release upload "$tag" --clobber -- *
+          else
+            pre=()
+            if [ "$PRERELEASE" = "true" ]; then pre=(--prerelease); fi
+            gh release create "$tag" --draft --title "Wordsmith Script $tag" --target "$GITHUB_SHA" --generate-notes "${pre[@]}" -- *
+          fi
+          echo "Draft $tag has $(ls | wc -l) files." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish
+        if: inputs.publish && github.ref == 'refs/heads/release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: v${{ needs.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          now="$(gh release view "$TAG" --json assets --jq '.assets | length')"
+          last="$(gh release list --exclude-drafts --exclude-pre-releases --limit 50 --json tagName,publishedAt --jq 'sort_by(.publishedAt) | last | .tagName // ""')"
+          if [ -n "$last" ] && [ "$last" != "$TAG" ]; then
+            before="$(gh release view "$last" --json assets --jq '.assets | length')"
+            if [ "$now" -lt "$before" ]; then
+              echo "::error::$TAG has $now files where $last had $before: it stays a draft"
+              exit 1
+            fi
+          fi
+          gh release edit "$TAG" --draft=false
+          echo "Published $TAG ($now files)." >> "$GITHUB_STEP_SUMMARY"

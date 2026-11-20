@@ -16,6 +16,8 @@ use serde_json::json;
 use wordsmith_ui::Editor;
 use wordsmith_ui::prefs::{Prefs, PrefsFile};
 
+mod updates;
+
 struct App {
     editor: Editor,
     /// Whether the recovery prompt has been offered for copies left by an earlier run.
@@ -29,6 +31,8 @@ struct App {
     settings: Option<PathBuf>,
     /// When the statistics were last written.
     stats_saved: Instant,
+    /// Update checks and the installed update waiting for the exit (decision 0038).
+    updater: updates::Updater,
 }
 
 impl App {
@@ -77,7 +81,9 @@ impl App {
             // The File page's New page: recent scripts, templates, first steps.
             editor.chrome.backstage = Some(wordsmith_ui::backstage::Page::New);
         }
-        App { editor, offered_recovery: false, prefs, dictionary, settings, stats_saved: Instant::now() }
+        let updater = updates::Updater::new();
+        updater.read_outcome(&mut editor.updates);
+        App { editor, offered_recovery: false, prefs, dictionary, settings, stats_saved: Instant::now(), updater }
     }
 
     /// Write the statistics when they changed (at most once a minute, unless `force`).
@@ -131,6 +137,12 @@ impl eframe::App for App {
         if ctx.input(|i| i.viewport().close_requested()) && !self.editor.may_close() {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
+        if self.updater.tick(&mut self.editor.updates, ctx) {
+            // Restart Now: close as the close button would, asking about unsaved scripts first.
+            if self.editor.may_close() {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            }
+        }
         if self.editor.close_confirmed {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }
@@ -156,10 +168,17 @@ impl eframe::App for App {
         {
             eprintln!("wordsmith: the personal dictionary could not be saved: {e}");
         }
+        // Last, once everything is saved: the helper starts the installed version after this exit.
+        self.updater.finish();
     }
 }
 
 fn main() -> ExitCode {
+    // Windows: the update helper is a copy of this program started with `--finish-update`.
+    #[cfg(windows)]
+    if let Some(result) = craft_update::self_update::finish(&updates::APP, &std::env::args_os().skip(1).collect::<Vec<_>>()) {
+        return if result.is_ok() { ExitCode::SUCCESS } else { ExitCode::FAILURE };
+    }
     let first = std::env::args().nth(1);
     if first.as_deref() == Some("--version") {
         println!("{}", wordsmith_ui::about_text());

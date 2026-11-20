@@ -16,7 +16,7 @@ pub const ALLOWED: &[&str] =
 /// cannot build without them. Reasons and conditions are in
 /// `docs/decisions/0001-license-allowlist.md`. Add to this list only with a
 /// person's approval recorded there.
-pub const REVIEWED_EXCEPTIONS: &[&str] = &["Zlib", "Unicode-3.0", "IJG", "BSL-1.0"];
+pub const REVIEWED_EXCEPTIONS: &[&str] = &["Zlib", "Unicode-3.0", "IJG", "BSL-1.0", "CDLA-Permissive-2.0"];
 
 /// `WITH` exceptions that only add permissions to an allowed license.
 pub const ALLOWED_EXCEPTIONS: &[&str] = &["LLVM-exception"];

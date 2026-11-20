@@ -266,6 +266,8 @@ pub struct Editor {
     seen_rev: u64,
     /// Tool windows added after v0.1 (Go To, bookmarks, checker, reformat…).
     pub tools: crate::tools::Tools,
+    /// Software updates (decision 0038): what the window shows; the desktop app does the work.
+    pub updates: crate::updates::Updates,
     /// Parameters a window adds to the command its file dialog runs.
     pub dialog_params: Option<Value>,
     /// Draw the highlighted characters' speeches.
@@ -348,6 +350,7 @@ impl Editor {
             board: Default::default(),
             seen_rev: 0,
             tools: Default::default(),
+            updates: Default::default(),
             dialog_params: None,
             show_highlights: true,
             tabs: vec![None],
