@@ -76,6 +76,33 @@ pub enum Panel {
     Goals,
 }
 
+impl Panel {
+    const ALL: [(Panel, &'static str); 13] = [
+        (Panel::Scenes, "scenes"),
+        (Panel::Outline, "outline"),
+        (Panel::Bookmarks, "bookmarks"),
+        (Panel::Notes, "notes"),
+        (Panel::Characters, "characters"),
+        (Panel::Find, "find"),
+        (Panel::Element, "element"),
+        (Panel::Scene, "scene"),
+        (Panel::Revisions, "revisions"),
+        (Panel::Page, "page"),
+        (Panel::Changes, "changes"),
+        (Panel::Checker, "checker"),
+        (Panel::Goals, "goals"),
+    ];
+
+    /// The name the preferences keep the panel under.
+    pub fn key(self) -> &'static str {
+        Panel::ALL.iter().find(|(p, _)| *p == self).map_or("", |(_, k)| k)
+    }
+
+    pub fn from_key(k: &str) -> Option<Panel> {
+        Panel::ALL.iter().find(|(_, x)| *x == k).map(|(p, _)| *p)
+    }
+}
+
 /// The chrome's state.
 pub struct Chrome {
     pub tab: Tab,
@@ -106,6 +133,8 @@ pub struct Chrome {
     pub in_ribbon: bool,
     /// The File page's print choices.
     pub print: crate::production::PrintChoices,
+    /// The first-run tour was finished or skipped this run.
+    pub tour_done: bool,
 }
 
 impl Default for Chrome {
@@ -128,6 +157,7 @@ impl Default for Chrome {
             tour: None,
             in_ribbon: false,
             print: Default::default(),
+            tour_done: false,
         }
     }
 }
@@ -402,6 +432,59 @@ fn mark(ui: &mut Ui, letter: &str) {
     let bx = egui::Rect::from_center_size(at, g.size() + vec2(6.0, 2.0));
     ui.painter().rect_filled(bx, 3.0, t.text);
     ui.painter().galley(bx.min + vec2(3.0, 1.0), g, t.surface_high);
+}
+
+/// The first-run tour: what each part of the window is for, one step at a time.
+pub const TOUR: [(&str, &str); 5] = [
+    (
+        "The ribbon",
+        "Tabs for writing, inserting, planning, production, review and the view. Each control shows its key when you point at it; F10 shows letters to use them from the keyboard.",
+    ),
+    ("Elements", "Write › Elements sets the paragraph's element. Each tile shows its key and what Return and Tab make from it."),
+    ("The Navigator", "The rail on the left: scenes (drag to reorder), the outline, bookmarks, notes, characters and find."),
+    (
+        "The Inspector",
+        "The rail on the right: the element and scene at the caret, revisions, the page, tracked changes, the format checker and your goals.",
+    ),
+    (
+        "The File page",
+        "File holds new scripts from templates, recent scripts, export, print and preferences. The status bar below shows the page, words and what Return and Tab make.",
+    ),
+];
+
+/// The tour's card, while it shows.
+pub fn tour(ed: &mut Editor, ctx: &egui::Context) {
+    let Some(step) = ed.chrome.tour else { return };
+    let Some((head, body)) = TOUR.get(step) else {
+        ed.chrome.tour = None;
+        ed.chrome.tour_done = true;
+        return;
+    };
+    let t = Tokens::get(ctx);
+    let mut next = false;
+    let mut skip = false;
+    egui::Window::new("tour")
+        .title_bar(false)
+        .resizable(false)
+        .anchor(egui::Align2::CENTER_TOP, [0.0, 170.0])
+        .frame(egui::Frame::popup(&ctx.style_of(ctx.theme())).fill(t.surface_high).inner_margin(14))
+        .show(ctx, |ui| {
+            ui.set_max_width(380.0);
+            ui.label(egui::RichText::new(format!("{} of {}", step + 1, TOUR.len())).font(regular(11.0)).color(t.text_dim));
+            ui.label(egui::RichText::new(*head).font(semibold(16.0)).color(t.text));
+            ui.label(egui::RichText::new(*body).font(regular(12.5)).color(t.text));
+            ui.add_space(6.0);
+            ui.horizontal(|ui| {
+                next = ui.button(if step + 1 == TOUR.len() { "Done" } else { "Next" }).clicked();
+                skip = ui.button("Skip the tour").clicked();
+            });
+        });
+    if skip || (next && step + 1 == TOUR.len()) {
+        ed.chrome.tour = None;
+        ed.chrome.tour_done = true;
+    } else if next {
+        ed.chrome.tour = Some(step + 1);
+    }
 }
 
 #[cfg(test)]

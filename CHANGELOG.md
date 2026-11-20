@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### The interface (v0.3 plan, M15 to M19)
+
+- A ribbon of tabs named for screenplay work, every control a command with its
+  key in the tooltip, groups that fold to fit the window, Story Board and Index
+  Cards tabs with those views, and key tips (F10).
+- A quick-access row with a command search box.
+- The Navigator (scenes, outline, bookmarks, notes, characters, find) and the
+  Inspector (element, scene, revisions, page, changes, checker, goals) in rails
+  either side of the page.
+- A File page for new (template cards), open, save, export, print, compare,
+  preferences, keys and about.
+- A status bar that says what Return and Tab make, with clickable page, words
+  and scene and chips for revision mode and tracking.
+- Light, dark and extra-dark themes from one set of tokens; icons drawn in code.
+- A first-run tour; the window's layout kept between runs.
+
+### Features from SPEC-2 (M9 to M14)
+
 Work toward v0.2 from `docs/SPEC-2.md`. Nothing built in 0.1.0 changes its
 behavior; every addition below is new.
 

@@ -1522,6 +1522,9 @@ impl Editor {
         self.suggestion_list(ui.ctx());
         crate::dialogs::show(self, ui.ctx());
         crate::workspace::track(self);
+        if self.chrome.backstage.is_none() && !self.focus_mode {
+            crate::ribbon::tour(self, ui.ctx());
+        }
     }
 
     /// The suggestion list, just below the caret. Clicking an entry accepts it.

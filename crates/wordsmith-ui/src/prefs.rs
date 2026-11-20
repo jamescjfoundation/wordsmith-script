@@ -81,6 +81,15 @@ pub struct WorkspacePrefs {
     pub extra_dark: bool,
     /// The writer's own keys: shortcut → command id ("" turns a key off).
     pub keys: std::collections::BTreeMap<String, String>,
+    /// The window's layout (v0.3): the side panels open and their widths, the ribbon shown in
+    /// full or as tabs, the menu bar, and whether the first-run tour has been seen.
+    pub left_panel: String,
+    pub right_panel: String,
+    pub left_width: f32,
+    pub right_width: f32,
+    pub ribbon_collapsed: bool,
+    pub menu_bar: bool,
+    pub tour_seen: bool,
 }
 
 impl Default for WorkspacePrefs {
@@ -93,6 +102,13 @@ impl Default for WorkspacePrefs {
             writer: String::new(),
             extra_dark: false,
             keys: Default::default(),
+            left_panel: "scenes".into(),
+            right_panel: String::new(),
+            left_width: 260.0,
+            right_width: 290.0,
+            ribbon_collapsed: false,
+            menu_bar: false,
+            tour_seen: false,
         }
     }
 }
@@ -132,6 +148,15 @@ impl Prefs {
         ed.keys = w.keys.iter().take(MAX_KEYS).filter(|(k, v)| k.len() <= 40 && v.len() <= 80).map(|(k, v)| (k.clone(), v.clone())).collect();
         ed.tools.show_start_on_launch = w.show_start;
         ed.reopen_last = w.reopen_last;
+        ed.chrome.left = crate::ribbon::Panel::from_key(&w.left_panel);
+        ed.chrome.right = crate::ribbon::Panel::from_key(&w.right_panel);
+        ed.chrome.left_w = if w.left_width.is_finite() { w.left_width.clamp(200.0, 480.0) } else { 260.0 };
+        ed.chrome.right_w = if w.right_width.is_finite() { w.right_width.clamp(220.0, 480.0) } else { 290.0 };
+        ed.chrome.collapsed = w.ribbon_collapsed;
+        ed.chrome.menu_bar = w.menu_bar;
+        if !w.tour_seen {
+            ed.chrome.tour = Some(0);
+        }
         let writer: String = w.writer.chars().filter(|c| !c.is_control()).take(80).collect();
         if !writer.trim().is_empty() {
             ed.session.author = writer.trim().to_string();
@@ -171,6 +196,13 @@ impl Prefs {
                 writer: ed.session.author.clone(),
                 extra_dark: ed.extra_dark,
                 keys: ed.keys.clone(),
+                left_panel: ed.chrome.left.map_or(String::new(), |p| p.key().to_string()),
+                right_panel: ed.chrome.right.map_or(String::new(), |p| p.key().to_string()),
+                left_width: ed.chrome.left_w,
+                right_width: ed.chrome.right_w,
+                ribbon_collapsed: ed.chrome.collapsed,
+                menu_bar: ed.chrome.menu_bar,
+                tour_seen: ed.chrome.tour.is_none() && (self.workspace.tour_seen || ed.chrome.tour_done),
             },
         }
     }

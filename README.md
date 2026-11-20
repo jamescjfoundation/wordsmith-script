@@ -8,7 +8,7 @@ in `git diff`; Fountain, PDF, RTF, plain text and HTML come and go.
 
 Wordsmith Script is based on WordCraft by the ArtCraft team.
 
-![The page view, with scene numbers and a Blue revision](docs/images/page-view.png)
+![The page view with the ribbon, the scenes in the Navigator and the scene at the caret in the Inspector](docs/images/page-view.png)
 
 ## What it does
 
@@ -32,10 +32,18 @@ Wordsmith Script is based on WordCraft by the ArtCraft team.
 - **Automation.** `wordsmith-cli` converts, exports and reports, and serves
   every command to agents over MCP.
 
+The window has a ribbon of tabs named for screenplay work (Write, Insert,
+Plan, Production, Review, View), a Navigator on the left (scenes, outline,
+bookmarks, notes, characters, find), an Inspector on the right (the element
+and scene at the caret, revisions, the page, tracked changes, the format
+checker, goals), a File page for new, open, export and print, and a status
+bar that says what Return and Tab will make.
+
 | | |
 | --- | --- |
-| ![Index cards](docs/images/index-cards.png) | ![Story board](docs/images/story-board.png) |
-| ![Outline](docs/images/outline.png) | ![Speed view, dark](docs/images/speed-view-dark.png) |
+| ![Production tab and revisions](docs/images/ribbon-production.png) | ![Review tab, characters and the element](docs/images/ribbon-review.png) |
+| ![The File page](docs/images/file-page.png) | ![Index cards](docs/images/index-cards.png) |
+| ![Story board](docs/images/story-board.png) | ![Speed view, dark](docs/images/speed-view-dark.png) |
 
 The pictures are drawn by the app itself (`cargo xtask screenshots`) from
 "Everybody's Girl" (1918), a public-domain photoplay.
