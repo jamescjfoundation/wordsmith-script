@@ -1219,3 +1219,38 @@ fn every_file_page_draws_and_its_buttons_run_commands() {
     ed.run("view.start", json!({}));
     assert_eq!(ed.chrome.backstage, Some(Page::New));
 }
+
+#[test]
+fn the_window_layout_and_the_tour_keep_through_preferences() {
+    use crate::ribbon::Panel;
+    let ctx = ctx();
+    let mut ed = editor();
+    // A first run: the tour shows; Skip ends it for good.
+    let fresh = crate::prefs::Prefs::default();
+    fresh.apply(&mut ed);
+    assert_eq!(ed.chrome.tour, Some(0));
+    assert_eq!(ed.chrome.left, Some(Panel::Scenes));
+    frame(&ctx, &mut ed, vec![]);
+    ed.chrome.tour = None;
+    ed.chrome.tour_done = true;
+    ed.chrome.left = Some(Panel::Notes);
+    ed.chrome.right = Some(Panel::Revisions);
+    ed.chrome.right_w = 333.0;
+    ed.chrome.collapsed = true;
+    let saved = fresh.of(&ed);
+    assert!(saved.workspace.tour_seen);
+    let mut again = editor();
+    saved.apply(&mut again);
+    assert_eq!(
+        (again.chrome.left, again.chrome.right, again.chrome.collapsed, again.chrome.tour),
+        (Some(Panel::Notes), Some(Panel::Revisions), true, None)
+    );
+    assert!((again.chrome.right_w - 333.0).abs() < 0.01);
+    // Hostile widths are bounded.
+    let mut bad = saved.clone();
+    bad.workspace.left_width = f32::NAN;
+    bad.workspace.right_width = 99_999.0;
+    bad.workspace.left_panel = "nonsense".into();
+    bad.apply(&mut again);
+    assert_eq!((again.chrome.left, again.chrome.left_w, again.chrome.right_w), (None, 260.0, 480.0));
+}

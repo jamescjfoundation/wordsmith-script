@@ -1,5 +1,6 @@
 # Wordsmith Script user guide
 
+0. [The window](the-window.md): the ribbon, the side panels, the File page.
 1. [Getting started](getting-started.md): your first scene.
 2. [Writing](writing.md): elements, Return and Tab, autocomplete, spelling,
    find, notes.
