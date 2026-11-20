@@ -1,3 +1,4 @@
-# Golden files are compared byte for byte with what the layout prints, which
-# uses LF; keep them LF on every checkout (Windows would otherwise get CRLF).
-*.golden.txt text eol=lf
+# Text files are LF on every checkout. Tests compare generated text (golden
+# pagination, the keyboard guide) with files in the repository byte for byte,
+# and Git for Windows would otherwise check them out with CRLF.
+* text=auto eol=lf
