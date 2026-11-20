@@ -89,23 +89,14 @@ fn page_lines(mut glyphs: Vec<(f64, f64, String)>) -> Vec<(f64, f64, String)> {
 /// Most characters a margin mark has.
 const MARGIN_MARK_CHARS: usize = 6;
 
-/// `row` (sorted left to right) without short runs of text in the side margins: left of 1.3 in
-/// or starting right of 7.55 in, at least six characters' width away from the rest.
+/// `row` (sorted left to right) without margin marks: text ending left of 1.3 in, or starting
+/// right of 7.52 in, where script text never goes, when there are at most six characters of it.
 fn without_margin_marks(row: Vec<(f64, String)>, advance: f64) -> Vec<(f64, String)> {
-    let mut runs: Vec<Vec<(f64, String)>> = Vec::new();
-    for g in row {
-        match runs.last_mut() {
-            Some(r) if r.last().is_some_and(|l| g.0 - l.0 <= advance * 6.0) => r.push(g),
-            _ => runs.push(vec![g]),
-        }
-    }
-    let is_mark = |r: &Vec<(f64, String)>| {
-        let chars: usize = r.iter().map(|g| g.1.chars().count()).sum();
-        let (start, end) = (r.first().map_or(0.0, |g| g.0), r.last().map_or(0.0, |g| g.0 + advance));
-        chars <= MARGIN_MARK_CHARS && (end <= 1.3 * 72.0 || start >= 7.55 * 72.0)
-    };
-    runs.retain(|r| !is_mark(r));
-    runs.into_iter().flatten().collect()
+    let left = |g: &(f64, String)| g.0 + advance <= 1.3 * 72.0;
+    let right = |g: &(f64, String)| g.0 >= 7.52 * 72.0;
+    let count = |f: &dyn Fn(&(f64, String)) -> bool| row.iter().filter(|g| f(g)).map(|g| g.1.chars().count()).sum::<usize>();
+    let (drop_left, drop_right) = (count(&left) <= MARGIN_MARK_CHARS, count(&right) <= MARGIN_MARK_CHARS);
+    row.into_iter().filter(|g| !(drop_left && left(g)) && !(drop_right && right(g))).collect()
 }
 
 /// Import a text-based PDF as a script, placing each line by its left edge.

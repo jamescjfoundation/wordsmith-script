@@ -103,6 +103,12 @@ pub fn write(doc: &Document) -> String {
         if p.props.page_break_before == Some(true) {
             out.push_str(" page-break");
         }
+        if let Some(n) = p.props.scene_number.as_deref().filter(|n| !n.is_empty() && !n.contains(char::is_whitespace)) {
+            out.push_str(&format!(" #{n}"));
+        }
+        if let Some(id) = p.props.omitted {
+            out.push_str(&format!(" omitted={id}"));
+        }
         if let Some(set) = p.mark.revised {
             out.push_str(&format!(" revised={set}"));
         }
@@ -249,6 +255,9 @@ pub fn read(text: &str) -> Result<Document, ReadError> {
             // A paragraph of an element the file does not define reads as General.
             let style = if elements.get(&id).is_some() { id } else { general.clone() };
             let mut p = crate::emphasis::decode_with(&style, &text, false, true);
+            // A locked scene number, and an omitted scene's placeholder.
+            p.props.scene_number = attrs.iter().find_map(|a| a.strip_prefix('#')).filter(|n| !n.is_empty() && n.len() <= 12).map(str::to_string);
+            p.props.omitted = attrs.iter().find_map(|a| a.strip_prefix("omitted=")).and_then(|n| n.parse().ok());
             // A deletion in the paragraph, revised in a set.
             p.mark.revised = attrs.iter().find_map(|a| a.strip_prefix("revised=")).and_then(|n| n.parse().ok());
             if attrs.iter().any(|a| a == "page-break") {

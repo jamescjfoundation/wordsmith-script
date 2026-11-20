@@ -104,6 +104,7 @@ fn return_key(s: &mut Session) -> Result<(), CmdError> {
     crate::autocomplete::learn(&mut s.doc, &left);
     let next_id = s.doc.styles.get(&element.id).and_then(|st| st.next.clone()).filter(|n| elements.get(n).is_some()).unwrap_or(element.id.clone());
     let new = s.doc.split_paragraph(&at)?;
+    crate::scene_numbers::after_split(&mut s.doc, &new);
     s.sel = Selection::caret(new.clone());
     if at_end {
         apply_element(s, &elements, &new.path, &next_id, true)?;

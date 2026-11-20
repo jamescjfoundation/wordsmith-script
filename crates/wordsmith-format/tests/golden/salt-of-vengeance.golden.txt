@@ -1,33 +1,33 @@
 === page 1 ===
-BENEATH RICKETY RAILROAD BRIDGE
+1 BENEATH RICKETY RAILROAD BRIDGE 1
 Dalton making notes; he directs one of two laborers to
 strike pier of bridge. He does so; there is a hail of
 debris; they all hurry out in alarm.
 TITLE: CONSULTING ENGINEER DALTON BRINGS MATTER OF ROTTEN
 BRIDGE BEFORE DONNELLY, PRESIDENT OF THE ROAD.
-PRESIDENT DONNELLY'S OFFICE
+2 PRESIDENT DONNELLY'S OFFICE 2
 Donnelly bullying stenographer over an error. Boy enters;
 announces Dalton; Donnelly shakes head emphatically can't
 see him; boy says it is urgent; Donnelly looks at him a
 second, then nods and turns belligerently to receive Dalton.
-ANTEROOM OF OFFICE
+3 ANTEROOM OF OFFICE 3
 Dalton pacing determinedly and anxiously. Boy enters; nods;
 exit Dalton.
-OFFICE
+4 OFFICE 4
 Dalton advances and begins confidently. Donnelly stops him.
 Dalton amazed; walks to map and points out bridge. Donnelly
 angrily refuses to listen. Dalton turns; delivers eloquent
 tirade. Donnelly in rage rings bell; obsequious employe
 enters; he is told to put Dalton out and pay him off. Dalton
 speaks his mind before he goes.
-DALTON LIVING-ROOM
+5 DALTON LIVING-ROOM 5
 Mrs. Dalton sewing a man's shirt; kisses sleeve tenderly;
 turns in surprise and pleasure as Dalton enters; looks into
 his eyes; questions him anxiously; looks at clock. He pats
 her on shoulder and smiles, shaking head; asks for Arthur.
 They call and child runs in; Dalton takes him in his arms
 and makes plain his love.
-VERANDA, DONNELLY MANSION
+6 VERANDA, DONNELLY MANSION 6
 Mrs. Donnelly reading to Florence; pauses occasionally to
 lavish affection; they register approach of motor. Mother
 sighs; child brightens. Car swings up; Donnelly alights;
@@ -38,31 +38,31 @@ TITLE: MRS. DALTON LEARNS THE TRUTH AFTER TWO MONTHS'
 DECEPTION.
 === page 2 ===
 2.
-LIVING-ROOM
+7 LIVING-ROOM 7
 Dalton leave-taking; marked change in his appearance which
 he tries to hide from wife. He looks at clock saying it is
 time he was at office; kisses her and child; exit. Mrs.
 Dalton looks after him, then turns resolutely to telephone.
-ANTEROOM OF OFFICE
+8 ANTEROOM OF OFFICE 8
 Same boy as in 2 at switchboard; looks up name in book; same
 employe as in 4. Passes thru; pantomimes throwing person out
 bodily at boy's question; boy shakes head emphatically and
 bangs up receiver.
-LIVING-ROOM
+9 LIVING-ROOM 9
 Mrs. Dalton staggering back from telephone; sinks into chair
 and takes Arthur tragically into her arms.
-ANOTHER OUTER OFFICE
+10 ANOTHER OUTER OFFICE 10
 Dalton pacing up and down; another man enters; men shake
 hands cordially; Dalton asks question; other points to empty
 desks; Dalton turns sadly away.
-LIVING-ROOM
+11 LIVING-ROOM 11
 Mrs. Dalton and Arthur dressed for journey; bag on table;
 she is finishing note; holds it up and reads:
 LETTER: FATHER WILL HELP US OUT, DEAR, AND I AM TAKING
 ARTHUR TO HOYTSVILLE WITH ME.
 She has Arthur kiss note; she kisses it, sticks it in the
 mirror; exeunt.
-CITY STREET
+12 CITY STREET 12
 Dalton going along despondent; boy asks him to buy paper.
 Dalton brushes him away; boy insists, pointing excitedly to
 scare head. Dalton shows wild interest;
@@ -73,7 +73,7 @@ hands him coin; boy offers change, but he moves away, paying
 no attention.
 === page 3 ===
 3.
-LIVING-ROOM
+13 LIVING-ROOM 13
 Enter Dalton still reading; pauses; realizes no one is there
 to welcome him; shrugs shoulders and sits down shaking his
 head; suddenly espies note in mirror; seizes it with a look
@@ -81,13 +81,13 @@ of apprehension; reads, falling back in chair and clutching
 his hair; rises unsteadily; gropes his way out his face
 contorted in agony.
 TITLE: MRS. DONNELLY INCOGNITO OFFERS AID.
-STRETCH OF ROAD
+14 STRETCH OF ROAD 14
 Crowd held back by guards, evidently railroad employes.
 Donnelly car drives on; Mrs. Donnelly orders car stopped and
 alights, inquiring the trouble; face convulsed in horror;
 asks guard to let her pass; he refuses; she shows pass; he
 takes off his hat and sends one of men with her.
-FIELD HOSPITAL NEAR SCENE OF WRECK
+15 FIELD HOSPITAL NEAR SCENE OF WRECK 15
 Mrs. Dalton on stretcher in foreground; she becomes
 conscious; cries for Arthur. But everyone seems to be
 working over form on cot a few feet away; a doctor steps
@@ -97,18 +97,18 @@ revealed to audience. Doctor turns to companion.
 TITLE: WE MUST OPERATE IMMEDIATELY!
 One doctor has opened case; stands scratching his head in
 despair; instrument missing.
-ROADWAY
+16 ROADWAY 16
 Guards pushing back the curious. Dalton, now completely mad,
 enters hatless and wild-eyed; looks about till he sees
 people on beds; gives a cry and tries to pass; guard pushes
 him back. Dalton beats down guard murderously; rushes on.
-SAME AS 15, FIELD HOSPITAL
+17 SAME AS 15, FIELD HOSPITAL 17
 Mrs. Dalton on her knees sobbing before pallet. Doctor is
 telling Mrs. Donnelly of predicament; she instantly points
 to car; doctor calls his aid and instantly the cot is lifted
 and hurried away, Mrs. Donnelly supporting Mrs. Dalton from
 scene.
-VERY NEAR DONNELLY CAR
+18 VERY NEAR DONNELLY CAR 18
 Florence standing alongside and looking painfully at what is
 approaching. Men enter with stretcher. They are halted this
 moment by appearance of Dalton who lifts cover from Arthur's
@@ -121,7 +121,7 @@ soothes him completely. Mrs. Dalton is helped into car that
 drives away. A buggy nearby is requisitioned; they all get
 in and exeunt.
 TITLE: FLORENCE BECOMES THE DALTONS' ANGEL OF HAPPINESS.
-HOSPITAL PRIVATE ROOM
+19 HOSPITAL PRIVATE ROOM 19
 Arthur in bed; opens his eyes and speaks; nurse motions
 toward door; Mrs. Dalton enters; Arthur half turns away to
 mother's great grief. Dalton enters listlessly; maniacal
@@ -135,7 +135,7 @@ cheek and moves away. Dalton now sobbing takes her in his
 arms, showing great affection. They all exeunt on tiptoe.
 TITLE: SEEKING TERRIBLE VENGEANCE DALTON LEARNS THAT
 DONNELLY TOO HAS A CHILD.
-ANTEROOM
+20 ANTEROOM 20
 Dalton conversing with boy to latter's discomfiture; asks
 cunningly, pointing toward Donnelly's private office, if he
 has children. Boy annoyed nods and indicates height of
@@ -145,7 +145,7 @@ with vicious delight and sneaks out. Donnelly enters
 hurriedly; tells boy never to let Dalton in again.
 TITLE: THE MESSENGER OF DESTRUCTION AND ITS UNSUSPECTED
 VICTIMS.
-LIVING-ROOM
+21 LIVING-ROOM 21
 Arthur in reclining chair; crutches beside him. Dalton in
 corner working on obvious bomb with time clock connection;
 looks around crazily now and then, gathering the outfit in
@@ -161,12 +161,12 @@ gently away; two shake their heads sadly; approach Arthur.
 TITLE: THE 4.29 TRAIN DOOMED!
 === page 5 ===
 5.
-SIMILAR TO 1. BENEATH RAILROAD BRIDGE
+22 SIMILAR TO 1. BENEATH RAILROAD BRIDGE 22
 Dalton's face slowly emerges from bushes; now hideously
 maniacal; opens valise and hurriedly arranges mechanism of
 bomb; clock in plain view; connects wires already strung;
 hears a noise and crawls away grinning fiendishly.
-TELEGRAPH OFFICE
+23 TELEGRAPH OFFICE 23
 Dalton enters; takes folded telegram from pocket; hands it
 to clerk who opens and reads:
 INSERT: MRS. JOHN DONNELLY, MANORVIEW.
@@ -175,13 +175,13 @@ TRAIN LEAVING 4.29.
 DR. SAVAGE.
 Clerk looks up skeptically; points to signature; he nods
 with a frown; he pays and hurries out.
-SAME AS 3, ANTEROOM
+24 SAME AS 3, ANTEROOM 24
 Boy reading; registers bell; shakes his fist at it;
 reluctantly shuffles thru door other than that marked
 "President." Enter Dalton cautiously; hurries to and thru
 president's door; boy returns; puzzled at finding no one;
 resumes reading.
-DONNELLY'S OFFICE
+25 DONNELLY'S OFFICE 25
 Enter Dalton, softly locking door; Donnelly alone at desk;
 does not look up; Dalton throws key thru window as Donnelly
 looks up; covers him with revolver as he rises angrily;
@@ -195,12 +195,12 @@ emaciated; face disfigured; on crutches, with but one leg.
 Dalton now convulsed with madness has taken rope from
 pocket; springs on Donnelly; there is an uncertain struggle
 in process as scene fades.
-VERANDA
+26 VERANDA 26
 Maid returning telegram to messenger and urging him to
 follow disappearing auto; he rides away as fast as he can.
 === page 6 ===
 6.
-OFFICE
+27 OFFICE 27
 Dalton sits facing Donnelly whom he has bound and gagged;
 both men with clothes half torn off. Dalton approaches
 pointing to photographs; tries to speak; breaks down and
@@ -215,7 +215,7 @@ THE SCRAP-HEAP, TOO!
 Instant change in Donnelly who rises horror-struck; searches
 the maniac's face with terrible anxiety. Dalton begins to
 laugh exultantly.
-LIVING-ROOM
+28 LIVING-ROOM 28
 Mrs. Donnelly has just entered with Florence with packages
 which they put on table before Arthur; it is a big iced cake
 and delicacies; Florence claps her hands and kisses boy;
@@ -225,7 +225,7 @@ tears it open; half faints; hands it to Mrs. Dalton who is
 amazed at her identity. She comforts Mrs. Donnelly, who
 seizes Florence; hurries out. Florence kissing flower Arthur
 has given her.
-OFFICE
+29 OFFICE 29
 Shocking change in Donnelly; hair almost white; jaw sagging
 as he slumps in seat. Dalton points malignantly to time with
 gun; gives way to terrible memory. Donnelly now turns
@@ -233,9 +233,9 @@ supplicatingly; pleads; weeps. Dalton laughs tauntingly.
 Donnelly makes a furious but futile effort; curses gnashes
 his teeth; tries to cry out. Dalton springs to door menacing
 it with gun.
-RAILROAD STATION
+30 RAILROAD STATION 30
 Mrs. Donnelly and Florence anxiously clamber aboard train.
-OFFICE
+31 OFFICE 31
 Donnelly now exhausted and still more terribly changed; hair
 matted on brow; all arrogance burnt out of him; brutality
 gone. Dalton now walking about room in a ferment; suddenly
@@ -254,9 +254,9 @@ unties Donnelly; the two men look into each other's face an
 instant; then grasp each other's hand, making it plain that
 they forgive; they rush to the door which they tear and
 break down after desperate effort.
-STRETCH OF RAILROAD
+32 STRETCH OF RAILROAD 32
 Train speeding along.
-STRETCH OF RAILROAD WITH HIGHWAY ALONGSIDE
+33 STRETCH OF RAILROAD WITH HIGHWAY ALONGSIDE 33
 (Be sure to have auto moving toward train.) Follow swaying,
 madly-driven car containing Donnelly and Dalton. Obvious
 explosion of tire; auto stops; both spring out in dismay.
@@ -264,24 +264,24 @@ Show futility; rush despairingly to track; suddenly Dalton
 points ahead with a glad cry; a hand car is on a siding
 close by; laborer tries to stop them from seizing car and is
 thrown down the embankment; they propel it away.
-STRAIGHTAWAY STRETCH OF RAILWAY
+34 STRAIGHTAWAY STRETCH OF RAILWAY 34
 (Following car.) Both men working in half exhaustion;
 suddenly Donnelly collapses and pitches off the side of the
 car. Dalton tries in vain to push car alone up steep
 incline; seeing the futility he too drops off exhausted; is
 up again and runs on.
-INT. PASSENGER COACH
+35 INT. PASSENGER COACH 35
 Florence and Mrs. Donnelly in foreground; Florence seeing
 her mother weeping asks her to kiss the flower Arthur gave
 her; both smile.
-STRETCH OF RAILWAY TRESTLE
+36 STRETCH OF RAILWAY TRESTLE 36
 Dalton making his way groggily over it in dangerous manner;
 looks down once while resting and draws away in horror,
 realizing that dynamite is there; glances at watch;
 registers the singing of the rails; hurries on in terror.
 TITLE: DALTON SEVERS HIS WRIST TO MAKE THE BLOOD-RED DANGER
 SIGNAL.
-CURVE OF RAILROAD
+37 CURVE OF RAILROAD 37
 Dalton has fallen at last between the tracks; structure
 (artificial) of bridge may be seen several hundred feet
 behind; train plainly in sight bearing down on him.
@@ -290,11 +290,11 @@ behind; train plainly in sight bearing down on him.
 He has been waving his handkerchief weakly with no effect;
 shakes his head and with frantic weakness gets out his
 knife; severs his wrist; presses handkerchief.
-ENGINE CAB
+38 ENGINE CAB 38
 Cab swaying; fireman leans over frantically signalling to
 engineer to down brakes; engineer pulls throttle back and
 both jump down.
-RAILROAD
+39 RAILROAD 39
 Dalton, his arm still raised waveringly; streams of blood
 running down it; he collapses. Mrs. Donnelly and Florence
 among first passengers to appear. Doctor comes forward and
@@ -302,7 +302,7 @@ tourniquets arm. They are all startled by tremendous
 explosion that sends debris up in a cloud; supposed bridge
 collapses. All turn thankfully to Dalton.
 TITLE: THE BALM OF VENGEANCE.
-LIVING ROOM
+40 LIVING ROOM 40
 Dalton sleeping in chair, his arm, in bandage; Florence
 enters; signals someone; Donnelly enters tenderly carrying
 Arthur; Dalton opens his eyes; sees Donnelly caressing his

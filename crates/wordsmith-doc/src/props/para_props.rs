@@ -1,3 +1,4 @@
+// Modified by the Wordsmith Script contributors.
 use super::char_props::{NumChange, PropChange};
 use super::color::Rgb;
 use super::{Deserialize, Serialize};
@@ -442,6 +443,13 @@ pub struct ParaProps {
     /// Tab stops (replaces the inherited list; `TabAlign::Clear` stops remove inherited ones).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tabs: Option<Vec<TabStop>>,
+    /// A scene heading's locked scene number ("12A"). Not formatting: kept on the paragraph
+    /// itself, never inherited from a style.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scene_number: Option<String>,
+    /// An omitted scene's placeholder heading: the id its text is kept under.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub omitted: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shading: Option<Rgb>,
     #[serde(skip_serializing_if = "Option::is_none")]

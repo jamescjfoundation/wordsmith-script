@@ -12,7 +12,7 @@ Apache-2.0. Each copied file keeps its header; changed files add
 | Our crate | Upstream path | Upstream commit | Copied on | Notes |
 | --- | --- | --- | --- | --- |
 | wordsmith-geom | `crates/geom` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed only |
-| wordsmith-doc | `crates/doc` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; `props/char_props.rs` gains the `note`, `revised` and `page_lock` marks (M5 and M6, decisions 0023, 0024, 0026) |
+| wordsmith-doc | `crates/doc` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; `props/char_props.rs` gains the `note`, `revised` and `page_lock` marks (M5 and M6, decisions 0023, 0024, 0026); `props/para_props.rs` gains `scene_number` and `omitted` (decision 0025) |
 | wordsmith-fonts | `crates/fonts` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; one test ignored (needs a Thai face from craft-fonts) |
 | wordsmith-layout | `crates/layout` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; three tests ignored (need craft-i18n language data) |
 | wordsmith-render | `crates/render` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed only |

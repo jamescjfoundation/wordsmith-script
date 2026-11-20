@@ -30,3 +30,4 @@ what would make us revisit it.
 | [0022](0022-scenes-and-tables.md) | Index cards, scene view and tables |
 | [0023](0023-notes.md) | Notes |
 | [0024](0024-revisions.md) | Revisions |
+| [0025](0025-scene-numbers.md) | Scene numbers |

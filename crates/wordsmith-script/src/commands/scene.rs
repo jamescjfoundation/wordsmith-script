@@ -66,7 +66,17 @@ pub fn scene_json(doc: &Document, elements: &Elements, scene: &Scene) -> Value {
 /// `scene.list`: every scene, in order.
 fn list(s: &mut Session, _: &Value) -> CmdResult {
     let elements = Elements::of_doc(&s.doc);
-    Ok(json!(scenes(&s.doc).iter().map(|sc| scene_json(&s.doc, &elements, sc)).collect::<Vec<_>>()))
+    let numbers = crate::scene_numbers::numbers(&s.doc);
+    Ok(json!(
+        scenes(&s.doc)
+            .iter()
+            .map(|sc| {
+                let mut v = scene_json(&s.doc, &elements, sc);
+                v["number"] = json!(numbers.get(sc.index));
+                v
+            })
+            .collect::<Vec<_>>()
+    ))
 }
 
 fn scene_param(v: &Value, key: &str, count: usize) -> Result<usize, CmdError> {

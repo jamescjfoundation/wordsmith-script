@@ -18,6 +18,7 @@ pub mod notes;
 pub mod paginate;
 pub mod revisions;
 pub mod scene_heading;
+pub mod scene_numbers;
 pub mod scenes;
 pub mod spelling;
 pub mod template;

@@ -1,0 +1,351 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+//! Scene numbers (SPEC "Production"), decision 0025.
+//!
+//! Unlocked, scenes are numbered 1, 2, 3 … in script order, so numbers follow every change.
+//! Locking stores each heading's number on it (`ParaProps::scene_number`); from then on a scene
+//! keeps its number wherever it moves, and a scene added after the lock takes the number of the
+//! numbered scene before it with a letter (12A, then 12B; after 12A, 12B; when that is taken,
+//! 12AA), or, before the first numbered scene, a letter before its number (A1). Omitting a scene
+//! keeps its heading as an OMITTED placeholder with its number; its text is kept and can be
+//! recalled. Settings (`wordsmith.sceneNumbers`): show the numbers, and whether they are locked.
+
+use std::collections::{BTreeMap, HashSet};
+use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
+use wordsmith_doc::{Document, Paragraph, para_block};
+use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session, cmd::sel_result};
+
+use crate::element::{ElementKind, Elements};
+use crate::scenes::scenes;
+
+/// `app_data` key of the settings, and of omitted scenes' text.
+pub const SCENE_NUMBERS_KEY: &str = "wordsmith.sceneNumbers";
+pub const OMITTED_KEY: &str = "wordsmith.omitted";
+/// The placeholder heading's text.
+pub const OMITTED: &str = "OMITTED";
+/// Longest scene number kept.
+pub const MAX_NUMBER: usize = 12;
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SceneNumbers {
+    /// Print and show the numbers beside the headings.
+    pub show: bool,
+    /// Scenes keep the numbers stored on their headings.
+    pub locked: bool,
+}
+
+impl SceneNumbers {
+    pub fn of_doc(doc: &Document) -> Self {
+        doc.app_data.get(SCENE_NUMBERS_KEY).and_then(|v| serde_json::from_value((**v).clone()).ok()).unwrap_or_default()
+    }
+
+    pub fn store(&self, doc: &mut Document) {
+        doc.app_data.insert(SCENE_NUMBERS_KEY.to_string(), Arc::new(serde_json::to_value(self).unwrap_or_default()));
+    }
+}
+
+/// A stored number, if it is a sensible one (digits and capital letters, at most 12).
+fn clean(n: &str) -> Option<String> {
+    let n = n.trim().to_uppercase();
+    (!n.is_empty() && n.len() <= MAX_NUMBER && n.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.')).then_some(n)
+}
+
+/// The next letter suffix: "A" → "B", … "Z" → "ZA".
+fn next_letters(s: &str) -> String {
+    match s.chars().last() {
+        Some(c) if c.is_ascii_uppercase() && c != 'Z' => format!("{}{}", &s[..s.len() - 1], (c as u8 + 1) as char),
+        _ => format!("{s}A"),
+    }
+}
+
+/// A number for a scene added after `prev` (stored or given), not in `used`.
+fn after(prev: &str, used: &HashSet<String>) -> String {
+    // After 12 comes 12A; after 12A comes 12B; when that is taken, 12AA, 12AB …
+    let first = if prev.ends_with(|c: char| c.is_ascii_uppercase()) {
+        let digits = prev.trim_end_matches(|c: char| c.is_ascii_uppercase());
+        format!("{digits}{}", next_letters(&prev[digits.len()..]))
+    } else {
+        format!("{prev}A")
+    };
+    if !used.contains(&first) {
+        return first;
+    }
+    let mut tail = "A".to_string();
+    for _ in 0..10_000 {
+        let candidate = format!("{prev}{tail}");
+        if !used.contains(&candidate) {
+            return candidate;
+        }
+        tail = next_letters(&tail);
+    }
+    format!("{prev}{tail}")
+}
+
+/// A number for a scene added before the first numbered scene `first`, not in `used`.
+fn before(first: &str, used: &HashSet<String>) -> String {
+    let mut letters = "A".to_string();
+    while used.contains(&format!("{letters}{first}")) && letters.len() < 6 {
+        letters = next_letters(&letters);
+    }
+    format!("{letters}{first}")
+}
+
+/// Each scene's number as it is shown, in script order.
+pub fn numbers(doc: &Document) -> Vec<String> {
+    let settings = SceneNumbers::of_doc(doc);
+    let all = scenes(doc);
+    let stored: Vec<Option<String>> =
+        all.iter().map(|sc| doc.body.get(sc.start).and_then(|b| b.as_para()).and_then(|p| p.props.scene_number.as_deref()).and_then(clean)).collect();
+    if !settings.locked {
+        return (1..=all.len()).map(|n| n.to_string()).collect();
+    }
+    let mut used: HashSet<String> = stored.iter().flatten().cloned().collect();
+    let mut out: Vec<String> = Vec::with_capacity(all.len());
+    for (i, s) in stored.iter().enumerate() {
+        let n = match s {
+            Some(n) => n.clone(),
+            None => match out.last() {
+                Some(prev) => after(prev, &used),
+                None => {
+                    let first = stored[i..].iter().flatten().next().cloned().unwrap_or_else(|| "1".into());
+                    before(&first, &used)
+                }
+            },
+        };
+        used.insert(n.clone());
+        out.push(n);
+    }
+    out
+}
+
+/// `scene.numbers`: each scene's number as shown, and the settings.
+fn list(s: &mut Session, _: &Value) -> CmdResult {
+    let settings = SceneNumbers::of_doc(&s.doc);
+    Ok(json!({"numbers": numbers(&s.doc), "show": settings.show, "locked": settings.locked}))
+}
+
+/// `scene.showNumbers {show?}`: show or hide the numbers (or the other way).
+fn show(s: &mut Session, v: &Value) -> CmdResult {
+    let mut settings = SceneNumbers::of_doc(&s.doc);
+    settings.show = v.get("show").and_then(Value::as_bool).unwrap_or(!settings.show);
+    settings.store(&mut s.doc);
+    Ok(json!({"show": settings.show}))
+}
+
+fn set_number(doc: &mut Document, block: usize, n: Option<String>) {
+    if let Some(wordsmith_doc::Block::Para(p)) = doc.body.get_mut(block).map(Arc::make_mut) {
+        p.props.scene_number = n;
+        p.touch();
+    }
+}
+
+/// `scene.lockNumbers {lock?}`: lock the numbers as they are shown now (added scenes take
+/// letters from then on), or unlock them (numbers follow the order again).
+fn lock(s: &mut Session, v: &Value) -> CmdResult {
+    let mut settings = SceneNumbers::of_doc(&s.doc);
+    let lock = v.get("lock").and_then(Value::as_bool).unwrap_or(!settings.locked);
+    let shown = numbers(&s.doc);
+    for (sc, n) in scenes(&s.doc).iter().zip(shown) {
+        set_number(&mut s.doc, sc.start, lock.then_some(n));
+    }
+    settings.locked = lock;
+    if lock {
+        settings.show = true;
+    }
+    settings.store(&mut s.doc);
+    Ok(json!({"locked": lock}))
+}
+
+/// `scene.renumber`: number every scene 1, 2, 3 … again, keeping the lock as it is.
+fn renumber(s: &mut Session, _: &Value) -> CmdResult {
+    let settings = SceneNumbers::of_doc(&s.doc);
+    for (i, sc) in scenes(&s.doc).iter().enumerate() {
+        set_number(&mut s.doc, sc.start, settings.locked.then(|| (i + 1).to_string()));
+    }
+    Ok(json!({"numbers": numbers(&s.doc)}))
+}
+
+fn scene_param(s: &Session, v: &Value) -> Result<crate::scenes::Scene, CmdError> {
+    let all = scenes(&s.doc);
+    // Without `scene`, the scene the caret is in.
+    if v.get("scene").is_none() {
+        return crate::scenes::scene_at(&all, s.sel.focus.path.last()).cloned().ok_or_else(|| CmdError::Failed("the caret is not in a scene".into()));
+    }
+    let i = v
+        .get("scene")
+        .and_then(Value::as_u64)
+        .map(|i| i as usize)
+        .filter(|i| *i < all.len())
+        .ok_or_else(|| CmdError::Params(format!("`scene` must be a scene number from 0 to {}", all.len().saturating_sub(1))))?;
+    Ok(all[i].clone())
+}
+
+fn omitted_store(doc: &Document) -> BTreeMap<String, Value> {
+    doc.app_data.get(OMITTED_KEY).and_then(|v| v.as_object().cloned()).map(|m| m.into_iter().collect()).unwrap_or_default()
+}
+
+/// `scene.omit {scene}`: replace a scene with an OMITTED heading that keeps its number. Its text
+/// is kept with the script and can be recalled.
+fn omit(s: &mut Session, v: &Value) -> CmdResult {
+    let sc = scene_param(s, v)?;
+    let heading =
+        s.doc.body.get(sc.start).and_then(|b| b.as_para()).cloned().ok_or_else(|| CmdError::Failed("the heading is not a paragraph".into()))?;
+    if heading.props.omitted.is_some() {
+        return Err(CmdError::Failed("the scene is already omitted".into()));
+    }
+    let number = numbers(&s.doc).get(sc.index).cloned();
+    let paras: Vec<Paragraph> = s.doc.body[sc.start..sc.end].iter().filter_map(|b| b.as_para().cloned()).collect();
+    let mut store = omitted_store(&s.doc);
+    let id = store.keys().filter_map(|k| k.parse::<u32>().ok()).max().map_or(1, |m| m + 1);
+    store.insert(id.to_string(), serde_json::to_value(&paras).map_err(|e| CmdError::Failed(e.to_string()))?);
+    s.doc.app_data.insert(OMITTED_KEY.into(), Arc::new(Value::Object(store.into_iter().collect())));
+    let mut placeholder = Paragraph::with_text(OMITTED, Default::default());
+    placeholder.props.style = heading.props.style.clone();
+    placeholder.props.omitted = Some(id);
+    // Locked or not, the placeholder holds the number the scene had.
+    placeholder.props.scene_number = number.filter(|_| SceneNumbers::of_doc(&s.doc).locked);
+    s.doc.body.splice(sc.start..sc.end, [para_block(placeholder)]);
+    s.clamp_selection();
+    sel_result(s)
+}
+
+/// `scene.recall {scene}`: bring an omitted scene back where its OMITTED heading is.
+fn recall(s: &mut Session, v: &Value) -> CmdResult {
+    let sc = scene_param(s, v)?;
+    let id = s
+        .doc
+        .body
+        .get(sc.start)
+        .and_then(|b| b.as_para())
+        .and_then(|p| p.props.omitted)
+        .ok_or_else(|| CmdError::Params("the scene is not omitted".into()))?;
+    let mut store = omitted_store(&s.doc);
+    let paras: Vec<Paragraph> = store
+        .remove(&id.to_string())
+        .and_then(|v| serde_json::from_value(v).ok())
+        .ok_or_else(|| CmdError::Failed("the omitted scene's text is missing".into()))?;
+    if paras.is_empty() {
+        return Err(CmdError::Failed("the omitted scene's text is missing".into()));
+    }
+    s.doc.app_data.insert(OMITTED_KEY.into(), Arc::new(Value::Object(store.into_iter().collect())));
+    s.doc.body.splice(sc.start..sc.start + 1, paras.into_iter().map(para_block));
+    s.clamp_selection();
+    sel_result(s)
+}
+
+/// After a heading is split in two, only the first part keeps the scene's number.
+pub fn after_split(doc: &mut Document, new: &wordsmith_doc::Pos) {
+    if let Ok(p) = doc.para_mut(new.story, &new.path)
+        && (p.props.scene_number.is_some() || p.props.omitted.is_some())
+    {
+        p.props.scene_number = None;
+        p.props.omitted = None;
+    }
+}
+
+/// Whether `p` is an omitted scene's placeholder.
+pub fn is_omitted(p: &Paragraph) -> bool {
+    p.props.omitted.is_some()
+}
+
+/// The element id of scene headings in `doc`.
+pub fn heading_id(doc: &Document) -> String {
+    Elements::of_doc(doc).id_of(ElementKind::SceneHeading).to_string()
+}
+
+pub fn specs() -> Vec<CommandSpec> {
+    vec![
+        CommandSpec::new("scene.numbers", "Scene Numbers", "Production", list).pure(),
+        CommandSpec::new("scene.showNumbers", "Show Scene Numbers", "Production", show).params(r#"{"show"?: bool}"#),
+        CommandSpec::new("scene.lockNumbers", "Lock Scene Numbers", "Production", lock).params(r#"{"lock"?: bool}"#),
+        CommandSpec::new("scene.renumber", "Renumber Scenes", "Production", renumber),
+        CommandSpec::new("scene.omit", "Omit Scene", "Production", omit).params(r#"{"scene"?: number (the caret's scene when left out)}"#),
+        CommandSpec::new("scene.recall", "Recall Omitted Scene", "Production", recall)
+            .params(r#"{"scene"?: number (the caret's scene when left out)}"#),
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+    use crate::commands::text::body_lines;
+    use crate::template::{new_script, paragraph};
+
+    fn session(headings: &[&str]) -> Session {
+        let mut doc = new_script();
+        doc.body = headings.iter().flat_map(|h| [para_block(paragraph("SceneHeading", h)), para_block(paragraph("Action", "Something."))]).collect();
+        crate::session_for(doc)
+    }
+
+    fn add_scene_before(s: &mut Session, block: usize, heading: &str) {
+        s.doc.body.insert(block, para_block(paragraph("SceneHeading", heading)));
+    }
+
+    #[test]
+    fn letters_after_numbers() {
+        let used = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<HashSet<String>>();
+        assert_eq!(after("12", &used(&["12"])), "12A");
+        assert_eq!(after("12A", &used(&["12", "12A"])), "12B");
+        assert_eq!(after("12A", &used(&["12", "12A", "12B"])), "12AA");
+        assert_eq!(before("1", &used(&["1"])), "A1");
+        assert_eq!(before("1", &used(&["1", "A1"])), "B1");
+        assert_eq!(next_letters("Z"), "ZA");
+    }
+
+    #[test]
+    fn unlocked_numbers_follow_the_order_and_locked_ones_stay() {
+        let mut s = session(&["INT. A", "INT. B", "INT. C"]);
+        assert_eq!(numbers(&s.doc), ["1", "2", "3"]);
+        s.run("scene.lockNumbers", &json!({"lock": true})).unwrap();
+        assert!(SceneNumbers::of_doc(&s.doc).show, "locking shows them");
+        // Scenes added after the lock take letters; a moved scene keeps its number.
+        add_scene_before(&mut s, 2, "INT. A2");
+        add_scene_before(&mut s, 3, "INT. A3");
+        add_scene_before(&mut s, 0, "INT. FIRST");
+        assert_eq!(numbers(&s.doc), ["A1", "1", "1A", "1B", "2", "3"]);
+        s.run("scene.move", &json!({"scene": 5, "before": 1})).unwrap();
+        // A scene added since the lock has no stored number yet: its letters follow its
+        // neighbours until the next lock stores them.
+        assert_eq!(numbers(&s.doc), ["A3", "3", "1", "1A", "1B", "2"]);
+        // Locking again stores the letters; renumbering starts over.
+        s.run("scene.lockNumbers", &json!({"lock": true})).unwrap();
+        s.run("scene.renumber", &json!({})).unwrap();
+        assert_eq!(numbers(&s.doc), ["1", "2", "3", "4", "5", "6"]);
+        s.run("scene.lockNumbers", &json!({"lock": false})).unwrap();
+        assert!(s.doc.body.iter().filter_map(|b| b.as_para()).all(|p| p.props.scene_number.is_none()));
+    }
+
+    #[test]
+    fn omitted_scenes_keep_their_number_and_come_back() {
+        let mut s = session(&["INT. A", "INT. B", "INT. C"]);
+        s.run("scene.lockNumbers", &json!({"lock": true})).unwrap();
+        let before = body_lines(&s);
+        s.run("scene.omit", &json!({"scene": 1})).unwrap();
+        assert_eq!(body_lines(&s)[2], ("SceneHeading".to_string(), OMITTED.to_string()));
+        assert_eq!(body_lines(&s).len(), before.len() - 1, "its text is gone from the script");
+        assert_eq!(numbers(&s.doc), ["1", "2", "3"], "the placeholder keeps number 2");
+        assert!(s.run("scene.omit", &json!({"scene": 1})).is_err());
+        s.run("scene.recall", &json!({"scene": 1})).unwrap();
+        assert_eq!(body_lines(&s), before);
+        assert_eq!(numbers(&s.doc), ["1", "2", "3"]);
+        assert!(s.run("scene.recall", &json!({"scene": 1})).is_err(), "not omitted");
+        // Undo puts the placeholder back.
+        s.run("edit.undo", &json!({})).unwrap();
+        assert_eq!(body_lines(&s)[2].1, OMITTED);
+    }
+
+    #[test]
+    fn a_split_heading_does_not_copy_its_number() {
+        let mut s = session(&["INT. A - DAY"]);
+        s.run("scene.lockNumbers", &json!({"lock": true})).unwrap();
+        s.sel = wordsmith_engine::Selection::caret(wordsmith_doc::Pos { off: 6, path: wordsmith_doc::Path::top(0), ..s.sel.focus.clone() });
+        s.run("text.newParagraph", &json!({})).unwrap();
+        let stored: Vec<Option<String>> = s.doc.body.iter().filter_map(|b| b.as_para()).map(|p| p.props.scene_number.clone()).collect();
+        assert_eq!(stored.iter().flatten().count(), 1);
+    }
+}

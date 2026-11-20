@@ -207,6 +207,13 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> B
         })
         .unwrap_or(0)]);
     let mut page_revisions = Vec::with_capacity(pages.len());
+    // Scene numbers beside the headings, when shown (decision 0025).
+    let numbering = crate::scene_numbers::SceneNumbers::of_doc(doc);
+    let scene_numbers: std::collections::HashMap<usize, String> = if numbering.show {
+        crate::scenes::scenes(doc).iter().map(|sc| sc.start).zip(crate::scene_numbers::numbers(doc)).collect()
+    } else {
+        Default::default()
+    };
     let contd_blocks = if marks.character { auto_contd(doc, &elements) } else { Default::default() };
     let mut out = doc.clone();
     let sheet = Arc::make_mut(&mut out.styles);
@@ -280,6 +287,20 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> B
                 para.props.space_before = Some(0.0);
             }
             identity.extend([u64::from(body.len() == first), u64::from(n > 0)]);
+            // The scene number either side of its heading's first line.
+            if let Piece::Para { block, start: 0, .. } = piece
+                && let Some(number) = scene_numbers.get(block)
+            {
+                let y = out.styles.resolve_para(&para.props).space_before.max(0.0);
+                let lines = [number.clone()];
+                let left = super::margin::margin_box(&mut out, 0.7 * template::INCH, y, 0.55 * template::INCH, &lines, Align::Right);
+                let right = super::margin::margin_box(&mut out, 7.55 * template::INCH, y, 0.45 * template::INCH, &lines, Align::Left);
+                for obj in [left, right] {
+                    let at = para.len();
+                    let _ = para.insert_object(at, obj, &CharProps::default());
+                }
+                identity.push(stable_rev(&[number.bytes().fold(7u64, |h, b| h.wrapping_mul(31).wrapping_add(u64::from(b)))]));
+            }
             // Revision marks beside the revised lines, and the sets' text styles.
             if let Piece::Para { block, start, end, .. } = piece
                 && let Some(sp) = doc.body.get(*block).and_then(|b| b.as_para())

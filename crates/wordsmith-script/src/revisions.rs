@@ -85,7 +85,7 @@ pub struct Revisions {
 
 impl Default for Revisions {
     fn default() -> Self {
-        Revisions { sets: Vec::new(), current: String::new(), mode: false, mark: "*".into(), mark_at: 7.8, color_pages: false }
+        Revisions { sets: Vec::new(), current: String::new(), mode: false, mark: "*".into(), mark_at: 8.0, color_pages: false }
     }
 }
 
@@ -113,7 +113,7 @@ impl Revisions {
         }
         r.mark = r.mark.chars().find(|c| !c.is_control() && !c.is_whitespace()).map_or("*".into(), |c| c.to_string());
         if !r.mark_at.is_finite() {
-            r.mark_at = 7.8;
+            r.mark_at = 8.0;
         }
         r.mark_at = r.mark_at.clamp(0.1, 8.0);
         if r.current_index().is_none() {

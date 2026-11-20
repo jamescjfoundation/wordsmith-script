@@ -91,7 +91,8 @@ fn scenes_table(ed: &mut Editor, ui: &mut Ui, act: &mut Option<Act>) {
         }
         ui.end_row();
         for (i, sc) in scenes.iter().enumerate() {
-            let drag = ui.dnd_drag_source(Id::new(("scene-row", i)), i, |ui| ui.label(format!("{}", i + 1)));
+            let number = sc["number"].as_str().map_or_else(|| (i + 1).to_string(), str::to_string);
+            let drag = ui.dnd_drag_source(Id::new(("scene-row", i)), i, |ui| ui.label(number));
             if let Some(from) = drag.response.dnd_release_payload::<usize>() {
                 *act = Some(Act::Move { from: *from, onto: i });
             }
