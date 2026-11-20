@@ -792,3 +792,24 @@ fn the_story_board_adds_edits_and_sends_beats() {
     assert_eq!(lines(&ed)[1], l("Summary", "Late and wet."));
     frame(&ctx, &mut ed, vec![]);
 }
+
+#[test]
+fn the_outline_view_shows_lanes_beats_and_the_script() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![text("int"), key(Key::Tab, Modifiers::NONE), text("kitchen")]);
+    let alt = Modifiers { alt: true, ..cmd() };
+    frame(&ctx, &mut ed, vec![key(Key::Num7, alt)]);
+    assert_eq!(ed.structure, Some(crate::structure::Structure::Outline));
+    ed.run("outline.template", json!({"name": "three-act"}));
+    ed.run("beat.add", json!({"title": "Setup", "lane": 1}));
+    ed.run("beat.add", json!({"title": "Loose"}));
+    frame(&ctx, &mut ed, vec![]);
+    // The same beat, moved in the outline, is moved for the story board too.
+    ed.run("beat.place", json!({"id": 2, "lane": 1, "index": 0}));
+    let board = wordsmith_script::storyboard::Storyboard::of_doc(&ed.session.doc);
+    assert_eq!(board.lane_beats(Some(1)).iter().map(|b| b.title.as_str()).collect::<Vec<_>>(), ["Loose", "Setup"]);
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("view.board", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+}

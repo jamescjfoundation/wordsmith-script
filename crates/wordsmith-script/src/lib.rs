@@ -16,6 +16,7 @@ pub mod export;
 pub mod header_footer;
 pub mod locks;
 pub mod notes;
+pub mod outline;
 pub mod paginate;
 pub mod reports;
 pub mod revisions;

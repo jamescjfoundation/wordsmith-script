@@ -568,6 +568,7 @@ impl Editor {
                 Some("view.cards") => self.structure = Some(crate::structure::Structure::Cards),
                 Some("view.scenes") => self.structure = Some(crate::structure::Structure::Scenes),
                 Some("view.board") => self.structure = Some(crate::structure::Structure::Board),
+                Some("view.outline") => self.structure = Some(crate::structure::Structure::Outline),
                 Some("view.dark") => self.dark = !self.dark,
                 Some("view.typewriter") => self.typewriter = !self.typewriter,
                 Some("view.focus") => self.focus_mode = !self.focus_mode,
@@ -1125,6 +1126,7 @@ impl Editor {
             Some(crate::structure::Structure::Cards) => crate::structure::cards(self, ui),
             Some(crate::structure::Structure::Scenes) => crate::structure::scene_view(self, ui),
             Some(crate::structure::Structure::Board) => crate::board::view(self, ui),
+            Some(crate::structure::Structure::Outline) => crate::outline::view(self, ui),
             None => {
                 egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| self.page_view(ui));
             }

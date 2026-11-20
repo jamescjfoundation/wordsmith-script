@@ -33,3 +33,25 @@ board" is our name; the other product's name for its canvas is a trademark.
   link them; Delete or Backspace removes the selected beat; a palette colors
   it. The beat window edits title and body, and Tab moves between them.
 - **Not built** (ROADMAP): images in beats and exporting the board to PDF.
+
+## Outline editor
+
+- **Lanes** (name, indent 0 to 2, order; at most 100) hold beats in order.
+  Commands: `lane.add`, `lane.rename`, `lane.move`, `lane.indent`,
+  `lane.delete` (its beats stay, in no lane), `beat.place` (a beat into a
+  lane, or none, at a position). The beats are the story board's, so moving
+  or editing one shows in both views (the edits sync both ways because there
+  is only one copy).
+- **Structure templates** add lanes after those there are: three acts; five
+  acts; three acts in eight sequences (sequences indented under their acts);
+  television (teaser, four acts, tag). Templates are lanes only; they add no
+  beats.
+- **Page ranges.** A beat sent to the script covers the pages from its
+  Outline 1 paragraph to the page before the next Outline 1 paragraph, or the
+  script's last page (`outline.pages`).
+- **The view** (View › Outline, Mod+Alt+7): one row per lane, indented, its
+  name editable in place, with buttons to move, indent and delete it; beats
+  as colored cards (with their pages when sent), dragged onto a card to go
+  before it or onto a lane's end to go last; a row of beats in no lane; and
+  the Script lane, the script's scenes with the page each starts on (click to
+  go there). Double-click a beat to edit it in the beat window.
