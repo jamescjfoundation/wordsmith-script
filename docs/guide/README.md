@@ -14,3 +14,5 @@
 7. [Outlining](outlining.md): the story board and the outline.
 8. [Command line and agents](cli-and-mcp.md).
 9. [Keyboard](keyboard.md): every key.
+10. [Editing tools](editing.md): Go To, bookmarks, reformat, the format
+    checker, typing options.

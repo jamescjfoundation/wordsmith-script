@@ -84,6 +84,10 @@ pub fn default_formatting(kind: ElementKind) -> Formatting {
             Formatting { align: Align::Center, underline: true, start_new_page: true, keep_with_next: true, ..f(full, 0.0, K::SceneHeading) }
         }
         K::EndOfAct => Formatting { align: Align::Center, underline: true, ..f(full, 2.0, K::NewAct) },
+        // SPEC-2 3.1: 1.25 in, two blank lines before, bold and underlined capitals.
+        K::Sequence => {
+            Formatting { bold: true, underline: true, keep_with_next: true, ..f(Placement { left: 1.25, right: 7.5 }, 2.0, K::SceneHeading) }
+        }
         K::Outline1 => Formatting { bold: true, keep_with_next: true, ..f(full, 1.0, K::Outline1) },
         K::Outline2 => Formatting { bold: true, keep_with_next: true, ..f(Placement { left: 1.75, right: 7.5 }, 1.0, K::Outline2) },
         K::Outline3 => f(Placement { left: 2.0, right: 7.5 }, 1.0, K::Outline3),

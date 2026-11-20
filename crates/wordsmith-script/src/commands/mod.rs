@@ -11,6 +11,7 @@ use wordsmith_engine::{CmdResult, CommandSpec, Registry, Session, cmd::pos_json}
 pub mod autocomplete;
 pub mod caret;
 pub mod character;
+pub mod editing;
 pub mod element;
 pub mod find;
 pub mod scene;
@@ -78,6 +79,10 @@ pub fn specs() -> Vec<CommandSpec> {
     all.extend(crate::reports::specs());
     all.extend(crate::storyboard::specs());
     all.extend(crate::outline::specs());
+    all.extend(editing::specs());
+    all.extend(crate::bookmarks::specs());
+    all.extend(crate::checker::specs());
+    all.extend(crate::typing::specs());
     all
 }
 

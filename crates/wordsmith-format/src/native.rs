@@ -112,6 +112,12 @@ pub fn write(doc: &Document) -> String {
         if let Some(id) = p.props.beat {
             out.push_str(&format!(" beat={id}"));
         }
+        if let Some(id) = p.props.bookmark {
+            out.push_str(&format!(" bookmark={id}"));
+        }
+        if p.props.dual == Some(true) {
+            out.push_str(" dual");
+        }
         if let Some(set) = p.mark.revised {
             out.push_str(&format!(" revised={set}"));
         }
@@ -262,6 +268,8 @@ pub fn read(text: &str) -> Result<Document, ReadError> {
             p.props.scene_number = attrs.iter().find_map(|a| a.strip_prefix('#')).filter(|n| !n.is_empty() && n.len() <= 12).map(str::to_string);
             p.props.omitted = attrs.iter().find_map(|a| a.strip_prefix("omitted=")).and_then(|n| n.parse().ok());
             p.props.beat = attrs.iter().find_map(|a| a.strip_prefix("beat=")).and_then(|n| n.parse().ok());
+            p.props.bookmark = attrs.iter().find_map(|a| a.strip_prefix("bookmark=")).and_then(|n| n.parse().ok());
+            p.props.dual = attrs.iter().any(|a| a == "dual").then_some(true);
             // A deletion in the paragraph, revised in a set.
             p.mark.revised = attrs.iter().find_map(|a| a.strip_prefix("revised=")).and_then(|n| n.parse().ok());
             if attrs.iter().any(|a| a == "page-break") {

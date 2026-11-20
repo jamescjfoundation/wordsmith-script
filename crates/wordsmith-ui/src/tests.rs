@@ -860,3 +860,32 @@ fn the_keyboard_guide_matches_the_commands() {
     }
     assert_eq!(std::fs::read_to_string(&path).unwrap_or_default(), out, "run with UPDATE_GUIDE=1 and review the change");
 }
+
+#[test]
+fn the_go_to_checker_and_reformat_windows_work_through_commands() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(&ctx, &mut ed, vec![text("int"), key(Key::Tab, Modifiers::NONE), text("hall"), key(Key::Enter, Modifiers::NONE), text("Rain.")]);
+    // Mod+G opens Go To; a bookmark made with Mod+M is listed there.
+    frame(&ctx, &mut ed, vec![key(Key::M, cmd()), key(Key::G, cmd())]);
+    assert!(ed.tools.goto.is_some());
+    let marks = ed.session.run("bookmark.list", &json!({})).unwrap();
+    assert_eq!(marks["bookmarks"].as_array().map(Vec::len), Some(1));
+    // An empty paragraph is one format issue; Fix deletes it.
+    frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE)]);
+    ed.run("view.checker", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    let issues = ed.tools.checker.as_ref().map(|c| c.issues.len());
+    assert_eq!(issues, Some(1));
+    ed.run("check.fix", json!({"block": 2, "rule": "empty"}));
+    assert_eq!(lines(&ed).len(), 2);
+    // The reformat tool: a digit changes the paragraph's element and moves on.
+    ed.tools.checker = None;
+    ed.run("view.reformat", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.tools.reformat);
+    ed.session.sel = wordsmith_engine::Selection::caret(wordsmith_script::data::body_pos(1, 0));
+    frame(&ctx, &mut ed, vec![key(Key::Num0, Modifiers::NONE)]);
+    assert_eq!(lines(&ed)[1].0, "General");
+}

@@ -13,12 +13,16 @@ use crate::element::Elements;
 pub const MAX_QUERY: usize = 1_000;
 /// Most matches `find.all` lists and `replace.all` replaces.
 pub const MAX_MATCHES: usize = 100_000;
+/// Most elements a search may be limited to.
+pub const MAX_ELEMENT_FILTER: usize = 128;
 
 /// What to look for.
 pub struct Query {
     pub text: String,
     pub match_case: bool,
     pub whole_word: bool,
+    /// Look only in paragraphs of these elements (ids); empty means every element.
+    pub elements: Vec<String>,
 }
 
 impl Query {
@@ -31,6 +35,11 @@ impl Query {
             text: text.to_string(),
             match_case: p::bool(v, "matchCase").unwrap_or(false),
             whole_word: p::bool(v, "wholeWord").unwrap_or(false),
+            elements: v
+                .get("elements")
+                .and_then(Value::as_array)
+                .map(|a| a.iter().filter_map(Value::as_str).take(MAX_ELEMENT_FILTER).map(str::to_string).collect())
+                .unwrap_or_default(),
         })
     }
 }
@@ -70,8 +79,12 @@ pub fn find_in(text: &str, q: &Query) -> Vec<(usize, usize)> {
 /// Every match in the body, in order, as positions.
 pub fn find_all(s: &Session, q: &Query) -> Vec<(Pos, Pos)> {
     let mut out = Vec::new();
+    let elements = Elements::of_doc(&s.doc);
     for (i, b) in s.doc.body.iter().enumerate() {
         let Some(p) = b.as_para() else { continue };
+        if !q.elements.is_empty() && !q.elements.contains(&elements.of_para(p).id) {
+            continue;
+        }
         for (a, e) in find_in(&p.text, q) {
             let pos = |off| Pos { story: StoryRef::Body, path: Path::top(i), off };
             out.push((pos(a), pos(e)));
@@ -166,8 +179,8 @@ fn replace_all(s: &mut Session, v: &Value) -> CmdResult {
 
 pub fn specs() -> Vec<CommandSpec> {
     const LOC: &str = "Edit › Find";
-    const PARAMS: &str = r#"{"query": string, "matchCase"?: bool, "wholeWord"?: bool}"#;
-    const REPLACE: &str = r#"{"query": string, "with": string, "matchCase"?: bool, "wholeWord"?: bool}"#;
+    const PARAMS: &str = r#"{"query": string, "matchCase"?: bool, "wholeWord"?: bool, "elements"?: [elementId]}"#;
+    const REPLACE: &str = r#"{"query": string, "with": string, "matchCase"?: bool, "wholeWord"?: bool, "elements"?: [elementId]}"#;
     vec![
         CommandSpec::new("find.all", "Find All", LOC, all).params(PARAMS).pure(),
         CommandSpec::new("find.next", "Find Next", LOC, |s, v| step(s, v, true)).params(PARAMS).pure(),
@@ -185,7 +198,7 @@ mod tests {
     use crate::commands::{new_session, text::body_lines};
 
     fn q(text: &str, match_case: bool, whole_word: bool) -> Query {
-        Query { text: text.into(), match_case, whole_word }
+        Query { text: text.into(), match_case, whole_word, elements: Vec::new() }
     }
 
     #[test]

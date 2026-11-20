@@ -45,7 +45,11 @@ ANNA
    template.
 3. **Script:** the line `=== script ===`, then each paragraph in order:
    - a line `@ElementId`, optionally followed by attributes separated by
-     spaces (`page-break`: the paragraph starts a new page);
+     spaces: `page-break` (the paragraph starts a new page), `#12A` (a
+     locked scene number), `omitted=N`, `beat=N`, `revised=N`, and since
+     v0.2 `bookmark=N` (a bookmark or label) and `dual` (the second speech
+     of a dual-dialogue pair starts here). A reader ignores attributes it
+     does not know, so these new ones need no new format version;
    - its text, one line per manual line break; a line holding only `\`
      stands for an empty line inside the paragraph;
    - a blank line.

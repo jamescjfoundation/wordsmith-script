@@ -39,6 +39,8 @@ pub enum ElementKind {
     CastList,
     NewAct,
     EndOfAct,
+    /// A run of scenes inside an act (SPEC-2 3.1).
+    Sequence,
     Outline1,
     Outline2,
     Outline3,
@@ -49,7 +51,7 @@ pub enum ElementKind {
 
 impl ElementKind {
     /// Every built-in kind, in the order menus list them.
-    pub const BUILTIN: [ElementKind; 16] = [
+    pub const BUILTIN: [ElementKind; 17] = [
         ElementKind::General,
         ElementKind::SceneHeading,
         ElementKind::Action,
@@ -61,6 +63,7 @@ impl ElementKind {
         ElementKind::CastList,
         ElementKind::NewAct,
         ElementKind::EndOfAct,
+        ElementKind::Sequence,
         ElementKind::Outline1,
         ElementKind::Outline2,
         ElementKind::Outline3,
@@ -82,6 +85,7 @@ impl ElementKind {
             ElementKind::CastList => "CastList",
             ElementKind::NewAct => "NewAct",
             ElementKind::EndOfAct => "EndOfAct",
+            ElementKind::Sequence => "Sequence",
             ElementKind::Outline1 => "Outline1",
             ElementKind::Outline2 => "Outline2",
             ElementKind::Outline3 => "Outline3",
@@ -105,6 +109,7 @@ impl ElementKind {
             ElementKind::CastList => "Cast List",
             ElementKind::NewAct => "New Act",
             ElementKind::EndOfAct => "End of Act",
+            ElementKind::Sequence => "Sequence",
             ElementKind::Outline1 => "Outline 1",
             ElementKind::Outline2 => "Outline 2",
             ElementKind::Outline3 => "Outline 3",
@@ -134,6 +139,21 @@ impl ElementKind {
     /// The kind of a built-in element id.
     pub fn from_builtin_id(id: &str) -> Option<ElementKind> {
         ElementKind::BUILTIN.into_iter().find(|k| k.id() == id)
+    }
+
+    /// The element's place in the story's structure, broadest first (SPEC-2 3.1): Outline 1,
+    /// acts, Outline 2, Outline 3, Sequence, Scene Heading. Outline 3's place was open in the
+    /// spec; it sits under Outline 2 (decision 0031). Other elements have no rank.
+    pub fn structure_rank(self) -> Option<u8> {
+        Some(match self {
+            ElementKind::Outline1 => 0,
+            ElementKind::NewAct | ElementKind::EndOfAct => 1,
+            ElementKind::Outline2 => 2,
+            ElementKind::Outline3 => 3,
+            ElementKind::Sequence => 4,
+            ElementKind::SceneHeading => 5,
+            _ => return None,
+        })
     }
 
     /// Outline elements, sent from the outliner and shown or hidden as a group (M7).
@@ -207,6 +227,7 @@ pub fn builtin_def(kind: ElementKind) -> ElementDef {
         K::Transition => (Casing::Upper, Some(K::SceneHeading), false),
         K::Shot => (Casing::Upper, None, false),
         K::NewAct | K::EndOfAct => (Casing::Upper, None, false),
+        K::Sequence => (Casing::Upper, Some(K::SceneHeading), false),
         K::Outline1 => (Casing::AsTyped, Some(K::Outline2), false),
         K::Outline2 => (Casing::AsTyped, Some(K::Outline3), false),
         K::Outline3 | K::Note => (Casing::AsTyped, Some(K::Note), false),
@@ -413,6 +434,7 @@ mod tests {
             "Cast List",
             "New Act",
             "End of Act",
+            "Sequence",
             "Outline 1",
             "Outline 2",
             "Outline 3",
@@ -439,6 +461,7 @@ mod tests {
         assert_eq!(tab(K::Outline2).as_deref(), Some("Outline3"));
         assert_eq!(tab(K::Outline3).as_deref(), Some("Note"));
         assert_eq!(tab(K::Note).as_deref(), Some("Note"));
+        assert_eq!(tab(K::Sequence).as_deref(), Some("SceneHeading"));
         for k in [K::General, K::Shot, K::CastList, K::NewAct, K::EndOfAct, K::Summary] {
             assert_eq!(tab(k), None, "{k:?}");
         }

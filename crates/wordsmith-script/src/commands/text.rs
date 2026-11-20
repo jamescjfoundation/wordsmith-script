@@ -55,7 +55,12 @@ fn insert_line(s: &mut Session, text: &str) -> Result<(), CmdError> {
     }
     let at = s.sel.focus.clone();
     let elements = Elements::of_doc(&s.doc);
-    let casing = element_of_para_at(&s.doc, &elements, &at).casing;
+    let element = element_of_para_at(&s.doc, &elements, &at);
+    let casing = element.casing;
+    // Smart quotes and sentence capitals, when the script turns them on (one typed character).
+    let before = s.doc.para_at(&at).and_then(|p| p.text.get(..at.off)).unwrap_or("").to_string();
+    let typed = crate::typing::Typing::of_doc(&s.doc).transform(text, &before, element.kind, casing);
+    let text = typed.as_str();
     let props = typing_props(s, &at);
     // Typing at the start of a locked page goes on that page: the page's mark moves to the
     // typed text's first character.
