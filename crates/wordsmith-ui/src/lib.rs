@@ -19,6 +19,7 @@ pub mod fonts;
 pub mod keys;
 pub mod outline;
 pub mod prefs;
+pub mod reports;
 pub mod snapshot;
 pub mod structure;
 pub mod tables;
@@ -42,6 +43,18 @@ pub fn about_text() -> String {
         wordsmith_script::VERSION,
         UPSTREAM_CREDIT,
     )
+}
+
+/// Seconds since 1970, for the dates notes and statistics keep (0 in the web build).
+pub fn now_secs() -> u64 {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        0
+    }
 }
 
 fn open(s: &mut Session, what: &str) -> Result<Value, CmdError> {
@@ -78,6 +91,10 @@ pub fn ui_specs() -> Vec<CommandSpec> {
         CommandSpec::new("view.bookmarks", "Bookmarks…", "Go", |s, _| open(s, "tool.bookmarks")).key("Mod+Shift+M").pure(),
         CommandSpec::new("view.checker", "Check Format…", "Tools", |s, _| open(s, "tool.checker")).pure(),
         CommandSpec::new("view.macros", "Macros…", "Tools", |s, _| open(s, "tool.macros")).pure(),
+        CommandSpec::new("view.reports", "Reports…", "Tools", |s, _| open(s, "tool.reports")).key("Mod+Shift+J").pure(),
+        CommandSpec::new("view.sceneProperties", "Scene Properties…", "Script", |s, _| open(s, "tool.sceneProperties")).pure(),
+        CommandSpec::new("view.character", "Character Details…", "Script", |s, _| open(s, "tool.character")).pure(),
+        CommandSpec::new("view.highlights", "Show Character Highlights", "View", |s, _| open(s, "tool.highlights")).pure(),
         CommandSpec::new("view.reformat", "Reformat…", "Tools", |s, _| open(s, "tool.reformat")).pure(),
         CommandSpec::new("app.preferences", "Preferences…", "File", |s, _| open(s, "preferences")).key("Mod+,").pure(),
         CommandSpec::new("edit.copy", "Copy", "Edit", |s, _| {

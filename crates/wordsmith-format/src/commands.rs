@@ -186,6 +186,33 @@ fn export_characters_csv(s: &mut Session, v: &Value) -> CmdResult {
 }
 
 /// The file commands.
+/// `report.export {kind, …report options, path, csv?}`: write a report as text (or CSV, by
+/// `csv` or a `.csv` path). Without a path, ask for a file; the window keeps the options.
+fn export_report(s: &mut Session, v: &Value) -> CmdResult {
+    let csv = v.get("csv").and_then(Value::as_bool).unwrap_or(false);
+    let Some(path) = path_of(v) else {
+        return ask(s, "export", json!({"format": if csv { "report-csv" } else { "report-text" }, "name": script_name(s)}));
+    };
+    let csv = csv || path.extension().is_some_and(|e| e.eq_ignore_ascii_case("csv"));
+    let report = wordsmith_script::reports_more::report(&s.doc, v)?;
+    let text = if csv { report.to_csv() } else { report.to_text() };
+    std::fs::write(&path, text).map_err(|e| failed(format!("{}: {e}", path.display())))?;
+    Ok(json!({"path": path}))
+}
+
+/// `report.exportFilteredPdf {elements, path}`: the script reduced to some elements, as a PDF.
+fn export_filtered_pdf(s: &mut Session, v: &Value) -> CmdResult {
+    let keep: Vec<String> =
+        v.get("elements").and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default();
+    let Some(path) = path_of(v) else {
+        return ask(s, "export", json!({"format": "pdf-filtered", "name": format!("{} Filtered", script_name(s))}));
+    };
+    let doc = wordsmith_script::reports_more::filtered_script(&s.doc, &keep);
+    let bytes = wordsmith_script::export::pdf(&doc).map_err(failed)?;
+    std::fs::write(&path, bytes).map_err(|e| failed(format!("{}: {e}", path.display())))?;
+    Ok(json!({"path": path}))
+}
+
 /// `macro.copyFromPath {path}`: replace this script's macros with another script's.
 fn copy_macros_from(s: &mut Session, v: &Value) -> CmdResult {
     let path = path_of(v).ok_or_else(|| CmdError::Params("`path` is required".into()))?;
@@ -201,6 +228,12 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("file.openPath", "Open File", "File", open_path).params(r#"{"path": string, "asScript"?: bool, "discard"?: bool}"#),
         CommandSpec::new("macro.copyFromFile", "Copy Macros from a Script…", "Tools › Macros", |s, _| ask(s, "macrosFrom", json!({}))).pure(),
         CommandSpec::new("macro.copyFromPath", "Copy Macros from File", "Tools › Macros", copy_macros_from).params(r#"{"path": string}"#),
+        CommandSpec::new("report.export", "Save Report…", "Reports", export_report)
+            .params(r#"{"kind": string, "path"?: string, "csv"?: bool, …report options}"#)
+            .pure(),
+        CommandSpec::new("report.exportFilteredPdf", "Filtered Script as PDF…", "Reports", export_filtered_pdf)
+            .params(r#"{"elements": [elementId], "path"?: string}"#)
+            .pure(),
         CommandSpec::new("file.import", "Import…", "File", |s, _| ask(s, "import", json!({}))).pure(),
         CommandSpec::new("file.save", "Save", "File", save).key("Mod+S").pure(),
         CommandSpec::new("file.saveAs", "Save As…", "File", |s, _| ask(s, "saveAs", json!({"name": script_name(s)}))).key("Mod+Shift+S").pure(),

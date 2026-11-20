@@ -75,6 +75,8 @@ current). Custom elements can have keys of their own (Format › Element Setting
 
 | Command | Keys |
 | --- | --- |
+| Next Note | `Mod+Alt+Down` |
+| Previous Note | `Mod+Alt+Up` |
 | Go To… | `Mod+G` |
 | Add Bookmark | `Mod+M` |
 | Bookmarks… | `Mod+Shift+M` |
@@ -110,6 +112,12 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | Select Right | `Shift+Right` |
 | Select Up | `Shift+Up` |
 | Up | `Up` |
+
+## Tools
+
+| Command | Keys |
+| --- | --- |
+| Reports… | `Mod+Shift+J` |
 
 ## View
 

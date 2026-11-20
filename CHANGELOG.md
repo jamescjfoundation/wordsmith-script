@@ -15,6 +15,12 @@ behavior; every addition below is new.
   letters; highlighter and text colors; element color, highlight and strike;
   template formatting for all elements. The native format is now version 4
   (0.1.0 cannot open version-4 files).
+- **Characters and reports (M11):** scene properties (title, color, cast,
+  non-speaking characters, arc beats); character traits and speech
+  highlighting; scene, location, cast, character, filtered-script, notes,
+  statistics and representation reports, saved as text, CSV or PDF; tables
+  that sort, filter, hide columns and keep tabs of your own; note titles,
+  types, colors and dates; next and previous note.
 
 ## 0.1.0 (2026-11-19)
 

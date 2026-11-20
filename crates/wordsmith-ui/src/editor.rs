@@ -252,6 +252,8 @@ pub struct Editor {
     pub note_popover: Option<(Option<u32>, String)>,
     /// The table cell being edited.
     pub table_edit: Option<crate::tables::CellEdit>,
+    /// The Tables panel's sort, filter, hidden columns and open tab.
+    pub table_view: crate::tables::View,
     /// The story board's selection, drags and beat window.
     pub board: crate::board::BoardState,
     /// The scene listing, for one revision.
@@ -260,6 +262,10 @@ pub struct Editor {
     seen_rev: u64,
     /// Tool windows added after v0.1 (Go To, bookmarks, checker, reformat…).
     pub tools: crate::tools::Tools,
+    /// Parameters a window adds to the command its file dialog runs.
+    pub dialog_params: Option<Value>,
+    /// Draw the highlighted characters' speeches.
+    pub show_highlights: bool,
 }
 
 impl Editor {
@@ -308,11 +314,14 @@ impl Editor {
             structure: None,
             tables: None,
             table_edit: None,
+            table_view: Default::default(),
             note_popover: None,
             scene_cache: None,
             board: Default::default(),
             seen_rev: 0,
             tools: Default::default(),
+            dialog_params: None,
+            show_highlights: true,
         }
     }
 
@@ -644,6 +653,9 @@ impl Editor {
                     Some("fountain") => ("Fountain", "fountain", "file.exportFountain"),
                     Some("rtf") => ("Rich Text (RTF)", "rtf", "file.exportRtf"),
                     Some("html") => ("Web Page (HTML)", "html", "file.exportHtml"),
+                    Some("report-text") => ("Plain Text", "txt", "report.export"),
+                    Some("report-csv") => ("CSV", "csv", "report.export"),
+                    Some("pdf-filtered") => ("PDF", "pdf", "report.exportFilteredPdf"),
                     _ => ("Plain Text", "txt", "file.exportText"),
                 };
                 (FileDialog::save().title(format!("Export {label}")).filter(label, &[ext]).file_name(format!("{name}.{ext}")), then)
@@ -667,11 +679,17 @@ impl Editor {
             match answer {
                 craft_dialogs::Answer::Paths(paths) => {
                     if let Some(path) = paths.first() {
-                        let params = if then == "file.openPath" {
+                        let mut params = if then == "file.openPath" {
                             json!({"path": path, "discard": std::mem::take(&mut self.discard_ok)})
                         } else {
                             json!({"path": path})
                         };
+                        // Options a window set for the command the dialog runs (a report's kind).
+                        if let (Some(Value::Object(extra)), Some(p)) = (self.dialog_params.take(), params.as_object_mut()) {
+                            for (k, x) in extra {
+                                p.entry(k).or_insert(x);
+                            }
+                        }
                         self.run_now(then, params);
                         if then == "file.saveAsPath" && self.session.dirty {
                             // The save failed: nothing waits on it any more.
@@ -681,6 +699,7 @@ impl Editor {
                 }
                 craft_dialogs::Answer::Cancelled => {
                     // Nothing waits on a dialog the writer closed.
+                    self.dialog_params = None;
                     self.discard_ok = false;
                     self.after_save = None;
                 }
@@ -921,6 +940,7 @@ impl Editor {
         }
         let to_screen = |page: usize, x: f32, y: f32| origins.get(page).map(|r| r.min + vec2(x * zoom, y * zoom));
         self.draw_gutter(ui, &painter, &pag, &origins, zoom);
+        self.draw_character_highlights(&painter, &pag, &origins, zoom);
         self.draw_find_matches(&painter, &pag, &origins, zoom);
         self.draw_notes(&painter, &pag, &origins, zoom);
         self.draw_revised_pages(&painter, &pag, &origins);
@@ -1088,6 +1108,26 @@ impl Editor {
                     if let Some(min) = to_screen(page, r.x, r.y) {
                         painter.rect_filled(Rect::from_min_size(min, vec2(r.w * zoom, r.h * zoom)), 0.0, fill);
                     }
+                }
+            }
+        }
+    }
+
+    /// Speeches of characters whose highlight is on, tinted in their color (on screen only).
+    fn draw_character_highlights(&self, painter: &egui::Painter, pag: &Shown, origins: &[Rect], zoom: f32) {
+        if !self.show_highlights {
+            return;
+        }
+        let to_screen = |page: usize, x: f32, y: f32| origins.get(page).map(|r| r.min + vec2(x * zoom, y * zoom));
+        for (first, last, color) in wordsmith_script::cast::highlighted_speeches(&self.session.doc) {
+            let Some(c) = wordsmith_script::revisions::parse_color(&color) else { continue };
+            let fill = Color32::from_rgba_unmultiplied(c.0, c.1, c.2, 70);
+            let len = self.session.doc.body.get(last).and_then(|b| b.as_para()).map_or(0, |p| p.len());
+            let at = |block, off| wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(block), off };
+            let (Some(a), Some(b)) = (pag.to_output(&at(first, 0)), pag.to_output(&at(last, len))) else { continue };
+            for (page, r) in pag.layout.selection_rects(pag.doc(), &a, &b, 0) {
+                if let Some(min) = to_screen(page, r.x, r.y) {
+                    painter.rect_filled(Rect::from_min_size(min, vec2(r.w * zoom, r.h * zoom)), 0.0, fill);
                 }
             }
         }

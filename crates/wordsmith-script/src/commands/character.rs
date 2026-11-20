@@ -169,6 +169,7 @@ fn rename(s: &mut Session, v: &Value) -> CmdResult {
         ac.store(&mut s.doc);
     }
     s.clamp_selection();
+    crate::cast::rename(&mut s.doc, &from, &to);
     Ok(json!({"cues": cues, "mentions": mentions}))
 }
 
@@ -322,5 +323,64 @@ mod tests {
         let scenes = scenes_csv(&s.doc);
         assert!(scenes.starts_with("Scene,Heading,Page,Length,Characters,Summary\r\n1,INT. A - DAY,1,2/8,\"ANNA, BOB\",\r\n"), "{scenes}");
         assert_eq!(characters_csv(&s.doc), "Character,Speeches,Scenes,First scene\r\nANNA,2,2,1\r\nBOB,1,1,1\r\n");
+    }
+}
+
+/// `app_data` key of the Tables panel's own tabs (SPEC-2 10: add, rename and remove tabs).
+pub const TABLE_TABS_KEY: &str = "wordsmith.tableTabs";
+
+/// A tab the writer added to the Tables panel: a table shown with a filter and chosen columns.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct TableTab {
+    pub name: String,
+    /// `scenes`, `characters` or `notes`.
+    pub table: String,
+    pub filter: String,
+    /// Columns left out.
+    pub hidden: Vec<String>,
+}
+
+/// The script's own Tables tabs.
+pub fn table_tabs(doc: &Document) -> Vec<TableTab> {
+    let tabs: Vec<TableTab> = crate::data::load(doc, TABLE_TABS_KEY);
+    tabs.into_iter()
+        .take(50)
+        .filter(|t| matches!(t.table.as_str(), "scenes" | "characters" | "notes"))
+        .map(|mut t| {
+            t.name = crate::data::clean_line(&t.name, 40);
+            t.filter = crate::data::clean_line(&t.filter, 200);
+            t.hidden.truncate(50);
+            t
+        })
+        .filter(|t| !t.name.is_empty())
+        .collect()
+}
+
+fn set_table_tabs(s: &mut Session, v: &Value) -> CmdResult {
+    let tabs: Vec<TableTab> =
+        serde_json::from_value(v.get("tabs").cloned().unwrap_or(Value::Null)).map_err(|e| CmdError::Params(format!("`tabs`: {e}")))?;
+    crate::data::store(&mut s.doc, TABLE_TABS_KEY, &tabs);
+    Ok(json!(table_tabs(&s.doc)))
+}
+
+pub fn table_tab_specs() -> Vec<CommandSpec> {
+    vec![
+        CommandSpec::new("tables.tabs", "Table Tabs", "View", |s, _| Ok(json!(table_tabs(&s.doc)))).pure(),
+        CommandSpec::new("tables.setTabs", "Set Table Tabs", "View", set_table_tabs).params(r#"{"tabs": [{"name", "table", "filter", "hidden"}]}"#),
+    ]
+}
+
+#[cfg(test)]
+mod tab_tests {
+    use super::*;
+
+    #[test]
+    fn table_tabs_round_trip_and_are_checked() {
+        let mut s = crate::commands::new_session();
+        let out = s.run("tables.setTabs", &json!({"tabs": [{"name": "Leads", "table": "characters", "filter": "ANNA"}, {"name": "Bad", "table": "props"}, {"name": "", "table": "notes"}]})).unwrap();
+        assert_eq!(out.as_array().map(Vec::len), Some(1));
+        assert_eq!(table_tabs(&s.doc)[0].filter, "ANNA");
+        assert!(s.run("tables.setTabs", &json!({"tabs": 3})).is_err());
     }
 }
