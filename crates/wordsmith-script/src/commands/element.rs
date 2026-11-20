@@ -30,8 +30,8 @@ pub(crate) fn apply_element(s: &mut Session, elements: &Elements, path: &Path, i
         para.mark.revised = revising;
     }
     para.props.style = Some(target.id.clone());
-    if target.casing == Casing::Upper {
-        uppercase(para);
+    if target.casing != Casing::AsTyped {
+        recase(para, target.casing);
     }
     let mut caret_at = None;
     if target.kind == ElementKind::Parenthetical && para.text.is_empty() {
@@ -48,10 +48,10 @@ pub(crate) fn apply_element(s: &mut Session, elements: &Elements, path: &Path, i
     Ok(())
 }
 
-/// Put a paragraph's text in capitals, run by run, so each run keeps its formatting even where
-/// capitals are longer ("ß" → "SS").
-fn uppercase(para: &mut wordsmith_doc::Paragraph) {
-    let upper = para.text.to_uppercase();
+/// Put a paragraph's text in the element's casing, run by run, so each run keeps its formatting
+/// even where capitals are longer ("ß" → "SS").
+fn recase(para: &mut wordsmith_doc::Paragraph, casing: Casing) {
+    let upper = casing.apply(&para.text);
     if upper == para.text {
         return;
     }
@@ -59,13 +59,13 @@ fn uppercase(para: &mut wordsmith_doc::Paragraph) {
     let mut start = 0;
     for run in &mut para.runs {
         let end = (start + run.len).min(para.text.len());
-        let piece = para.text.get(start..end).unwrap_or("").to_uppercase();
+        let piece = casing.apply(para.text.get(start..end).unwrap_or(""));
         run.len = piece.len();
         text.push_str(&piece);
         start = end;
     }
     if let Some(rest) = para.text.get(start..) {
-        text.push_str(&rest.to_uppercase());
+        text.push_str(&casing.apply(rest));
     }
     para.text = text;
 }

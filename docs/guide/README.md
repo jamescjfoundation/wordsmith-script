@@ -16,3 +16,4 @@
 9. [Keyboard](keyboard.md): every key.
 10. [Editing tools](editing.md): Go To, bookmarks, reformat, the format
     checker, typing options.
+11. [Macros and text styles](macros-and-styles.md).

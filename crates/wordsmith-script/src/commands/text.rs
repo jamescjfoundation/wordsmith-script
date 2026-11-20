@@ -105,6 +105,17 @@ pub fn insert(s: &mut Session, v: &Value) -> CmdResult {
         }
         insert_line(s, line)?;
     }
+    // A typed word break after a macro's alias replaces the alias (or asks first).
+    if clean.chars().count() == 1
+        && let Some((slot, start)) = crate::macros::alias_before_caret(s)
+    {
+        let m = crate::macros::Macros::of_doc(&s.doc).slots.get(slot).cloned().unwrap_or_default();
+        if m.confirm {
+            s.push_ui_request(serde_json::json!({"open": "tool.macroConfirm", "slot": slot + 1, "start": start, "name": m.name}));
+        } else {
+            return crate::macros::expand(s, slot, start);
+        }
+    }
     sel_result(s)
 }
 

@@ -36,6 +36,7 @@ pub(crate) fn encode_with(p: &Paragraph, marks: bool, after_note: &dyn Fn(u32) -
     let mut style = PLAIN;
     let mut note: Option<u32> = None;
     let mut revised: Option<u32> = None;
+    let mut extra = String::new();
     // Close a note: its marker, then the text written after it, outside any emphasis.
     let end_note = |out: &mut String, style: &mut (bool, bool, bool), old: u32| {
         if marks {
@@ -63,6 +64,18 @@ pub(crate) fn encode_with(p: &Paragraph, marks: bool, after_note: &dyn Fn(u32) -
                 None => out.push_str("{/r}"),
             }
             revised = props.revised;
+        }
+        if marks {
+            let now = extra_code(props);
+            if now != extra {
+                if !extra.is_empty() {
+                    out.push_str("{/s}");
+                }
+                if !now.is_empty() {
+                    out.push_str(&format!("{{s{now}}}"));
+                }
+                extra = now;
+            }
         }
         let next = (props.bold == Some(true), props.italic == Some(true), props.underline.is_some_and(|x| x != Underline::None));
         toggles(&mut out, style, next);
@@ -93,8 +106,74 @@ pub(crate) fn encode_with(p: &Paragraph, marks: bool, after_note: &dyn Fn(u32) -
     if marks && revised.is_some() {
         out.push_str("{/r}");
     }
+    if marks && !extra.is_empty() {
+        out.push_str("{/s}");
+    }
     toggles(&mut out, style, PLAIN);
     out
+}
+
+/// The native format's code for the styles beyond bold, italic and plain underline (format 4):
+/// comma-separated tokens. `D` double, `W` words-only and `O` dotted underline; `K` strike;
+/// `U` superscript, `L` subscript; `C` capitals, `M` small capitals; `H` and a highlighter
+/// name; `S#RRGGBB` a highlight of any color; `F#RRGGBB` the text color. Empty when none apply.
+pub(crate) fn extra_code(c: &CharProps) -> String {
+    use wordsmith_doc::props::{TextColor, VertAlign};
+    let mut t: Vec<String> = Vec::new();
+    match c.underline {
+        Some(Underline::Double) => t.push("D".into()),
+        Some(Underline::Words) => t.push("W".into()),
+        Some(Underline::Dotted) => t.push("O".into()),
+        _ => {}
+    }
+    if c.strike == Some(true) {
+        t.push("K".into());
+    }
+    match c.vert_align {
+        Some(VertAlign::Superscript) => t.push("U".into()),
+        Some(VertAlign::Subscript) => t.push("L".into()),
+        _ => {}
+    }
+    if c.caps == Some(true) {
+        t.push("C".into());
+    }
+    if c.small_caps == Some(true) {
+        t.push("M".into());
+    }
+    if let Some(h) = c.highlight.filter(|h| *h != wordsmith_doc::props::Highlight::None)
+        && let Some(name) = serde_json::to_value(h).ok().and_then(|v| v.as_str().map(str::to_string))
+    {
+        t.push(format!("H{name}"));
+    }
+    if let Some(wordsmith_doc::props::Rgb(r, g, b)) = c.shading {
+        t.push(format!("S#{r:02X}{g:02X}{b:02X}"));
+    }
+    if let Some(TextColor::Rgb(wordsmith_doc::props::Rgb(r, g, b))) = c.color {
+        t.push(format!("F#{r:02X}{g:02X}{b:02X}"));
+    }
+    t.join(",")
+}
+
+/// Apply a style code ([`extra_code`]) to `c`. Unknown tokens are skipped.
+pub(crate) fn apply_extra(code: &str, c: &mut CharProps) {
+    use wordsmith_doc::props::{Rgb, TextColor, VertAlign};
+    for tok in code.split(',') {
+        let (head, rest) = tok.split_at(tok.chars().next().map_or(0, char::len_utf8));
+        match head {
+            "D" => c.underline = Some(Underline::Double),
+            "W" => c.underline = Some(Underline::Words),
+            "O" => c.underline = Some(Underline::Dotted),
+            "K" => c.strike = Some(true),
+            "U" => c.vert_align = Some(VertAlign::Superscript),
+            "L" => c.vert_align = Some(VertAlign::Subscript),
+            "C" => c.caps = Some(true),
+            "M" => c.small_caps = Some(true),
+            "H" => c.highlight = serde_json::from_value(serde_json::json!(rest)).ok(),
+            "S" => c.shading = Rgb::parse(rest),
+            "F" => c.color = Rgb::parse(rest).map(TextColor::Rgb),
+            _ => {}
+        }
+    }
 }
 
 /// Which markers are read as plain characters (bold, italic, underline).
@@ -108,6 +187,8 @@ enum Mark {
     Revised(Option<u32>),
     /// `{p7}`: a locked page starts at the next character.
     Lock(u32),
+    /// `{sD,K}` / `{/s}`: more styles start or end (format 4).
+    Extra(Option<String>),
 }
 
 /// The mark at the start of `rest` (just after a `{`), and its length after the `{`.
@@ -117,6 +198,16 @@ fn mark_at(rest: &str) -> Option<(Mark, usize)> {
     }
     if rest.starts_with("/r}") {
         return Some((Mark::Revised(None), 3));
+    }
+    if rest.starts_with("/s}") {
+        return Some((Mark::Extra(None), 3));
+    }
+    if let Some(code) = rest.strip_prefix('s') {
+        let body: String = code.chars().take_while(|c| c.is_ascii_alphanumeric() || *c == ',' || *c == '#').take(200).collect();
+        if !body.is_empty() && code[body.len()..].starts_with('}') {
+            let len = 1 + body.len() + 1;
+            return Some((Mark::Extra(Some(body)), len));
+        }
     }
     let kind = rest.chars().next()?;
     let r = rest.get(1..)?;
@@ -135,18 +226,19 @@ fn mark_at(rest: &str) -> Option<(Mark, usize)> {
 }
 
 /// The formatting being read: emphasis and marks.
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Default)]
 struct State {
     b: bool,
     i: bool,
     u: bool,
     note: Option<u32>,
     revised: Option<u32>,
+    extra: Option<String>,
 }
 
 impl State {
-    fn props(self, lock: Option<u32>) -> CharProps {
-        CharProps {
+    fn props(&self, lock: Option<u32>) -> CharProps {
+        let mut c = CharProps {
             bold: self.b.then_some(true),
             italic: self.i.then_some(true),
             underline: self.u.then_some(Underline::Single),
@@ -154,11 +246,15 @@ impl State {
             revised: self.revised,
             page_lock: lock,
             ..CharProps::default()
+        };
+        if let Some(code) = &self.extra {
+            apply_extra(code, &mut c);
         }
+        c
     }
 }
 
-fn flush(p: &mut Paragraph, piece: &mut String, st: State) {
+fn flush(p: &mut Paragraph, piece: &mut String, st: &State) {
     if piece.is_empty() {
         return;
     }
@@ -175,7 +271,7 @@ fn decode_pass(style: &str, text: &str, literal: Literal, marks: bool) -> (Parag
     let mut lock: Option<u32> = None;
     let mut piece = String::new();
     // A plain character; the one after a lock mark goes in on its own, with the mark.
-    let push = |p: &mut Paragraph, piece: &mut String, st: State, lock: &mut Option<u32>, c: char| {
+    let push = |p: &mut Paragraph, piece: &mut String, st: &State, lock: &mut Option<u32>, c: char| {
         if let Some(id) = lock.take() {
             flush(p, piece, st);
             let at = p.len();
@@ -190,11 +286,12 @@ fn decode_pass(style: &str, text: &str, literal: Literal, marks: bool) -> (Parag
             && c == '{'
             && let Some((mark, len)) = text.get(at + 1..).and_then(mark_at)
         {
-            flush(&mut p, &mut piece, st);
+            flush(&mut p, &mut piece, &st);
             match mark {
                 Mark::Note(n) => st.note = n,
                 Mark::Revised(r) => st.revised = r,
                 Mark::Lock(id) => lock = Some(id),
+                Mark::Extra(code) => st.extra = code,
             }
             for _ in 0..len {
                 chars.next();
@@ -204,33 +301,33 @@ fn decode_pass(style: &str, text: &str, literal: Literal, marks: bool) -> (Parag
         match c {
             '\\' => {
                 if let Some((_, n)) = chars.next() {
-                    push(&mut p, &mut piece, st, &mut lock, n);
+                    push(&mut p, &mut piece, &st, &mut lock, n);
                 }
             }
             '*' if chars.peek().map(|x| x.1) == Some('*') => {
                 chars.next();
                 if literal[0] {
-                    push(&mut p, &mut piece, st, &mut lock, '*');
-                    push(&mut p, &mut piece, st, &mut lock, '*');
+                    push(&mut p, &mut piece, &st, &mut lock, '*');
+                    push(&mut p, &mut piece, &st, &mut lock, '*');
                 } else {
-                    flush(&mut p, &mut piece, st);
+                    flush(&mut p, &mut piece, &st);
                     st.b = !st.b;
                 }
             }
-            '*' if literal[1] => push(&mut p, &mut piece, st, &mut lock, '*'),
+            '*' if literal[1] => push(&mut p, &mut piece, &st, &mut lock, '*'),
             '*' => {
-                flush(&mut p, &mut piece, st);
+                flush(&mut p, &mut piece, &st);
                 st.i = !st.i;
             }
-            '_' if literal[2] => push(&mut p, &mut piece, st, &mut lock, '_'),
+            '_' if literal[2] => push(&mut p, &mut piece, &st, &mut lock, '_'),
             '_' => {
-                flush(&mut p, &mut piece, st);
+                flush(&mut p, &mut piece, &st);
                 st.u = !st.u;
             }
-            _ => push(&mut p, &mut piece, st, &mut lock, c),
+            _ => push(&mut p, &mut piece, &st, &mut lock, c),
         }
     }
-    flush(&mut p, &mut piece, st);
+    flush(&mut p, &mut piece, &st);
     (p, [st.b, st.i, st.u])
 }
 

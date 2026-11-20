@@ -9,6 +9,12 @@ behavior; every addition below is new.
   element; toggle case; smart quotes and sentence capitals as options; select
   scene, new scene, page break; Go To by page, scene or bookmark; bookmarks
   and labels; find within one element; the reformat tool; the format checker.
+- **Macros and styles (M10):** twenty macros per script with shortcuts,
+  aliases and a starter set; bold, italic and underline keys; double, word and
+  dotted underlines, strike, raised, lowered, capitals, small capitals, small
+  letters; highlighter and text colors; element color, highlight and strike;
+  template formatting for all elements. The native format is now version 4
+  (0.1.0 cannot open version-4 files).
 
 ## 0.1.0 (2026-11-19)
 

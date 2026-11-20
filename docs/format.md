@@ -85,6 +85,7 @@ version-1 file that the tests read on every build.
 | 1 | The first format (M4) | — |
 | 2 | Note anchors in the text (`{n12}…{/n}`, `\{` for a brace), M5 | Every `{` in version-1 text is escaped, so it stays a brace |
 | 3 | Revision marks (`{r2}…{/r}`, `revised=2`) and locked page starts (`{p7}`), M6 | None needed: braces were already escaped |
+| 4 | More character styles (`{sD,K}…{/s}`: `D` double, `W` words-only and `O` dotted underline, `K` strike, `U` raised, `L` lowered, `C` capitals, `M` small capitals, `H` and a highlighter name, `S#RRGGBB` any highlight color, `F#RRGGBB` text color), M10 | None needed: braces were already escaped |
 
 ## Limits
 

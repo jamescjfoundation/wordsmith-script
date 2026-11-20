@@ -889,3 +889,22 @@ fn the_go_to_checker_and_reformat_windows_work_through_commands() {
     frame(&ctx, &mut ed, vec![key(Key::Num0, Modifiers::NONE)]);
     assert_eq!(lines(&ed)[1].0, "General");
 }
+
+#[test]
+fn macro_keys_and_style_keys_work_from_the_keyboard() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    let macro_key = Modifiers { alt: true, shift: true, ..cmd() };
+    frame(&ctx, &mut ed, vec![key(Key::Num2, macro_key), text("yard"), key(Key::Num3, macro_key), text("Sun.")]);
+    assert_eq!(lines(&ed), vec![l("SceneHeading", "EXT. YARD - DAY"), l("Action", "Sun.")]);
+    // Mod+B makes what is typed next bold.
+    frame(&ctx, &mut ed, vec![key(Key::B, cmd()), text(" Hot.")]);
+    let p = ed.session.doc.para_at(&wordsmith_script::data::body_pos(1, 0)).cloned().unwrap_or_default();
+    assert_eq!(p.props_at(6).bold, Some(true));
+    assert_eq!(p.props_at(2).bold, None);
+    // The macros window opens from its command.
+    ed.run("view.macros", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.tools.macros.is_some());
+}

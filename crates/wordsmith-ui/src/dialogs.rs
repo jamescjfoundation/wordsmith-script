@@ -101,6 +101,16 @@ fn choice_field(ui: &mut egui::Ui, form: &mut Value, key: &str, choices: &[(Valu
     });
 }
 
+/// `#RRGGBB` as a color.
+fn parse_hex(s: &str) -> Option<egui::Color32> {
+    let h = s.trim().trim_start_matches('#');
+    if h.len() != 6 {
+        return None;
+    }
+    let n = u32::from_str_radix(h, 16).ok()?;
+    Some(egui::Color32::from_rgb((n >> 16) as u8, (n >> 8) as u8, n as u8))
+}
+
 fn settings_window(ed: &mut Editor, ctx: &Context) {
     let Some(mut dialog) = ed.settings.take() else { return };
     let elements = Elements::of_doc(&ed.session.doc);
@@ -135,7 +145,28 @@ fn settings_window(ed: &mut Editor, ctx: &Context) {
                 flag_field(ui, form, "italic", "Italic");
                 flag_field(ui, form, "underline", "Underline");
                 flag_field(ui, form, "uppercase", "Capitals");
+                flag_field(ui, form, "lowercase", "Small letters");
+                flag_field(ui, form, "strike", "Strike through");
             });
+            ui.end_row();
+            ui.label("Text color");
+            ui.horizontal(|ui| {
+                let mut has = !form["color"].is_null();
+                if ui.checkbox(&mut has, "Own color").changed() {
+                    form["color"] = if has { json!("#000000") } else { Value::Null };
+                }
+                if let Some(c) = form["color"].as_str().and_then(parse_hex) {
+                    let mut c = c;
+                    if ui.color_edit_button_srgba(&mut c).changed() {
+                        form["color"] = json!(format!("#{:02X}{:02X}{:02X}", c.r(), c.g(), c.b()));
+                    }
+                }
+            });
+            ui.end_row();
+            ui.label("Highlight");
+            let mut choices: Vec<(Value, String)> = vec![(Value::Null, "None".into())];
+            choices.extend(wordsmith_script::commands::format::HIGHLIGHTS.iter().map(|(n, _)| (json!(n), (*n).to_string())));
+            choice_field(ui, form, "highlight", &choices);
             ui.end_row();
             ui.label("Alignment");
             choice_field(ui, form, "align", &["left", "center", "right", "justify"].map(|a| (json!(a), a.to_string())));
@@ -172,6 +203,9 @@ fn settings_window(ed: &mut Editor, ctx: &Context) {
         ui.horizontal(|ui| {
             if ui.button("Apply").clicked() {
                 action = Some(("element.configure", dialog.changes()));
+            }
+            if ui.button("Template Formatting for All").on_hover_text("Every element's formatting back to the screenplay template's").clicked() {
+                action = Some(("element.applyTemplate", json!({})));
             }
             if dialog.original.get("builtin") == Some(&json!(false)) && ui.button("Delete Element").clicked() {
                 action = Some(("element.delete", json!({"element": dialog.element})));

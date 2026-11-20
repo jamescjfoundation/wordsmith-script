@@ -82,6 +82,61 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                         item(ed, ui, id);
                     }
                 });
+                ui.menu_button("Text Style", |ui| {
+                    let on = ed.session.run("format.state", &json!({})).ok().and_then(|v| v["styles"].as_array().cloned()).unwrap_or_default();
+                    for (style, label) in [
+                        ("bold", "Bold"),
+                        ("italic", "Italic"),
+                        ("underline", "Underline"),
+                        ("doubleUnderline", "Double Underline"),
+                        ("wordUnderline", "Underline Words"),
+                        ("dottedUnderline", "Dotted Underline"),
+                        ("strike", "Strike Through"),
+                        ("superscript", "Raised"),
+                        ("subscript", "Lowered"),
+                        ("caps", "Capitals"),
+                        ("smallCaps", "Small Capitals"),
+                    ] {
+                        let mut checked = on.iter().any(|x| x == style);
+                        if ui.checkbox(&mut checked, label).clicked() {
+                            ed.run("format.style", json!({"style": style, "on": checked}));
+                        }
+                    }
+                    ui.separator();
+                    item(ed, ui, "format.lowercase");
+                    item(ed, ui, "format.plain");
+                });
+                ui.menu_button("Highlight", |ui| {
+                    for (name, _) in wordsmith_script::commands::format::HIGHLIGHTS {
+                        if ui.button(name).clicked() {
+                            ed.run("format.highlight", json!({"color": name}));
+                            ui.close();
+                        }
+                    }
+                    let mut custom = egui::Color32::from_rgb(255, 230, 150);
+                    ui.horizontal(|ui| {
+                        ui.label("Any color");
+                        if ui.color_edit_button_srgba(&mut custom).changed() {
+                            ed.run("format.highlight", json!({"color": format!("#{:02X}{:02X}{:02X}", custom.r(), custom.g(), custom.b())}));
+                        }
+                    });
+                    if ui.button("None").clicked() {
+                        ed.run("format.highlight", json!({"color": "none"}));
+                        ui.close();
+                    }
+                });
+                ui.menu_button("Text Color", |ui| {
+                    for (name, hex) in [("Black", "#000000"), ("Red", "#C0392B"), ("Blue", "#1F5FA8"), ("Green", "#2E7D32"), ("Gray", "#707070")] {
+                        if ui.button(name).clicked() {
+                            ed.run("format.color", json!({"color": hex}));
+                            ui.close();
+                        }
+                    }
+                    if ui.button("Automatic").clicked() {
+                        ed.run("format.color", json!({"color": "auto"}));
+                        ui.close();
+                    }
+                });
                 item(ed, ui, "element.reset");
                 item(ed, ui, "text.toggleCase");
                 ui.separator();
@@ -144,9 +199,19 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 }
             });
             ui.menu_button("Tools", |ui| {
-                for id in ["view.checker", "view.reformat"] {
+                for id in ["view.checker", "view.reformat", "view.macros"] {
                     item(ed, ui, id);
                 }
+                ui.menu_button("Run Macro", |ui| {
+                    let all = wordsmith_script::macros::Macros::of_doc(&ed.session.doc);
+                    for (i, m) in all.slots.iter().enumerate().filter(|(_, m)| !m.is_empty()) {
+                        let button = egui::Button::new(format!("{}. {}", i + 1, m.name)).shortcut_text(m.shortcut.clone().unwrap_or_default());
+                        if ui.add(button).clicked() {
+                            ed.run("macro.run", json!({"slot": i + 1}));
+                            ui.close();
+                        }
+                    }
+                });
             });
             ui.menu_button("Help", |ui| item(ed, ui, "help.about"));
         });

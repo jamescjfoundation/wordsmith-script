@@ -79,6 +79,10 @@ pub fn settings_json(doc: &Document, def: &ElementDef) -> Result<Value, CmdError
         "italic": st.chr.italic.unwrap_or(false),
         "underline": st.chr.underline.is_some_and(|u| u != Underline::None),
         "uppercase": def.casing == Casing::Upper,
+        "lowercase": def.casing == Casing::Lower,
+        "strike": st.chr.strike.unwrap_or(false),
+        "color": match st.chr.color { Some(wordsmith_doc::props::TextColor::Rgb(wordsmith_doc::props::Rgb(r, g, b))) => json!(format!("#{r:02X}{g:02X}{b:02X}")), _ => Value::Null },
+        "highlight": highlight_name(&st.chr),
         "align": align_name(st.para.align.unwrap_or_default()),
         "left": left_in(st),
         "right": right_in(st),
@@ -180,6 +184,44 @@ fn configure(s: &mut Session, v: &Value) -> CmdResult {
     if let Some(u) = flag(v, "uppercase")? {
         new_def.casing = if u { Casing::Upper } else { Casing::AsTyped };
     }
+    if let Some(l) = flag(v, "lowercase")? {
+        if l {
+            new_def.casing = Casing::Lower;
+        } else if new_def.casing == Casing::Lower {
+            new_def.casing = Casing::AsTyped;
+        }
+    }
+    if let Some(k) = flag(v, "strike")? {
+        style.chr.strike = Some(k);
+    }
+    match v.get("color") {
+        None => {}
+        Some(Value::Null) => style.chr.color = None,
+        Some(Value::String(c)) => {
+            let rgb = wordsmith_doc::props::Rgb::parse(c.trim()).ok_or_else(|| CmdError::Params("`color` is #RRGGBB or null".into()))?;
+            style.chr.color = Some(wordsmith_doc::props::TextColor::Rgb(rgb));
+        }
+        Some(_) => return Err(CmdError::Params("`color` is #RRGGBB or null".into())),
+    }
+    match v.get("highlight") {
+        None => {}
+        Some(Value::Null) => {
+            style.chr.highlight = None;
+            style.chr.shading = None;
+        }
+        Some(Value::String(h)) => {
+            if let Some((_, named)) = super::format::HIGHLIGHTS.iter().find(|(n, _)| n.eq_ignore_ascii_case(h.trim())) {
+                style.chr.highlight = Some(*named);
+                style.chr.shading = None;
+            } else {
+                let rgb = wordsmith_doc::props::Rgb::parse(h.trim())
+                    .ok_or_else(|| CmdError::Params("`highlight` is a highlighter name, #RRGGBB or null".into()))?;
+                style.chr.highlight = None;
+                style.chr.shading = Some(rgb);
+            }
+        }
+        Some(_) => return Err(CmdError::Params("`highlight` is a highlighter name, #RRGGBB or null".into())),
+    }
     if let Some(a) = p::str(v, "align") {
         style.para.align = Some(parse_align(a)?);
     }
@@ -247,7 +289,7 @@ fn configure(s: &mut Session, v: &Value) -> CmdResult {
     }
 
     // Everything checked: apply.
-    let casing_now_upper = new_def.casing == Casing::Upper && def.casing != Casing::Upper;
+    let casing_now_upper = new_def.casing != Casing::AsTyped && def.casing != new_def.casing;
     if let Some(d) = elements.get_mut(&def.id) {
         *d = new_def.clone();
     }
@@ -336,6 +378,35 @@ fn delete(s: &mut Session, v: &Value) -> CmdResult {
     Ok(json!({"deleted": def.id}))
 }
 
+/// An element's highlight as `element.settings` shows it: a highlighter name or `#RRGGBB`.
+fn highlight_name(c: &wordsmith_doc::props::CharProps) -> Value {
+    if let Some(h) = c.highlight
+        && let Some((n, _)) = super::format::HIGHLIGHTS.iter().find(|(_, x)| *x == h)
+    {
+        return json!(n);
+    }
+    match c.shading {
+        Some(wordsmith_doc::props::Rgb(r, g, b)) => json!(format!("#{r:02X}{g:02X}{b:02X}")),
+        None => Value::Null,
+    }
+}
+
+/// `element.applyTemplate`: every element's formatting and Return target back to the
+/// screenplay template's (names, casing and Tab stay). Custom elements take Action's.
+fn apply_template(s: &mut Session, _: &Value) -> CmdResult {
+    let elements = Elements::of_doc(&s.doc);
+    let fresh = crate::template::style_sheet(&elements);
+    let sheet = Arc::make_mut(&mut s.doc.styles);
+    for def in elements.all() {
+        if let Some(st) = fresh.get(&def.id) {
+            sheet.upsert(st.clone());
+        }
+    }
+    sheet.default_chr = fresh.default_chr.clone();
+    touch_all(&mut s.doc);
+    Ok(json!({"elements": elements.all().len()}))
+}
+
 /// `element.applyFontToAll {font?, size?}`: one font and size for every element, leaving bold and
 /// italic alone (SPEC, Verified).
 fn apply_font_to_all(s: &mut Session, v: &Value) -> CmdResult {
@@ -417,11 +488,12 @@ pub fn specs() -> Vec<CommandSpec> {
     vec![
         CommandSpec::new("element.settings", "Element Settings", LOC, get).params(r#"{"element"?: elementId}"#).pure(),
         CommandSpec::new("element.configure", "Change Element Settings", LOC, configure).params(
-            r#"{"element": id, "name"?, "font"?, "size"? (4-72), "bold"?, "italic"?, "underline"?, "uppercase"?, "align"? (left|center|right|justify), "left"?, "right"? (inches from the page's left edge), "lineSpacing"? (1|1.5|2|3), "spaceBefore"? (0-30 lines), "next"?, "tab"?, "tabOnlyWhenBlank"?, "paginateAs"? (element id or null), "startNewPage"?, "keepWithNext"?, "keepTogether"?, "shortcut"? (custom elements only)}"#,
+            r#"{"element": id, "name"?, "font"?, "size"? (4-72), "bold"?, "italic"?, "underline"?, "uppercase"?, "lowercase"?, "strike"?, "color"? (#RRGGBB|null), "highlight"? (name|#RRGGBB|null), "align"? (left|center|right|justify), "left"?, "right"? (inches from the page's left edge), "lineSpacing"? (1|1.5|2|3), "spaceBefore"? (0-30 lines), "next"?, "tab"?, "tabOnlyWhenBlank"?, "paginateAs"? (element id or null), "startNewPage"?, "keepWithNext"?, "keepTogether"?, "shortcut"? (custom elements only)}"#,
         ),
         CommandSpec::new("element.create", "New Element", LOC, create).params(r#"{"name": string, "shortcut"?: string}"#),
         CommandSpec::new("element.delete", "Delete Element", LOC, delete).params(r#"{"element": customElementId}"#),
         CommandSpec::new("element.applyFontToAll", "Font for All Elements", LOC, apply_font_to_all).params(r#"{"font"?: string, "size"?: number}"#),
+        CommandSpec::new("element.applyTemplate", "Template Formatting for All Elements", LOC, apply_template),
         CommandSpec::new("element.dialogueThenCharacter", "Character After Dialogue", LOC, dialogue_then_character).params(r#"{"value": bool}"#),
         CommandSpec::new("sceneHeading.settings", "Scene Heading Settings", LOC, |s, _| Ok(serde_json::to_value(SceneHeadingSettings::of_doc(&s.doc)).unwrap_or_default())).pure(),
         CommandSpec::new("sceneHeading.configure", "Change Scene Heading Settings", LOC, scene_heading_configure)
@@ -589,4 +661,34 @@ mod tests {
     }
 
     use crate::element::Elements;
+}
+
+#[cfg(test)]
+mod spec2_tests {
+    use super::*;
+    use crate::commands::new_session;
+
+    #[test]
+    fn color_highlight_strike_and_small_letters() {
+        let mut s = new_session();
+        s.run("text.insert", &json!({"text": "int. hall\nRain FALLS."})).unwrap();
+        let after = s
+            .run("element.configure", &json!({"element": "Action", "strike": true, "color": "#336699", "highlight": "Lime", "lowercase": true}))
+            .unwrap();
+        assert_eq!((after["strike"].as_bool(), after["color"].as_str(), after["highlight"].as_str()), (Some(true), Some("#336699"), Some("Lime")));
+        assert_eq!(crate::commands::text::body_lines(&s)[1].1, "rain falls.");
+        let after = s.run("element.configure", &json!({"element": "Action", "highlight": "#ABCDEF", "color": null, "lowercase": false})).unwrap();
+        assert_eq!((after["highlight"].as_str(), after["color"].is_null(), after["lowercase"].as_bool()), (Some("#ABCDEF"), true, Some(false)));
+        assert!(s.run("element.configure", &json!({"element": "Action", "color": "teal-ish"})).is_err());
+    }
+
+    #[test]
+    fn template_formatting_comes_back() {
+        let mut s = new_session();
+        s.run("element.configure", &json!({"element": "Dialogue", "left": 1.5, "bold": true, "next": "Character"})).unwrap();
+        s.run("element.applyTemplate", &json!({})).unwrap();
+        let d = s.run("element.settings", &json!({"element": "Dialogue"})).unwrap();
+        assert!((d["left"].as_f64().unwrap_or(0.0) - 2.5).abs() < 1e-4);
+        assert_eq!((d["bold"].as_bool(), d["next"].as_str()), (Some(false), Some("Action")));
+    }
 }
