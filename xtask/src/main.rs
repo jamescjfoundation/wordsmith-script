@@ -3,7 +3,10 @@
 //!
 //! `cargo xtask ci` runs, in order: rustfmt, the crate-root lint check,
 //! clippy, all tests, the attribution check, the layering check and the
-//! wasm build. Each task can also be run on its own.
+//! wasm build. Each task can also be run on its own. Outside the gate:
+//! `cargo xtask screenshots` redraws the README's pictures with the app's
+//! offscreen renderer, and `cargo xtask bundle` builds a release bundle for
+//! the host.
 
 #![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
@@ -44,6 +47,7 @@ fn main() -> ExitCode {
     let root = workspace_root();
     let result = match task {
         "ci" => run_all(&root),
+        "screenshots" => screenshots(&root),
         "help" | "--help" | "-h" => {
             print_help();
             Ok(())
@@ -70,6 +74,19 @@ fn print_help() {
     for (name, about) in TASKS {
         println!("  {name:<14} {about}");
     }
+    println!("\n  screenshots    redraw docs/images with the app's offscreen renderer");
+}
+
+/// Redraw the README's pictures (docs/images) from the sample script.
+fn screenshots(root: &Path) -> TaskResult {
+    let out = root.join("docs/images");
+    let status = Command::new(cargo_bin())
+        .current_dir(root)
+        .args(["run", "--release", "--locked", "-p", "wordsmith-ui", "--example", "screenshots", "--"])
+        .arg(&out)
+        .status()
+        .map_err(|e| format!("cargo run: {e}"))?;
+    if status.success() { Ok(()) } else { Err("the screenshots example failed".into()) }
 }
 
 fn run_all(root: &Path) -> TaskResult {

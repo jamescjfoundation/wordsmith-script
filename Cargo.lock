@@ -4665,6 +4665,7 @@ dependencies = [
  "craft-atomic",
  "craft-dialogs",
  "egui",
+ "image",
  "log",
  "raw-window-handle",
  "serde",

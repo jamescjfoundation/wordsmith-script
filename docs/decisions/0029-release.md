@@ -35,3 +35,15 @@ need the app.
 The file commands moved from the interface to `wordsmith-format::commands`,
 so the window, the command line and the MCP server share one copy; the
 window still answers their requests for file dialogs.
+
+## Screenshots
+
+The README's pictures come from the app itself: `wordsmith_ui::snapshot` runs
+the editor headlessly for a few frames and rasterizes egui's output on the
+CPU (each triangle's interpolated vertex color times its texture: the font
+atlas and the page tiles, blended premultiplied), so no window or GPU is
+needed. `cargo xtask screenshots` draws the page view, index cards, story
+board, outline and the dark speed view of a public-domain sample (with a
+title page, locked pages, a Blue revision, scene numbers, beats and lanes)
+into `docs/images`. Looking at them found two layout bugs in the index cards
+(cards growing with their text and not wrapping into rows), now fixed.
