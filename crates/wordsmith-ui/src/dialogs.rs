@@ -558,6 +558,10 @@ fn revisions_window(ed: &mut Editor, ctx: &Context) {
             }
             ui.label("from the page's left edge");
         });
+        let mut show_marks = rev.show_marks;
+        if ui.checkbox(&mut show_marks, "Show revision marks").changed() {
+            action = Some(("revision.configure", json!({"showMarks": show_marks})));
+        }
         let mut color_pages = rev.color_pages;
         if ui.checkbox(&mut color_pages, "Color revised pages in PDF and print").changed() {
             action = Some(("revision.configure", json!({"colorPages": color_pages})));

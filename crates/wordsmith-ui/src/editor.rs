@@ -623,6 +623,8 @@ impl Editor {
                 let (label, ext, then) = match req.get("format").and_then(Value::as_str) {
                     Some("csv-scenes") => ("CSV", "csv", "tables.exportScenesCsv"),
                     Some("csv-characters") => ("CSV", "csv", "tables.exportCharactersCsv"),
+                    Some("csv-report") => ("CSV", "csv", "report.exportCharacters"),
+                    Some("pdf-revised") => ("PDF", "pdf", "file.exportRevisedPdf"),
                     Some("fountain") => ("Fountain", "fountain", "file.exportFountain"),
                     Some("rtf") => ("Rich Text (RTF)", "rtf", "file.exportRtf"),
                     Some("html") => ("Web Page (HTML)", "html", "file.exportHtml"),

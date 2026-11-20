@@ -33,11 +33,14 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 item(ed, ui, "file.saveAs");
                 ui.separator();
                 ui.menu_button("Export", |ui| {
-                    for id in ["file.exportPdfAs", "file.exportFountain", "file.exportText", "file.exportRtf", "file.exportHtml"] {
+                    for id in
+                        ["file.exportPdfAs", "file.exportRevisedPdfAs", "file.exportFountain", "file.exportText", "file.exportRtf", "file.exportHtml"]
+                    {
                         item(ed, ui, id);
                     }
                 });
                 item(ed, ui, "file.print");
+                item(ed, ui, "file.printRevised");
                 ui.separator();
                 item(ed, ui, "app.preferences");
                 item(ed, ui, "file.recoverPrompt");
@@ -83,6 +86,8 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 for id in ["lock.pages", "lock.unlockLevel", "lock.unlockAll"] {
                     item(ed, ui, id);
                 }
+                ui.separator();
+                item(ed, ui, "report.exportCharacters");
             });
             ui.menu_button("View", |ui| {
                 for id in ["view.normal", "view.page", "view.speed", "view.cards", "view.scenes", "view.tables"] {

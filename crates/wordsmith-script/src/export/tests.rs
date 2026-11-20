@@ -351,3 +351,27 @@ fn scene_numbers_print_either_side_of_their_headings() {
     assert!(r.contains(&"1A INT. HALL - NIGHT 1A".to_string()), "{r:#?}");
     assert!(r.contains(&"2 EXT. YARD - DAY 2".to_string()), "{r:#?}");
 }
+
+#[test]
+fn lock_a_blue_revision_and_print_only_the_revised_pages() {
+    let mut doc = new_script();
+    doc.body = (0..70).map(|i| para_block(paragraph("Action", &format!("Line {i}.")))).collect();
+    let mut s = crate::session_for(doc);
+    s.run("lock.pages", &json!({"revisionMode": true})).unwrap();
+    assert_eq!(crate::revisions::Revisions::of_doc(&s.doc).current, "Blue");
+    // Revise a line on page 2 (block 40 is on it).
+    s.sel = wordsmith_engine::Selection::caret(wordsmith_doc::Pos { off: 4, path: wordsmith_doc::Path::top(40), ..s.sel.focus.clone() });
+    s.run("text.insert", &json!({"text": " (changed)"})).unwrap();
+    let (bytes, pages) = super::pdf_with(&s.doc, super::PrintOptions { revised_only: true, marks: true }).unwrap();
+    assert_eq!(pages, 1);
+    let rows = &page_rows(&bytes);
+    assert_eq!(rows.len(), 1, "only the revised page");
+    assert_eq!(rows[0][0], "2.", "with its locked label");
+    assert!(rows[0].iter().any(|l| l.contains("(changed)") && l.ends_with(" *")), "{:#?}", rows[0]);
+    // Without marks.
+    let (bytes, _) = super::pdf_with(&s.doc, super::PrintOptions { revised_only: true, marks: false }).unwrap();
+    assert!(page_rows(&bytes)[0].iter().all(|l| !l.ends_with(" *")));
+    // With nothing revised there is nothing to print.
+    s.run("revision.clearRevised", &json!({"all": true})).unwrap();
+    assert!(super::pdf_with(&s.doc, super::PrintOptions { revised_only: true, marks: true }).is_err());
+}

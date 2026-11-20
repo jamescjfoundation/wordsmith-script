@@ -189,7 +189,8 @@ pub fn scenes_csv(doc: &Document) -> String {
     let elements = Elements::of_doc(doc);
     let pag = crate::paginate::paginate(doc);
     let page_of = |block: usize| pag.map.iter().position(|m| m.is_some_and(|m| m.block == block)).and_then(|out| page_of_output(&pag, out));
-    let mut rows = vec![vec!["Scene".to_string(), "Heading".into(), "Page".into(), "Characters".into(), "Summary".into()]];
+    let mut rows = vec![vec!["Scene".to_string(), "Heading".into(), "Page".into(), "Length".into(), "Characters".into(), "Summary".into()]];
+    let eighths = crate::reports::scene_eighths(doc, &pag);
     let numbers = crate::scene_numbers::numbers(doc);
     for sc in scenes(doc) {
         let v = super::scene::scene_json(doc, &elements, &sc);
@@ -197,6 +198,7 @@ pub fn scenes_csv(doc: &Document) -> String {
             numbers.get(sc.index).cloned().unwrap_or_else(|| (sc.index + 1).to_string()),
             sc.heading.clone(),
             page_of(sc.start).map(|p| p.to_string()).unwrap_or_default(),
+            eighths.get(sc.index).map(|e| crate::reports::format_eighths(*e)).unwrap_or_default(),
             super::scene::speakers(doc, &elements, &sc).join(", "),
             v["summary"].as_str().unwrap_or("").to_string(),
         ]);
@@ -318,7 +320,7 @@ mod tests {
         assert_eq!(csv_field("two\nlines"), "\"two\nlines\"");
         let s = session();
         let scenes = scenes_csv(&s.doc);
-        assert!(scenes.starts_with("Scene,Heading,Page,Characters,Summary\r\n1,INT. A - DAY,1,\"ANNA, BOB\",\r\n"), "{scenes}");
+        assert!(scenes.starts_with("Scene,Heading,Page,Length,Characters,Summary\r\n1,INT. A - DAY,1,2/8,\"ANNA, BOB\",\r\n"), "{scenes}");
         assert_eq!(characters_csv(&s.doc), "Character,Speeches,Scenes,First scene\r\nANNA,2,2,1\r\nBOB,1,1,1\r\n");
     }
 }

@@ -17,6 +17,7 @@ pub mod header_footer;
 pub mod locks;
 pub mod notes;
 pub mod paginate;
+pub mod reports;
 pub mod revisions;
 pub mod scene_heading;
 pub mod scene_numbers;

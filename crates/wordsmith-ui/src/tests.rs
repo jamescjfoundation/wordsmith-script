@@ -741,3 +741,26 @@ fn revision_mode_from_the_editor() {
     assert_eq!(pag.page_revisions, [Some(0)], "the page is revised in Blue");
     frame(&ctx, &mut ed, vec![]);
 }
+
+#[test]
+fn revised_pages_and_the_character_report_export() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("element.character", json!({}));
+    frame(&ctx, &mut ed, vec![text("anna"), key(Key::Enter, Modifiers::NONE), text("Hello there.")]);
+    let dir = temp_dir("revised");
+    ed.run("file.exportRevisedPdf", json!({"path": dir.join("R.pdf").display().to_string()}));
+    assert!(ed.message.contains("no page has revised text"), "{}", ed.message);
+    ed.run("revision.next", json!({}));
+    frame(&ctx, &mut ed, vec![text(" Again.")]);
+    ed.run("file.exportRevisedPdf", json!({"path": dir.join("R.pdf").display().to_string()}));
+    assert_eq!(ed.message, "");
+    assert!(dir.join("R.pdf").exists());
+    ed.run("report.exportCharacters", json!({"path": dir.join("Cast")}));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("Cast.csv")).unwrap(),
+        "Character,Speeches,Words,Scenes,First scene,Last scene,Pages\r\nANNA,1,3,0,,,1\r\n"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
