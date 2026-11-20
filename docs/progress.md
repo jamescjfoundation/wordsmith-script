@@ -31,3 +31,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m5/scenes | Scene commands (list, move, heading, summary, go to); index cards and scene view with drag to reorder; 1697 tests pass |
 | 2026-11-19 | m5/tables | Tables panel (scenes, characters) with cell editing, row reorder and CSV; character rename everywhere; 1702 tests pass |
 | 2026-11-19 | m5/notes | Notes anchored by a text mark; commands, page view tint, popover, Notes table; native format 2 with migration; Fountain writes notes; M5 complete; 1709 tests pass |
+| 2026-11-19 | main | Typing at 150 pages measured at the end of M5: median 14.7 to 15.6 ms |
