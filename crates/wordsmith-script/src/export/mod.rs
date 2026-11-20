@@ -6,8 +6,6 @@
 //! Printing sends that PDF to the system: CUPS (`lp`) on macOS and Linux; on Windows the PDF
 //! opens in the system's PDF viewer to print from there (`docs/decisions/0013-printing.md`).
 
-use std::io::Write;
-
 use serde_json::{Value, json};
 use wordsmith_doc::Document;
 use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session, file_access, p};
@@ -278,6 +276,7 @@ pub fn lp_args(printer: Option<&str>, copies: u32, title: &str) -> Vec<String> {
 #[cfg(not(windows))]
 fn send_to_printer(pdf: &[u8], printer: Option<&str>, copies: u32, title: &str, collate: bool) -> Result<String, String> {
     use std::process::{Command, Stdio};
+    use std::io::Write;
     let mut args = lp_args(printer, copies, title);
     if collate && copies > 1 {
         args.splice(0..0, ["-o".to_string(), "collate=true".to_string()]);
