@@ -119,11 +119,14 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("element.shot", "Shot", LOC, |s, _| set_kind(s, ElementKind::Shot)).key("Mod+7"),
         CommandSpec::new("element.castList", "Cast List", LOC, |s, _| set_kind(s, ElementKind::CastList)).key("Mod+8"),
         CommandSpec::new("element.newAct", "New Act", LOC, |s, _| set_kind(s, ElementKind::NewAct)).key("Mod+9"),
-        CommandSpec::new("element.endOfAct", "End of Act", LOC, |s, _| set_kind(s, ElementKind::EndOfAct)),
-        CommandSpec::new("element.outline1", "Outline 1", LOC, |s, _| set_kind(s, ElementKind::Outline1)),
-        CommandSpec::new("element.outline2", "Outline 2", LOC, |s, _| set_kind(s, ElementKind::Outline2)),
-        CommandSpec::new("element.outline3", "Outline 3", LOC, |s, _| set_kind(s, ElementKind::Outline3)),
-        CommandSpec::new("element.note", "Note", LOC, |s, _| set_kind(s, ElementKind::Note)),
-        CommandSpec::new("element.summary", "Summary", LOC, |s, _| set_kind(s, ElementKind::Summary)),
+        // Structure and outline elements on Mod+Shift and a digit (SPEC-2 19 suggests a shifted
+        // digit; a bare Shift+digit types a symbol, so Mod is added).
+        CommandSpec::new("element.outline1", "Outline 1", LOC, |s, _| set_kind(s, ElementKind::Outline1)).key("Mod+Shift+1"),
+        CommandSpec::new("element.outline2", "Outline 2", LOC, |s, _| set_kind(s, ElementKind::Outline2)).key("Mod+Shift+2"),
+        CommandSpec::new("element.outline3", "Outline 3", LOC, |s, _| set_kind(s, ElementKind::Outline3)).key("Mod+Shift+3"),
+        CommandSpec::new("element.note", "Note", LOC, |s, _| set_kind(s, ElementKind::Note)).key("Mod+Shift+4"),
+        CommandSpec::new("element.summary", "Summary", LOC, |s, _| set_kind(s, ElementKind::Summary)).key("Mod+Shift+5"),
+        CommandSpec::new("element.sequence", "Sequence", LOC, |s, _| set_kind(s, ElementKind::Sequence)).key("Mod+Shift+6"),
+        CommandSpec::new("element.endOfAct", "End of Act", LOC, |s, _| set_kind(s, ElementKind::EndOfAct)).key("Mod+Shift+7"),
     ]
 }

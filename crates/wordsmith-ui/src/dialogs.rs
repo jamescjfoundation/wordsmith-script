@@ -588,6 +588,7 @@ fn revisions_window(ed: &mut Editor, ctx: &Context) {
 
 /// Show whichever dialogs are open.
 pub fn show(ed: &mut Editor, ctx: &Context) {
+    crate::tools::show(ed, ctx);
     revisions_window(ed, ctx);
     note_popover(ed, ctx);
     header_footer_window(ed, ctx);

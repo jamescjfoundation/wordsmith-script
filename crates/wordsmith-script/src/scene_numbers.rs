@@ -240,8 +240,14 @@ fn recall(s: &mut Session, v: &Value) -> CmdResult {
 /// beat.
 pub fn after_split(doc: &mut Document, new: &wordsmith_doc::Pos) {
     if let Ok(p) = doc.para_mut(new.story, &new.path)
-        && (p.props.scene_number.is_some() || p.props.omitted.is_some() || p.props.beat.is_some())
+        && (p.props.scene_number.is_some()
+            || p.props.omitted.is_some()
+            || p.props.beat.is_some()
+            || p.props.bookmark.is_some()
+            || p.props.dual.is_some())
     {
+        p.props.bookmark = None;
+        p.props.dual = None;
         p.props.scene_number = None;
         p.props.omitted = None;
         // A beat's paragraph stays one paragraph's.

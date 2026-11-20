@@ -46,7 +46,17 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 item(ed, ui, "file.recoverPrompt");
             });
             ui.menu_button("Edit", |ui| {
-                for id in ["edit.undo", "edit.redo", "edit.cut", "edit.copy", "select.all", "view.find", "view.note"] {
+                for id in ["edit.undo", "edit.redo", "edit.cut", "edit.copy", "select.all", "select.scene", "view.find", "view.note"] {
+                    item(ed, ui, id);
+                }
+            });
+            ui.menu_button("Insert", |ui| {
+                for id in ["scene.insert", "text.pageBreak", "bookmark.add"] {
+                    item(ed, ui, id);
+                }
+            });
+            ui.menu_button("Go", |ui| {
+                for id in ["view.goto", "view.bookmarks", "bookmark.next", "bookmark.previous"] {
                     item(ed, ui, id);
                 }
             });
@@ -66,6 +76,23 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                     "element.endOfAct",
                 ] {
                     item(ed, ui, id);
+                }
+                ui.menu_button("Structure and Outline", |ui| {
+                    for id in ["element.sequence", "element.outline1", "element.outline2", "element.outline3", "element.note", "element.summary"] {
+                        item(ed, ui, id);
+                    }
+                });
+                item(ed, ui, "element.reset");
+                item(ed, ui, "text.toggleCase");
+                ui.separator();
+                let typing = wordsmith_script::typing::Typing::of_doc(&ed.session.doc);
+                let mut smart = typing.smart_quotes;
+                if ui.checkbox(&mut smart, "Smart Quotes").clicked() {
+                    ed.run("typing.smartQuotes", json!({}));
+                }
+                let mut caps = typing.auto_capitalize;
+                if ui.checkbox(&mut caps, "Capitalize Sentences").clicked() {
+                    ed.run("typing.autoCapitalize", json!({}));
                 }
                 ui.separator();
                 item(ed, ui, "view.elementSettings");
@@ -114,6 +141,11 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 }
                 if ui.button("Zoom Out").clicked() {
                     ed.zoom = (ed.zoom / 1.25).clamp(*ZOOM_RANGE.start(), *ZOOM_RANGE.end());
+                }
+            });
+            ui.menu_button("Tools", |ui| {
+                for id in ["view.checker", "view.reformat"] {
+                    item(ed, ui, id);
                 }
             });
             ui.menu_button("Help", |ui| item(ed, ui, "help.about"));
@@ -172,6 +204,18 @@ pub fn find_bar(ed: &mut Editor, ui: &mut Ui) {
             ui.add(egui::TextEdit::singleline(&mut bar.with).desired_width(160.0));
             ui.checkbox(&mut bar.match_case, "Match case");
             ui.checkbox(&mut bar.whole_word, "Whole word");
+            let elements = Elements::of_doc(&ed.session.doc);
+            let shown = bar.elements.first().and_then(|id| elements.get(id)).map_or("All elements".to_string(), |d| d.name.clone());
+            egui::ComboBox::from_id_salt("find-in").selected_text(shown).width(130.0).show_ui(ui, |ui| {
+                if ui.selectable_label(bar.elements.is_empty(), "All elements").clicked() {
+                    bar.elements.clear();
+                }
+                for d in elements.all() {
+                    if ui.selectable_label(bar.elements.first() == Some(&d.id), d.name.as_str()).clicked() {
+                        bar.elements = vec![d.id.clone()];
+                    }
+                }
+            });
             for (label, id) in [("Previous", "find.previous"), ("Next", "find.next"), ("Replace", "replace.one"), ("Replace All", "replace.all")] {
                 if ui.button(label).clicked() {
                     action = Some(id);
@@ -213,6 +257,12 @@ pub fn status_bar(ed: &mut Editor, ui: &mut Ui) {
             };
             ui.separator();
             ui.label(format!("{scenes} scene{}", if scenes == 1 { "" } else { "s" }));
+            // What Return and Tab make from here (SPEC-2 3.2).
+            if let Ok(h) = ed.session.run("element.hint", &json!({})) {
+                ui.separator();
+                let tab = h["tab"].as_str().unwrap_or("nothing");
+                ui.label(format!("{}  ·  Return: {}  ·  Tab: {tab}", h["element"].as_str().unwrap_or(""), h["enter"].as_str().unwrap_or("")));
+            }
             let rev = wordsmith_script::revisions::Revisions::of_doc(&ed.session.doc);
             if rev.mode {
                 ui.separator();

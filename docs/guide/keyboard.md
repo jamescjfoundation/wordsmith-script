@@ -15,6 +15,7 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | Note… | `Mod+Alt+N` |
 | Copy | `Mod+C` |
 | Find and Replace… | `Mod+F` |
+| Select Scene | `Mod+Shift+A` |
 | Cut | `Mod+X` |
 | Redo | `Mod+Y` or `Mod+Shift+Z` |
 | Undo | `Mod+Z` |
@@ -32,6 +33,12 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | Export PDF… | `Mod+Shift+E` |
 | Save As… | `Mod+Shift+S` |
 
+## Format
+
+| Command | Keys |
+| --- | --- |
+| Toggle Case | `Mod+Shift+K` |
+
 ## Format › Element
 
 | Command | Keys |
@@ -46,6 +53,29 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | Shot | `Mod+7` |
 | Cast List | `Mod+8` |
 | New Act | `Mod+9` |
+| Outline 1 | `Mod+Shift+1` |
+| Outline 2 | `Mod+Shift+2` |
+| Outline 3 | `Mod+Shift+3` |
+| Note | `Mod+Shift+4` |
+| Summary | `Mod+Shift+5` |
+| Sequence | `Mod+Shift+6` |
+| End of Act | `Mod+Shift+7` |
+| Reset to Element | `Mod+Shift+R` |
+
+## Go
+
+| Command | Keys |
+| --- | --- |
+| Go To… | `Mod+G` |
+| Add Bookmark | `Mod+M` |
+| Bookmarks… | `Mod+Shift+M` |
+
+## Insert
+
+| Command | Keys |
+| --- | --- |
+| Page Break | `Mod+Shift+Enter` |
+| New Scene | `Mod+Shift+N` |
 
 ## Navigate
 

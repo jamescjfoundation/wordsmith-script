@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+Work toward v0.2 from `docs/SPEC-2.md`. Nothing built in 0.1.0 changes its
+behavior; every addition below is new.
+
+- **Editing (M9):** the Sequence element; the Return and Tab hint; reset to
+  element; toggle case; smart quotes and sentence capitals as options; select
+  scene, new scene, page break; Go To by page, scene or bookmark; bookmarks
+  and labels; find within one element; the reformat tool; the format checker.
+
 ## 0.1.0 (2026-11-19)
 
 The first tagged version: a starting point, not a finished app. Everything is

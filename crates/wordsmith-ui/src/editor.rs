@@ -153,13 +153,15 @@ pub struct FindBar {
     pub with: String,
     pub match_case: bool,
     pub whole_word: bool,
+    /// Look only in these elements (ids); empty for all.
+    pub elements: Vec<String>,
     /// Matches found for the current query (shown in the bar).
     pub count: Option<usize>,
 }
 
 impl FindBar {
     pub fn params(&self) -> Value {
-        json!({"query": self.query, "with": self.with, "matchCase": self.match_case, "wholeWord": self.whole_word})
+        json!({"query": self.query, "with": self.with, "matchCase": self.match_case, "wholeWord": self.whole_word, "elements": self.elements})
     }
 }
 
@@ -256,6 +258,8 @@ pub struct Editor {
     scene_cache: Option<(u64, Arc<Vec<Value>>)>,
     /// The revision auto-save last saw, to notice changes.
     seen_rev: u64,
+    /// Tool windows added after v0.1 (Go To, bookmarks, checker, reformat…).
+    pub tools: crate::tools::Tools,
 }
 
 impl Editor {
@@ -308,6 +312,7 @@ impl Editor {
             scene_cache: None,
             board: Default::default(),
             seen_rev: 0,
+            tools: Default::default(),
         }
     }
 
@@ -577,7 +582,10 @@ impl Editor {
                     let bar = self.find.take().unwrap_or_default();
                     self.find = Some(FindBar { query: if query.is_empty() || query.contains('\n') { bar.query.clone() } else { query }, ..bar });
                 }
-                _ => {}
+                Some(other) => {
+                    crate::tools::open(self, other);
+                }
+                None => {}
             }
         }
     }
@@ -681,7 +689,11 @@ impl Editor {
 
     /// Whether the editor should take keyboard input now (no dialog or text field has it).
     fn has_keyboard(&self, ui: &Ui) -> bool {
-        self.palette.is_none() && self.settings.is_none() && self.board.edit.is_none() && !ui.ctx().text_edit_focused()
+        self.palette.is_none()
+            && self.settings.is_none()
+            && self.board.edit.is_none()
+            && !crate::tools::has_keyboard(self)
+            && !ui.ctx().text_edit_focused()
     }
 
     /// Turn this frame's keyboard events into commands.
@@ -1055,7 +1067,12 @@ impl Editor {
     fn draw_find_matches(&self, painter: &egui::Painter, pag: &Shown, origins: &[Rect], zoom: f32) {
         let to_screen = |page: usize, x: f32, y: f32| origins.get(page).map(|r| r.min + vec2(x * zoom, y * zoom));
         if let Some(bar) = self.find.as_ref().filter(|b| !b.query.is_empty()) {
-            let q = wordsmith_script::commands::find::Query { text: bar.query.clone(), match_case: bar.match_case, whole_word: bar.whole_word };
+            let q = wordsmith_script::commands::find::Query {
+                text: bar.query.clone(),
+                match_case: bar.match_case,
+                whole_word: bar.whole_word,
+                elements: bar.elements.clone(),
+            };
             let fill = Color32::from_rgba_unmultiplied(255, 210, 0, 90);
             for (a, b) in wordsmith_script::commands::find::find_all(&self.session, &q).into_iter().take(5_000) {
                 let (Some(a), Some(b)) = (pag.to_output(&a), pag.to_output(&b)) else { continue };

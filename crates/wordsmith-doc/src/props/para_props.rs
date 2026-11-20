@@ -453,6 +453,13 @@ pub struct ParaProps {
     /// The story board beat an outline paragraph was sent from.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub beat: Option<u32>,
+    /// A bookmark or label set on this paragraph: the id it is listed under.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bookmark: Option<u32>,
+    /// The second speech of a dual-dialogue pair starts here: this Character paragraph and
+    /// the speech after it are set beside the speech before.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dual: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shading: Option<Rgb>,
     #[serde(skip_serializing_if = "Option::is_none")]

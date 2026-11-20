@@ -10,7 +10,10 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 pub mod autocomplete;
+pub mod bookmarks;
+pub mod checker;
 pub mod commands;
+pub mod data;
 pub mod element;
 pub mod export;
 pub mod header_footer;
@@ -27,6 +30,7 @@ pub mod spelling;
 pub mod storyboard;
 pub mod template;
 pub mod title_page;
+pub mod typing;
 
 pub use commands::{new_session, registry, session_for};
 pub use element::{Casing, ElementDef, ElementKind, Elements};
