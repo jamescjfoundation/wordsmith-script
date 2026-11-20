@@ -387,7 +387,11 @@ pub fn paginate(doc: &Document) -> Paginated {
 
 fn paginate_with(doc: &Document, measure: &mut MeasureCache, cache: &mut LayoutCache) -> Paginated {
     let marks = MoresContinueds::of_doc(doc);
-    let m = measure_cached(doc, measure);
+    let mut m = measure_cached(doc, measure);
+    // Hidden outline elements are left out of the pages (decision 0028).
+    if !crate::outline::shows_outline(doc) {
+        m.retain(|p| !p.kind.is_outline());
+    }
     let pages = plan(doc, &m, &marks, Rules::default());
     let (pages, labels) = crate::locks::label_pages(doc, pages);
     let Built { doc: out, map, page_revisions } = build(doc, &pages, &marks, labels.as_deref());

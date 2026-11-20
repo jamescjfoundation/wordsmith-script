@@ -375,3 +375,25 @@ fn lock_a_blue_revision_and_print_only_the_revised_pages() {
     s.run("revision.clearRevised", &json!({"all": true})).unwrap();
     assert!(super::pdf_with(&s.doc, super::PrintOptions { revised_only: true, marks: true }).is_err());
 }
+
+#[test]
+fn hidden_outline_elements_leave_the_pages() {
+    let mut doc = new_script();
+    doc.body = vec![
+        para_block(paragraph("Outline1", "ACT ONE")),
+        para_block(paragraph("Summary", "Anna arrives.")),
+        para_block(paragraph("SceneHeading", "INT. KITCHEN - NIGHT")),
+        para_block(paragraph("Note", "Check the rain.")),
+        para_block(paragraph("Action", "Rain.")),
+    ];
+    let mut s = crate::session_for(doc);
+    let rows = |s: &wordsmith_engine::Session| page_rows(&pdf_of(&paginate(&s.doc)).unwrap())[0].clone();
+    assert!(rows(&s).iter().any(|l| l == "Anna arrives."), "shown by default");
+    s.run("outline.show", &json!({"show": false})).unwrap();
+    assert_eq!(rows(&s), ["INT. KITCHEN - NIGHT", "Rain."]);
+    assert_eq!(s.sel.focus.path.last(), 2, "the caret left the hidden outline paragraph");
+    // The script keeps them.
+    assert_eq!(s.doc.body.len(), 5);
+    s.run("outline.show", &json!({})).unwrap();
+    assert!(rows(&s).iter().any(|l| l == "ACT ONE"));
+}
