@@ -275,8 +275,8 @@ pub fn lp_args(printer: Option<&str>, copies: u32, title: &str) -> Vec<String> {
 
 #[cfg(not(windows))]
 fn send_to_printer(pdf: &[u8], printer: Option<&str>, copies: u32, title: &str, collate: bool) -> Result<String, String> {
-    use std::process::{Command, Stdio};
     use std::io::Write;
+    use std::process::{Command, Stdio};
     let mut args = lp_args(printer, copies, title);
     if collate && copies > 1 {
         args.splice(0..0, ["-o".to_string(), "collate=true".to_string()]);
