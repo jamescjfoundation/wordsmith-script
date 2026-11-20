@@ -813,3 +813,50 @@ fn the_outline_view_shows_lanes_beats_and_the_script() {
     ed.run("view.board", json!({}));
     frame(&ctx, &mut ed, vec![]);
 }
+
+#[test]
+fn right_click_moves_the_caret_for_the_element_menu() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("element.action", json!({}));
+    frame(&ctx, &mut ed, vec![text("First paragraph."), key(Key::Enter, Modifiers::NONE), text("Second.")]);
+    // Where the first paragraph is on screen: put the caret there and read its rectangle.
+    ed.session.sel =
+        wordsmith_engine::Selection::caret(wordsmith_doc::Pos { off: 3, path: wordsmith_doc::Path::top(0), ..ed.session.sel.focus.clone() });
+    frame(&ctx, &mut ed, vec![]);
+    let spot = ed.caret_rect().expect("the caret is drawn").center();
+    ed.run("caret.docEnd", json!({}));
+    assert_eq!(ed.session.sel.focus.path.last(), 1);
+    let press = |pressed| Event::PointerButton { pos: spot, button: egui::PointerButton::Secondary, pressed, modifiers: Modifiers::NONE };
+    frame(&ctx, &mut ed, vec![Event::PointerMoved(spot), press(true), press(false)]);
+    assert_eq!(ed.session.sel.focus.path.last(), 0, "the caret went where the right-click was");
+    frame(&ctx, &mut ed, vec![]);
+}
+
+/// The keyboard page of the user guide, made from the registry, so it never disagrees with the
+/// app. `UPDATE_GUIDE=1 cargo test -p wordsmith-ui keyboard_guide` rewrites it.
+#[test]
+fn the_keyboard_guide_matches_the_commands() {
+    let registry = crate::registry();
+    let mut rows: Vec<(&str, &str, &str)> =
+        registry.all().iter().filter(|s| !s.shortcut.is_empty()).map(|s| (s.location, s.label, s.shortcut)).collect();
+    rows.sort_by(|a, b| a.0.cmp(b.0).then(a.2.cmp(b.2)));
+    let mut out = String::from(
+        "# Keyboard\n\nEvery key that runs a command, by menu. `Mod` is Command on macOS and Control elsewhere.\nThis page is made from the app's command list (`the_keyboard_guide_matches_the_commands` keeps it\ncurrent). Custom elements can have keys of their own (Format › Element Settings).\n",
+    );
+    let mut last = "";
+    for (location, label, keys) in rows {
+        if location != last {
+            out.push_str(&format!("\n## {location}\n\n| Command | Keys |\n| --- | --- |\n"));
+            last = location;
+        }
+        let keys = keys.split(" / ").map(|k| format!("`{k}`")).collect::<Vec<_>>().join(" or ");
+        out.push_str(&format!("| {label} | {keys} |\n"));
+    }
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/guide/keyboard.md");
+    if std::env::var_os("UPDATE_GUIDE").is_some() {
+        std::fs::write(&path, &out).unwrap();
+    }
+    assert_eq!(std::fs::read_to_string(&path).unwrap_or_default(), out, "run with UPDATE_GUIDE=1 and review the change");
+}
