@@ -10,6 +10,7 @@ use wordsmith_engine::{CmdResult, CommandSpec, Registry, Session, cmd::pos_json}
 
 pub mod autocomplete;
 pub mod caret;
+pub mod character;
 pub mod element;
 pub mod find;
 pub mod scene;
@@ -64,6 +65,7 @@ pub fn specs() -> Vec<CommandSpec> {
     all.extend(crate::title_page::specs());
     all.extend(crate::header_footer::specs());
     all.extend(scene::specs());
+    all.extend(character::specs());
     all
 }
 

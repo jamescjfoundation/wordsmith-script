@@ -116,3 +116,5 @@ on 2026-11-19) and are `#[ignore]`d until we decide how to supply it:
   hiding outline elements.
 - The card and scene views were tested headlessly (rendering, keys, moves
   through the commands), not with a real mouse drag in a running window.
+- The Tables panel has fixed tables (scenes, characters, notes); adding,
+  renaming, reordering and filtering tabs is not built in v0.1.

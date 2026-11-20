@@ -70,7 +70,7 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 item(ed, ui, "view.headerFooter");
             });
             ui.menu_button("View", |ui| {
-                for id in ["view.normal", "view.page", "view.speed", "view.cards", "view.scenes"] {
+                for id in ["view.normal", "view.page", "view.speed", "view.cards", "view.scenes", "view.tables"] {
                     item(ed, ui, id);
                 }
                 ui.separator();

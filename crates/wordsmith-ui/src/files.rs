@@ -136,6 +136,34 @@ fn export_html(s: &mut Session, v: &Value) -> CmdResult {
     export(s, v, Kind::Html)
 }
 
+/// Write a table as CSV: with a path, write it; without one, ask for a file.
+fn export_csv(s: &mut Session, v: &Value, table: &str) -> CmdResult {
+    match path_of(v) {
+        Some(path) => {
+            let path = if path.extension().is_some_and(|e| e.eq_ignore_ascii_case("csv")) { path } else { path.with_extension("csv") };
+            let text = match table {
+                "scenes" => wordsmith_script::commands::character::scenes_csv(&s.doc),
+                _ => wordsmith_script::commands::character::characters_csv(&s.doc),
+            };
+            files::write_atomic(&path, text.as_bytes()).map_err(failed)?;
+            Ok(json!({"exported": path.display().to_string()}))
+        }
+        None => ask(
+            s,
+            "export",
+            json!({"format": format!("csv-{table}"), "name": format!("{} {}", script_name(s), if table == "scenes" { "Scenes" } else { "Characters" })}),
+        ),
+    }
+}
+
+fn export_scenes_csv(s: &mut Session, v: &Value) -> CmdResult {
+    export_csv(s, v, "scenes")
+}
+
+fn export_characters_csv(s: &mut Session, v: &Value) -> CmdResult {
+    export_csv(s, v, "characters")
+}
+
 /// The file commands.
 pub fn specs() -> Vec<CommandSpec> {
     const PATH: &str = r#"{"path"?: string (asks for a file when left out)}"#;
@@ -149,6 +177,8 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("file.exportFountain", "Export Fountain…", "File › Export", export_fountain).params(PATH).pure(),
         CommandSpec::new("file.exportText", "Export Plain Text…", "File › Export", export_text).params(PATH).pure(),
         CommandSpec::new("file.exportRtf", "Export RTF…", "File › Export", export_rtf).params(PATH).pure(),
+        CommandSpec::new("tables.exportScenesCsv", "Export Scenes Table…", "File › Export", export_scenes_csv).params(PATH).pure(),
+        CommandSpec::new("tables.exportCharactersCsv", "Export Characters Table…", "File › Export", export_characters_csv).params(PATH).pure(),
         CommandSpec::new("file.exportHtml", "Export HTML…", "File › Export", export_html).params(PATH).pure(),
     ]
 }

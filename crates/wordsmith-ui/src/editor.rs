@@ -242,6 +242,10 @@ pub struct Editor {
     pub header_footer: Option<Value>,
     /// The index cards or the scene view, when one shows instead of the script.
     pub structure: Option<crate::structure::Structure>,
+    /// The Tables panel's table, while the panel is open.
+    pub tables: Option<crate::tables::Table>,
+    /// The table cell being edited.
+    pub table_edit: Option<crate::tables::CellEdit>,
     /// The scene listing, for one revision.
     scene_cache: Option<(u64, Arc<Vec<Value>>)>,
     /// The revision auto-save last saw, to notice changes.
@@ -291,6 +295,8 @@ impl Editor {
             title_page: None,
             header_footer: None,
             structure: None,
+            tables: None,
+            table_edit: None,
             scene_cache: None,
             seen_rev: 0,
         }
@@ -532,6 +538,10 @@ impl Editor {
                 Some("view.page") => self.set_view(View::Page),
                 Some("view.normal") => self.set_view(View::Normal),
                 Some("view.speed") => self.set_view(View::Speed),
+                Some("view.tables") => {
+                    self.tables = if self.tables.is_some() { None } else { Some(crate::tables::Table::Scenes) };
+                    self.table_edit = None;
+                }
                 Some("view.cards") => self.structure = Some(crate::structure::Structure::Cards),
                 Some("view.scenes") => self.structure = Some(crate::structure::Structure::Scenes),
                 Some("view.dark") => self.dark = !self.dark,
@@ -591,6 +601,8 @@ impl Editor {
             }
             Some("export") => {
                 let (label, ext, then) = match req.get("format").and_then(Value::as_str) {
+                    Some("csv-scenes") => ("CSV", "csv", "tables.exportScenesCsv"),
+                    Some("csv-characters") => ("CSV", "csv", "tables.exportCharactersCsv"),
                     Some("fountain") => ("Fountain", "fountain", "file.exportFountain"),
                     Some("rtf") => ("Rich Text (RTF)", "rtf", "file.exportRtf"),
                     Some("html") => ("Web Page (HTML)", "html", "file.exportHtml"),
@@ -1037,6 +1049,7 @@ impl Editor {
             crate::chrome::toolbar(self, ui);
             crate::chrome::find_bar(self, ui);
             crate::chrome::status_bar(self, ui);
+            crate::tables::panel(self, ui);
         }
         egui::CentralPanel::default().show(ui, |ui| match self.structure {
             Some(crate::structure::Structure::Cards) => crate::structure::cards(self, ui),
