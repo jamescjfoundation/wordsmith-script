@@ -17,6 +17,7 @@ pub mod editor;
 pub mod files;
 pub mod fonts;
 pub mod keys;
+pub mod outline;
 pub mod prefs;
 pub mod structure;
 pub mod tables;
@@ -56,6 +57,7 @@ pub fn ui_specs() -> Vec<CommandSpec> {
         CommandSpec::new("view.speed", "Speed View", "View", |s, _| open(s, "view.speed")).key("Mod+Alt+3").pure(),
         CommandSpec::new("view.note", "Note…", "Edit", |s, _| open(s, "note")).key("Mod+Alt+N").pure(),
         CommandSpec::new("view.board", "Story Board", "View", |s, _| open(s, "view.board")).key("Mod+Alt+6").pure(),
+        CommandSpec::new("view.outline", "Outline", "View", |s, _| open(s, "view.outline")).key("Mod+Alt+7").pure(),
         CommandSpec::new("view.tables", "Tables", "View", |s, _| open(s, "view.tables")).key("Mod+Alt+T").pure(),
         CommandSpec::new("view.cards", "Index Cards", "View", |s, _| open(s, "view.cards")).key("Mod+Alt+4").pure(),
         CommandSpec::new("view.scenes", "Scene View", "View", |s, _| open(s, "view.scenes")).key("Mod+Alt+5").pure(),

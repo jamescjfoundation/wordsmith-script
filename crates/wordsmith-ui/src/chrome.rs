@@ -90,7 +90,7 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 item(ed, ui, "report.exportCharacters");
             });
             ui.menu_button("View", |ui| {
-                for id in ["view.normal", "view.page", "view.speed", "view.cards", "view.scenes", "view.board", "view.tables"] {
+                for id in ["view.normal", "view.page", "view.speed", "view.cards", "view.scenes", "view.board", "view.outline", "view.tables"] {
                     item(ed, ui, id);
                 }
                 ui.separator();

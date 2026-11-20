@@ -254,7 +254,7 @@ pub fn view(ed: &mut Editor, ui: &mut Ui) {
 }
 
 /// The beat window: title and body, Tab between them, Save or Cancel.
-fn beat_window(ed: &mut Editor, ctx: &egui::Context) {
+pub(crate) fn beat_window(ed: &mut Editor, ctx: &egui::Context) {
     let Some(mut e) = ed.board.edit.take() else { return };
     let mut open = true;
     let mut save = false;

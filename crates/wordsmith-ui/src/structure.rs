@@ -20,6 +20,8 @@ pub enum Structure {
     Scenes,
     /// The story board (decision 0028).
     Board,
+    /// The outline editor's lanes (decision 0028).
+    Outline,
 }
 
 /// A card's size, points.
