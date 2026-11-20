@@ -576,3 +576,20 @@ fn preferences_round_trip_through_their_file() {
     assert!(dir.join("preferences.json.damaged").exists());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn the_title_page_window_edits_the_fields() {
+    let ctx = ctx();
+    let mut ed = editor();
+    ed.run("view.titlePage", json!({}));
+    let form = ed.title_page.as_mut().unwrap();
+    form["title"] = json!("THE TEST");
+    form["authors"] = json!("Anna Writer");
+    let form = form.clone();
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.title_page.is_some(), "the window stays open");
+    ed.run("titlePage.set", form);
+    assert_eq!(ed.session.doc.core.title, "THE TEST");
+    assert_eq!(wordsmith_script::title_page::TitlePage::of_doc(&ed.session.doc).authors, "Anna Writer");
+    assert!(ed.session.dirty);
+}

@@ -20,6 +20,7 @@ use std::collections::BTreeMap;
 
 use wordsmith_doc::{Document, Paragraph, para_block};
 use wordsmith_script::template::{new_script, paragraph};
+use wordsmith_script::title_page::TitlePage;
 use wordsmith_script::{ElementKind, Elements};
 
 /// Largest Fountain text read, bytes.
@@ -328,7 +329,54 @@ pub fn read(text: &str) -> Result<FountainScript, String> {
     if let Some(title) = title_page.get("title") {
         doc.core.title = plain(title).replace('\n', " ");
     }
+    // The title page keys the script keeps (decision 0021); others stay in `title_page`.
+    let mut page = TitlePage::default();
+    for (key, field) in TITLE_KEYS {
+        if let Some(v) = title_page.get(*key) {
+            page.set(field, &plain(v));
+        }
+    }
+    if !page.is_empty() {
+        page.store(&mut doc);
+    }
     Ok(FountainScript { doc, title_page, scene_numbers })
+}
+
+/// Title page keys (lower case, as the reader keeps them) and the title page fields they fill.
+const TITLE_KEYS: &[(&str, &str)] = &[
+    ("title", "title"),
+    ("credit", "credit"),
+    ("author", "authors"),
+    ("authors", "authors"),
+    ("source", "source"),
+    ("notes", "notes"),
+    ("contact", "contact"),
+    ("draft date", "draftDate"),
+    ("copyright", "copyright"),
+];
+
+/// How the writer spells each key.
+const TITLE_NAMES: &[(&str, &str)] = &[
+    ("title", "Title"),
+    ("credit", "Credit"),
+    ("authors", "Authors"),
+    ("source", "Source"),
+    ("notes", "Notes"),
+    ("contact", "Contact"),
+    ("draft date", "Draft date"),
+    ("copyright", "Copyright"),
+];
+
+/// A title page value with emphasis markers escaped (the reader takes them out).
+fn escape_title(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        if matches!(c, '\\' | '*' | '_') {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    out
 }
 
 /// Fountain text for a paragraph's contents: emphasis markers, escapes, and `[[` broken so it
@@ -394,9 +442,28 @@ fn inner_lines(text: &str) -> String {
 pub fn write(doc: &Document) -> String {
     let elements = Elements::of_doc(doc);
     let mut blocks: Vec<String> = Vec::new();
+    let page = TitlePage::of_doc(doc);
+    let mut title_page: Vec<String> = Vec::new();
+    for (key, field) in TITLE_KEYS.iter().filter(|(k, _)| *k != "author") {
+        let text = page.get(field).unwrap_or("");
+        if text.trim().is_empty() {
+            continue;
+        }
+        let name = TITLE_NAMES.iter().find(|(k, _)| k == key).map_or(*key, |(_, n)| *n);
+        let lines: Vec<&str> = text.split('\n').collect();
+        if lines.len() == 1 {
+            title_page.push(format!("{name}: {}", escape_title(lines[0].trim())));
+        } else {
+            title_page.push(format!("{name}:"));
+            title_page.extend(lines.iter().map(|l| format!("    {}", escape_title(l.trim()))));
+        }
+    }
     let title = one_line(doc.core.title.trim());
-    if !title.is_empty() {
-        blocks.push(format!("Title: {title}"));
+    if title_page.is_empty() && !title.is_empty() {
+        title_page.push(format!("Title: {}", escape_title(&title)));
+    }
+    if !title_page.is_empty() {
+        blocks.push(title_page.join("\n"));
     }
     let paras: Vec<&Paragraph> = doc.body.iter().filter_map(|b| b.as_para()).collect();
     let mut in_speech = false;
@@ -689,6 +756,21 @@ mod tests {
             let back = read(&text).unwrap();
             assert_eq!(shape(&back.doc), shape(&doc), "\n{text}");
         }
+    }
+
+    #[test]
+    fn the_title_page_round_trips() {
+        let s = read("Title:\n    _THE TEST_\n    Part Two\nCredit: Written by\nAuthor: Anna Writer\nDraft date: 1 May\nContact: anna@example.com\nFormat: ignored\n\nINT. A - DAY\n").unwrap();
+        let page = TitlePage::of_doc(&s.doc);
+        assert_eq!(page.title, "THE TEST\nPart Two");
+        assert_eq!((page.credit.as_str(), page.authors.as_str(), page.draft_date.as_str()), ("Written by", "Anna Writer", "1 May"));
+        assert_eq!(page.contact, "anna@example.com");
+        let text = write(&s.doc);
+        assert!(text.starts_with("Title:\n    THE TEST\n    Part Two\nCredit: Written by\nAuthors: Anna Writer\n"), "{text}");
+        let again = read(&text).unwrap();
+        assert_eq!(TitlePage::of_doc(&again.doc), page);
+        assert_eq!(lines(&again), lines(&s));
+        assert_eq!(write(&again.doc), text);
     }
 
     #[test]

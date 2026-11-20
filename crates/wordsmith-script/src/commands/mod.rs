@@ -60,6 +60,7 @@ pub fn specs() -> Vec<CommandSpec> {
     all.extend(autocomplete::specs());
     all.extend(spelling::specs());
     all.extend(find::specs());
+    all.extend(crate::title_page::specs());
     all
 }
 

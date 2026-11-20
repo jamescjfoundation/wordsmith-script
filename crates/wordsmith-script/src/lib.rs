@@ -18,6 +18,7 @@ pub mod scene_heading;
 pub mod scenes;
 pub mod spelling;
 pub mod template;
+pub mod title_page;
 
 pub use commands::{new_session, registry, session_for};
 pub use element::{Casing, ElementDef, ElementKind, Elements};
