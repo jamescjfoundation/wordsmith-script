@@ -12,6 +12,7 @@ pub mod autocomplete;
 pub mod caret;
 pub mod element;
 pub mod find;
+pub mod scene;
 pub mod settings;
 pub mod spelling;
 pub mod text;
@@ -62,6 +63,7 @@ pub fn specs() -> Vec<CommandSpec> {
     all.extend(find::specs());
     all.extend(crate::title_page::specs());
     all.extend(crate::header_footer::specs());
+    all.extend(scene::specs());
     all
 }
 

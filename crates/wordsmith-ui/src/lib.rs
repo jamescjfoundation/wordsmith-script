@@ -17,6 +17,7 @@ pub mod files;
 pub mod fonts;
 pub mod keys;
 pub mod prefs;
+pub mod structure;
 
 use std::sync::Arc;
 
@@ -51,6 +52,8 @@ pub fn ui_specs() -> Vec<CommandSpec> {
         CommandSpec::new("view.normal", "Normal View", "View", |s, _| open(s, "view.normal")).key("Mod+Alt+1").pure(),
         CommandSpec::new("view.page", "Page View", "View", |s, _| open(s, "view.page")).key("Mod+Alt+2").pure(),
         CommandSpec::new("view.speed", "Speed View", "View", |s, _| open(s, "view.speed")).key("Mod+Alt+3").pure(),
+        CommandSpec::new("view.cards", "Index Cards", "View", |s, _| open(s, "view.cards")).key("Mod+Alt+4").pure(),
+        CommandSpec::new("view.scenes", "Scene View", "View", |s, _| open(s, "view.scenes")).key("Mod+Alt+5").pure(),
         CommandSpec::new("view.darkTheme", "Dark Theme", "View", |s, _| open(s, "view.dark")).pure(),
         CommandSpec::new("view.typewriter", "Typewriter Scrolling", "View", |s, _| open(s, "view.typewriter")).pure(),
         CommandSpec::new("view.focusMode", "Focus Mode", "View", |s, _| open(s, "view.focus")).key("Mod+Shift+F").pure(),

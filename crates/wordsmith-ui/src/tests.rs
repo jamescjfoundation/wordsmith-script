@@ -608,3 +608,41 @@ fn the_header_and_footer_window_sets_the_bands() {
     assert_eq!(ed.message, "");
     assert_eq!(wordsmith_script::header_footer::HeaderFooter::of_doc(&ed.session.doc).footer.center, "{title}");
 }
+
+#[test]
+fn index_cards_and_the_scene_view_show_the_script_and_keep_typing_out() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(
+        &ctx,
+        &mut ed,
+        vec![
+            text("int"),
+            key(Key::Tab, Modifiers::NONE),
+            text("kitchen"),
+            key(Key::Enter, Modifiers::NONE),
+            text("Rain."),
+            key(Key::Enter, Modifiers::NONE),
+            key(Key::Enter, Modifiers::NONE),
+        ],
+    );
+    ed.run("element.sceneHeading", json!({}));
+    frame(&ctx, &mut ed, vec![text("ext. yard"), key(Key::Enter, Modifiers::NONE), text("Sun.")]);
+    let before = lines(&ed);
+    let alt = Modifiers { alt: true, ..cmd() };
+    frame(&ctx, &mut ed, vec![key(Key::Num4, alt)]);
+    assert_eq!(ed.structure, Some(crate::structure::Structure::Cards));
+    assert_eq!(ed.scene_list().len(), 2);
+    frame(&ctx, &mut ed, vec![text("typed"), key(Key::Enter, Modifiers::NONE), key(Key::Backspace, Modifiers::NONE)]);
+    assert_eq!(lines(&ed), before, "typing in the cards does not reach the script");
+    // A card dropped on the first moves its scene there; undo puts it back.
+    ed.run("scene.move", json!({"scene": 1, "before": crate::structure::drop_target(1, 0, 2)}));
+    assert_eq!(ed.scene_list()[0]["heading"], "EXT. YARD");
+    frame(&ctx, &mut ed, vec![key(Key::Num5, alt)]);
+    assert_eq!(ed.structure, Some(crate::structure::Structure::Scenes));
+    frame(&ctx, &mut ed, vec![key(Key::Z, cmd())]);
+    assert_eq!(lines(&ed), before, "undo works from the scene view");
+    frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE)]);
+    assert_eq!(ed.structure, None);
+}

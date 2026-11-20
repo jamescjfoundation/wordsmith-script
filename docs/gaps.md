@@ -107,3 +107,12 @@ on 2026-11-19) and are `#[ignore]`d until we decide how to supply it:
 - The backups folder can be set only by editing `preferences.json`.
 - The desktop window's file dialogs, close prompt and auto-save were tested
   headlessly (egui input, made-up clock), not by hand in a running app.
+
+## Structure views (M5)
+
+- Printing index cards and the scene view to PDF (named in public material)
+  is not built in v0.1.
+- Scene summaries are Summary paragraphs and print until M7 adds showing and
+  hiding outline elements.
+- The card and scene views were tested headlessly (rendering, keys, moves
+  through the commands), not with a real mouse drag in a running window.
