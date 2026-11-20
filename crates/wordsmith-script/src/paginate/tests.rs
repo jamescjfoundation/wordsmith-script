@@ -206,7 +206,7 @@ fn pages_are_numbered_top_right_from_page_two() {
     let s = &p.doc.last_section;
     assert!(s.title_page, "page 1 uses the empty first-page header");
     let header = s.headers.default.and_then(|id| p.doc.parts.get(&id)).and_then(|part| part.blocks.first()).and_then(|b| b.as_para()).unwrap();
-    assert_eq!(header.props.style.as_deref(), Some(super::output::PAGE_NUMBER_STYLE));
+    assert_eq!(header.props.style.as_deref(), Some(crate::header_footer::BAND_STYLE));
     assert!(header.objects.iter().any(|o| matches!(o, wordsmith_doc::InlineObject::Field { instr, .. } if instr == "PAGE")));
     assert!(header.text.ends_with('.'));
     let first = s.headers.first.and_then(|id| p.doc.parts.get(&id)).and_then(|part| part.blocks.first()).and_then(|b| b.as_para()).unwrap();

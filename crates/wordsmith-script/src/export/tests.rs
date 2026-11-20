@@ -176,3 +176,34 @@ fn the_title_page_comes_first_and_the_script_is_numbered_after_it() {
     // Without title page fields the PDF is the script alone.
     assert_eq!(extract_text(&super::pdf(&speech_script()).unwrap()).len(), pag.pages.len());
 }
+
+#[test]
+fn headers_and_footers_fill_their_fields_page_by_page() {
+    let mut doc = new_script();
+    let mut body = Vec::new();
+    for heading in ["INT. KITCHEN - NIGHT", "EXT. YARD - DAY", "INT. ATTIC - LATER"] {
+        body.push(para_block(paragraph("SceneHeading", heading)));
+        for _ in 0..30 {
+            body.push(para_block(paragraph("General", "filler")));
+        }
+    }
+    doc.body = body;
+    doc.core.title = "THE TEST".into();
+    let mut s = crate::session_for(doc);
+    s.run(
+        "headerFooter.set",
+        &json!({"header": {"left": "{scene}", "right": "{page}."}, "footer": {"center": "{title} {date}"}, "firstPage": true, "date": "1 May"}),
+    )
+    .unwrap();
+    let pag = paginate(&s.doc);
+    assert!(pag.matches_plan);
+    let pages: Vec<String> = extract_text(&pdf_of(&pag).unwrap()).iter().map(|p| p.chars().filter(|c| !c.is_whitespace()).collect()).collect();
+    assert_eq!(pages.len(), 2, "{pages:?}");
+    // Header then footer, then the page: the header names the first scene heading on the page.
+    assert!(pages[0].starts_with("INT.KITCHEN-NIGHT1.THETEST1MayINT.KITCHEN"), "{}", pages[0]);
+    assert!(pages[1].starts_with("INT.ATTIC-LATER2.THETEST1May"), "{}", pages[1]);
+    // Without firstPage, page 1 has neither.
+    s.run("headerFooter.set", &json!({"firstPage": false})).unwrap();
+    let one: String = extract_text(&pdf_of(&paginate(&s.doc)).unwrap())[0].chars().filter(|c| !c.is_whitespace()).collect();
+    assert!(one.starts_with("INT.KITCHEN-NIGHTfiller") && !one.contains("THETEST"), "{one}");
+}

@@ -593,3 +593,18 @@ fn the_title_page_window_edits_the_fields() {
     assert_eq!(wordsmith_script::title_page::TitlePage::of_doc(&ed.session.doc).authors, "Anna Writer");
     assert!(ed.session.dirty);
 }
+
+#[test]
+fn the_header_and_footer_window_sets_the_bands() {
+    let ctx = ctx();
+    let mut ed = editor();
+    ed.run("view.headerFooter", json!({}));
+    let form = ed.header_footer.as_mut().unwrap();
+    assert_eq!(form["header"]["right"], "{page}.");
+    form["footer"]["center"] = json!("{title}");
+    let form = form.clone();
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("headerFooter.set", form);
+    assert_eq!(ed.message, "");
+    assert_eq!(wordsmith_script::header_footer::HeaderFooter::of_doc(&ed.session.doc).footer.center, "{title}");
+}

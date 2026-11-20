@@ -238,6 +238,8 @@ pub struct Editor {
     pub show_prefs: bool,
     /// The title page fields being edited, while the title page window is open.
     pub title_page: Option<Value>,
+    /// The header and footer settings being edited, while their window is open.
+    pub header_footer: Option<Value>,
     /// The revision auto-save last saw, to notice changes.
     seen_rev: u64,
 }
@@ -283,6 +285,7 @@ impl Editor {
             backups: Backups::default(),
             show_prefs: false,
             title_page: None,
+            header_footer: None,
             seen_rev: 0,
         }
     }
@@ -505,6 +508,7 @@ impl Editor {
                 }
                 Some("preferences") => self.show_prefs = true,
                 Some("titlePage") => self.title_page = self.session.run("titlePage.get", &json!({})).ok(),
+                Some("headerFooter") => self.header_footer = self.session.run("headerFooter.get", &json!({})).ok(),
                 Some("view.page") => self.set_view(View::Page),
                 Some("view.normal") => self.set_view(View::Normal),
                 Some("view.speed") => self.set_view(View::Speed),

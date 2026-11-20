@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! The output script: the source with the plan's page breaks made explicit, split paragraphs,
-//! the (MORE), (CONT'D) and CONTINUED lines, automatic CONT'D on repeated speakers, and a header
-//! with the page number (top right, followed by a period, none on page 1).
+//! the (MORE), (CONT'D) and CONTINUED lines, automatic CONT'D on repeated speakers, and the
+//! header and footer ([`crate::header_footer`]; by default the page number top right, followed by
+//! a period, none on page 1).
 
 use std::sync::Arc;
 
 use wordsmith_doc::props::{Align, CharProps};
-use wordsmith_doc::{Document, InlineObject, Paragraph, PartKind, StoryRef, para_block};
+use wordsmith_doc::{Document, Paragraph, StoryRef, para_block};
 use wordsmith_layout::{DocLayout, LayoutCache};
 
 use super::measure::{MeasureCache, measure_cached, print_layout};
@@ -19,7 +20,6 @@ use crate::template::{self, Formatting, Placement, default_formatting, element_s
 pub const MORE_STYLE: &str = "ws.More";
 pub const CONTINUED_TOP_STYLE: &str = "ws.ContinuedTop";
 pub const CONTINUED_BOTTOM_STYLE: &str = "ws.ContinuedBottom";
-pub const PAGE_NUMBER_STYLE: &str = "ws.PageNumber";
 
 /// Where an output paragraph came from: body block `block` of the source, starting at byte
 /// `start` of it. Lines the paginator added have no source.
@@ -157,7 +157,6 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> (
     sheet.upsert(mark_style(MORE_STYLE, Placement { left: character_left, right: 7.5 }, Align::Left));
     sheet.upsert(mark_style(CONTINUED_TOP_STYLE, Placement { left: 1.5, right: 7.5 }, Align::Left));
     sheet.upsert(mark_style(CONTINUED_BOTTOM_STYLE, Placement { left: 1.5, right: 7.5 }, Align::Right));
-    sheet.upsert(mark_style(PAGE_NUMBER_STYLE, Placement { left: 1.5, right: 7.5 }, Align::Right));
 
     let mut body = Vec::new();
     let mut map = Vec::new();
@@ -234,7 +233,7 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds) -> (
         map.push(None);
     }
     out.body = body;
-    add_page_numbers(&mut out);
+    crate::header_footer::apply(&mut out);
     (out, map)
 }
 
@@ -243,22 +242,6 @@ fn marks_hash(marks: &MoresContinueds) -> u64 {
     let mut h = std::collections::hash_map::DefaultHasher::new();
     (&marks.more, &marks.contd, &marks.continued_top, &marks.continued_bottom).hash(&mut h);
     h.finish()
-}
-
-/// A header with the page number and a period, top right, and an empty first-page header, so
-/// page 1 has none.
-fn add_page_numbers(doc: &mut Document) {
-    let mut number = text_para(PAGE_NUMBER_STYLE, ".");
-    let page = InlineObject::Field { instr: "PAGE".into(), result: "1".into(), locked: false, dirty: false, code: false, form: String::new() };
-    let _ = number.insert_object(0, page, &CharProps::default());
-    let header = doc.add_part(PartKind::Header, vec![para_block(number)]);
-    let first = doc.add_part(PartKind::Header, vec![para_block(text_para(PAGE_NUMBER_STYLE, ""))]);
-    let s = &mut doc.last_section;
-    s.headers.default = Some(header);
-    s.headers.first = Some(first);
-    s.headers.even = None;
-    s.title_page = true;
-    s.header = 0.5 * template::INCH;
 }
 
 /// What pagination keeps between calls: paragraph lines of the script, and the output's layout
