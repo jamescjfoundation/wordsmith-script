@@ -47,3 +47,25 @@ board, outline and the dark speed view of a public-domain sample (with a
 title page, locked pages, a Blue revision, scene numbers, beats and lanes)
 into `docs/images`. Looking at them found two layout bugs in the index cards
 (cards growing with their text and not wrapping into rows), now fixed.
+
+## Bundles
+
+`cargo xtask bundle` builds the app and the command-line tool in release mode
+and packs them for the computer it runs on, in `dist/` (ignored by git):
+
+- **macOS:** `Wordsmith Script.app` (both programs in `Contents/MacOS`, an
+  Info.plist naming the app, its version and the `.wss` and Fountain document
+  types), with the licenses, in a zip made by `ditto`. The app is not signed
+  or notarized (that needs a paid developer account, a stop rule).
+- **Linux:** `bin/wordsmith`, `bin/wordsmith-cli`, a `.desktop` file and the
+  licenses, as a `.tar.gz`.
+- **Windows:** `wordsmith.exe`, `wordsmith-cli.exe` and the licenses, as a
+  `.zip` made by Windows' own `tar`.
+
+No installers: bundles are what the kickoff allows, and an installer per
+platform would need signing to be worth having. The release workflow
+(`.github/workflows/release.yml`) runs the gate and builds the three bundles
+when started by hand, keeping them as workflow artifacts; it publishes
+nothing. The app opens a file named on its command line; opening a document
+from the Finder or Explorer (an Apple Event on macOS) is not handled in v0.1.
+

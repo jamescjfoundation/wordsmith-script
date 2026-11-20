@@ -138,3 +138,11 @@ on 2026-11-19) and are `#[ignore]`d until we decide how to supply it:
 - Hidden outline elements still show in the normal and speed views.
 - The story board and outline views were tested headlessly, not with a real
   mouse.
+
+## Release (M8, decision 0029)
+
+- Bundles, not installers; the macOS app is not signed or notarized, and
+  double-clicking a document in the Finder or Explorer does not open it (the
+  command line does). Bundles for Windows and Linux are built by the release
+  workflow, not yet run (no remote); only the macOS bundle was built here.
+- No application icon.
