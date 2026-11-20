@@ -236,13 +236,16 @@ fn recall(s: &mut Session, v: &Value) -> CmdResult {
     sel_result(s)
 }
 
-/// After a heading is split in two, only the first part keeps the scene's number.
+/// After a paragraph is split in two, only the first part keeps its scene number, OMITTED mark and
+/// beat.
 pub fn after_split(doc: &mut Document, new: &wordsmith_doc::Pos) {
     if let Ok(p) = doc.para_mut(new.story, &new.path)
-        && (p.props.scene_number.is_some() || p.props.omitted.is_some())
+        && (p.props.scene_number.is_some() || p.props.omitted.is_some() || p.props.beat.is_some())
     {
         p.props.scene_number = None;
         p.props.omitted = None;
+        // A beat's paragraph stays one paragraph's.
+        p.props.beat = None;
     }
 }
 

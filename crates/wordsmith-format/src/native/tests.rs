@@ -190,3 +190,15 @@ fn locked_pages_and_scene_numbers_round_trip() {
     let pages = |d: &Document| wordsmith_script::paginate::paginate(d).labels;
     assert_eq!(pages(&back), pages(&s.doc));
 }
+
+#[test]
+fn the_story_board_and_sent_beats_round_trip() {
+    let mut s = wordsmith_script::new_session();
+    let id = s.run("beat.add", &json!({"title": "Anna arrives", "body": "Late."})).unwrap()["id"].clone();
+    s.run("beat.toScript", &json!({"id": id})).unwrap();
+    let text = write(&s.doc);
+    assert!(text.contains("@Outline1 beat=1\nAnna arrives\n"), "{text}");
+    let back = read(&text).unwrap();
+    assert_eq!(back.body, s.doc.body);
+    assert_eq!(wordsmith_script::storyboard::Storyboard::of_doc(&back), wordsmith_script::storyboard::Storyboard::of_doc(&s.doc));
+}

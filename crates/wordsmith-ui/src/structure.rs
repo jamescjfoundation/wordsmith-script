@@ -18,6 +18,8 @@ use crate::editor::Editor;
 pub enum Structure {
     Cards,
     Scenes,
+    /// The story board (decision 0028).
+    Board,
 }
 
 /// A card's size, points.

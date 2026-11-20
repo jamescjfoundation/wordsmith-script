@@ -109,6 +109,9 @@ pub fn write(doc: &Document) -> String {
         if let Some(id) = p.props.omitted {
             out.push_str(&format!(" omitted={id}"));
         }
+        if let Some(id) = p.props.beat {
+            out.push_str(&format!(" beat={id}"));
+        }
         if let Some(set) = p.mark.revised {
             out.push_str(&format!(" revised={set}"));
         }
@@ -258,6 +261,7 @@ pub fn read(text: &str) -> Result<Document, ReadError> {
             // A locked scene number, and an omitted scene's placeholder.
             p.props.scene_number = attrs.iter().find_map(|a| a.strip_prefix('#')).filter(|n| !n.is_empty() && n.len() <= 12).map(str::to_string);
             p.props.omitted = attrs.iter().find_map(|a| a.strip_prefix("omitted=")).and_then(|n| n.parse().ok());
+            p.props.beat = attrs.iter().find_map(|a| a.strip_prefix("beat=")).and_then(|n| n.parse().ok());
             // A deletion in the paragraph, revised in a set.
             p.mark.revised = attrs.iter().find_map(|a| a.strip_prefix("revised=")).and_then(|n| n.parse().ok());
             if attrs.iter().any(|a| a == "page-break") {
