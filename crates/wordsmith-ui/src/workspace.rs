@@ -122,6 +122,8 @@ pub struct Stats {
     last_input: Option<Instant>,
     /// Writing time not yet a whole second, milliseconds.
     carry_ms: u64,
+    /// The script's words now, and the revision they were counted at (the status bar shows them).
+    pub words_now: (u64, usize),
 }
 
 impl Stats {
@@ -159,6 +161,9 @@ pub fn track(ed: &mut Editor) {
     if changed {
         ed.stats.last_input = Some(now);
     }
+    if ed.stats.words_now.0 != rev || rev == 0 {
+        ed.stats.words_now = (rev, word_count(&ed.session.doc));
+    }
     // The sprint ends.
     if let Some(sp) = ed.stats.sprint.as_mut()
         && sp.result.is_none()
@@ -182,7 +187,7 @@ pub fn track(ed: &mut Editor) {
     let active = ed.stats.last_input.is_some_and(|t| now - t < idle);
     let hour = ((secs % 86_400) / 3_600) as usize;
     if changed {
-        let words = word_count(&ed.session.doc);
+        let words = ed.stats.words_now.1;
         let pages = ed.paginated().pages.len();
         if let Some((_, w0, p0)) = ed.stats.last_counts {
             let day = ed.stats.data.days.entry(date.clone()).or_default();

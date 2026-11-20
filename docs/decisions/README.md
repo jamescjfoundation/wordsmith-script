@@ -42,3 +42,4 @@ what would make us revisit it.
 | [0034](0034-planning.md) | Boards, the structure strip and planning PDFs |
 | [0035](0035-production.md) | Production additions (dual dialogue, locks, numbers, printing, watermark, tracking, comparison) |
 | [0036](0036-workspace.md) | Workspace and productivity (templates, tabs, split, statistics, sprints, keys) |
+| [0037](0037-ribbon-and-panels.md) | The ribbon, side panels and what is reused for them |

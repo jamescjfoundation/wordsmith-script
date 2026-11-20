@@ -61,7 +61,7 @@ Each row is a feature from the [clean-room spec](SPEC.md), the piece that covers
 | Agent control and AI features | wordcraft-mcp, craft-ai-core, craft-flags | Copy / Dep | Screenplay tools exposed over MCP; any AI stays off by default |
 | Tests and CI gate | craft-testkit (hostile-input fuzzing), craft-xtask | Dep | Golden PDF tests for pagination |
 
-Not worth taking: wordcraft-ui-egui (a 106,000-line Word-style ribbon; our interface is different), wordcraft-docbin and wordcraft-zotero.
+Not worth taking: most of wordcraft-ui-egui (a 106,000-line Word-style ribbon; our interface is different; v0.3 copies only its ribbon fitting and icon set, decision 0037), wordcraft-docbin and wordcraft-zotero.
 
 ## Architecture
 
