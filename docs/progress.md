@@ -42,3 +42,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m8/cli-mcp | wordsmith-cli convert, export-pdf, report, info, mcp; MCP screenplay tools; file commands shared from wordsmith-format; 1750 tests pass |
 | 2026-11-19 | m8/screenshots | Offscreen interface renderer; cargo xtask screenshots; five README pictures; index cards fixed size and wrapping (found in the pictures); 1751 tests pass |
 | 2026-11-19 | m8/bundles | cargo xtask bundle (macOS .app zip, Linux tar.gz with .desktop, Windows zip); hand-started release workflow that publishes nothing; macOS bundle built and run; 1752 tests pass |
+| 2026-11-19 | m8/docs | User guide, README with screenshots, CHANGELOG, spec audit, gaps rewritten, hostile-input corpus (no crashes), right-click element menu, keyboard guide from the registry; typing 16.0–17.6 ms at 150 pages; 1757 tests pass |

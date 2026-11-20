@@ -945,21 +945,48 @@ impl Editor {
             let (x, y) = ((p.x - r.min.x) / zoom, (p.y - r.min.y) / zoom);
             layout.hit(page, x, y, StoryRef::Body).and_then(|pos| pag.to_source(&pos)).and_then(|pos| serde_json::to_value(pos).ok())
         };
-        // Right-click on a misspelled word: its suggestions, Ignore, Add to Dictionary.
+        // Right-click: the caret goes there (unless it is in the selection); on a misspelled word
+        // the menu offers its suggestions, Ignore and Add to Dictionary.
+        let mut right_click_at: Option<Value> = None;
         if response.secondary_clicked()
             && let Some(p) = response.interact_pointer_pos()
-            && let Some(pos) = hit(p).and_then(|v| serde_json::from_value::<wordsmith_doc::Pos>(v).ok())
+            && let Some(at) = hit(p)
+            && let Ok(pos) = serde_json::from_value::<wordsmith_doc::Pos>(at.clone())
         {
+            let (a, b) = self.session.sel.ordered();
+            let inside = !self.session.sel.is_collapsed() && a.path == pos.path && a.path == b.path && (a.off..=b.off).contains(&pos.off);
+            if !inside {
+                right_click_at = Some(at);
+            }
             let found = wordsmith_script::spelling::check(&self.session.doc, &mut self.spell_cache);
             self.spell_menu = found.into_iter().find(|m| m.block == pos.path.last() && (m.start..=m.end).contains(&pos.off)).map(|m| {
                 let s = wordsmith_script::spelling::suggest(&m.word, 6);
                 (m, s)
             });
         }
+        if let Some(at) = right_click_at {
+            let _ = self.session.run("caret.to", &json!({"pos": at}));
+        }
         let mut menu_action: Option<(&'static str, Value)> = None;
-        if let Some((m, suggestions)) = self.spell_menu.clone() {
-            response.context_menu(|ui| {
-                for s in &suggestions {
+        let element_ids: Vec<(String, String)> = Elements::of_doc(&self.session.doc).all().iter().map(|d| (d.id.clone(), d.name.clone())).collect();
+        let spell = self.spell_menu.clone();
+        response.context_menu(|ui| {
+            // The element of the paragraph under the caret (SPEC: a right-click submenu).
+            ui.menu_button("Element", |ui| {
+                for (id, name) in &element_ids {
+                    if ui.button(name.as_str()).clicked() {
+                        menu_action = Some(("element.set", json!({"element": id})));
+                        ui.close();
+                    }
+                }
+            });
+            if ui.button("Note…").clicked() {
+                menu_action = Some(("view.note", json!({})));
+                ui.close();
+            }
+            if let Some((m, suggestions)) = &spell {
+                ui.separator();
+                for s in suggestions {
                     if ui.button(s.as_str()).clicked() {
                         menu_action =
                             Some(("spelling.replace", json!({"block": m.block, "start": m.start, "end": m.end, "word": m.word, "with": s})));
@@ -978,8 +1005,8 @@ impl Editor {
                     menu_action = Some(("spelling.addWord", json!({"word": m.word})));
                     ui.close();
                 }
-            });
-        }
+            }
+        });
         if let Some((id, params)) = menu_action {
             self.spell_menu = None;
             self.run(id, params);
