@@ -4485,7 +4485,10 @@ dependencies = [
 name = "wordsmith-cli"
 version = "0.1.0-dev"
 dependencies = [
+ "wordsmith-doc",
+ "wordsmith-engine",
  "wordsmith-format",
+ "wordsmith-mcp",
  "wordsmith-script",
 ]
 

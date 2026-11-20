@@ -48,6 +48,11 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("text.delete", "Delete", "Edit", text::delete).key("Delete"),
         CommandSpec::new("document.inspect", "Inspect Script", "Script", inspect).pure(),
         CommandSpec::new("document.text", "Script Text", "Script", |s, _| Ok(json!(s.doc.plain_text(wordsmith_doc::StoryRef::Body)))).pure(),
+        CommandSpec::new("document.pages", "Page Count", "Script", |s, _| {
+            let pag = crate::paginate::paginate(&s.doc);
+            Ok(json!({"pages": pag.pages.len(), "labels": pag.labels}))
+        })
+        .pure(),
         CommandSpec::new("file.new", "New Script", "File", |s, _| {
             s.set_document(crate::template::new_script());
             Ok(Value::Null)
