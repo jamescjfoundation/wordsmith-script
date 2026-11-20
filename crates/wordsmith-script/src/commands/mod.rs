@@ -61,6 +61,7 @@ pub fn specs() -> Vec<CommandSpec> {
     all.extend(spelling::specs());
     all.extend(find::specs());
     all.extend(crate::title_page::specs());
+    all.extend(crate::header_footer::specs());
     all
 }
 

@@ -33,3 +33,21 @@ screenplay convention.
   on …") and notes; the foot's left side the contact, its right side the
   draft date. A page cannot tell a credit that names the authors ("By …")
   from the authors.
+
+## Headers and footers
+
+- **Settings** (`app_data` key `wordsmith.headerFooter`): a header and a
+  footer, each with left, center and right text (200 characters each), whether
+  page 1 shows them, and a fixed date (empty for today's).
+- **Fields** in braces: `{page}` (a live page-number field), `{scene}` (a live
+  STYLEREF field to the scene heading element: the first scene heading on the
+  page, or, on a page with none, the scene running onto it), `{date}` (today
+  as "November 19, 2026", or the fixed text), `{title}`, and `{revision}` (the
+  `current` name M6 keeps under `wordsmith.revisions`; empty until then).
+  Anything else in braces is printed as it is.
+- **Layout:** one slot used is aligned where it belongs; two or three use tab
+  stops at the center and the right margin, half an inch from the page edge.
+- **Default:** `{page}.` at the top right, none on page 1, which is what the
+  paginator printed before; the golden PDFs did not change.
+- The page view shows the same header and footer as the PDF, since both come
+  from the paginated output.

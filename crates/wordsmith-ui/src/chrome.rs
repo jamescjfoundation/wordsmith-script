@@ -67,6 +67,7 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 ui.separator();
                 item(ed, ui, "view.elementSettings");
                 item(ed, ui, "view.titlePage");
+                item(ed, ui, "view.headerFooter");
             });
             ui.menu_button("View", |ui| {
                 for id in ["view.normal", "view.page", "view.speed"] {

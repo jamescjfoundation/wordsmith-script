@@ -13,6 +13,7 @@ pub mod autocomplete;
 pub mod commands;
 pub mod element;
 pub mod export;
+pub mod header_footer;
 pub mod paginate;
 pub mod scene_heading;
 pub mod scenes;

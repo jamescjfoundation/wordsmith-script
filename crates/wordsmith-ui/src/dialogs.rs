@@ -418,8 +418,50 @@ fn title_page_window(ed: &mut Editor, ctx: &Context) {
     }
 }
 
+/// Header and footer slots with their fields; Apply sets them (one undo step).
+fn header_footer_window(ed: &mut Editor, ctx: &Context) {
+    let Some(mut form) = ed.header_footer.take() else { return };
+    let mut open = true;
+    let mut apply = false;
+    egui::Window::new("Header and Footer").open(&mut open).collapsible(false).resizable(false).show(ctx, |ui| {
+        egui::Grid::new("header_footer").num_columns(4).show(ui, |ui| {
+            ui.label("");
+            for slot in ["Left", "Center", "Right"] {
+                ui.label(slot);
+            }
+            ui.end_row();
+            for (band, label) in [("header", "Header"), ("footer", "Footer")] {
+                ui.label(label);
+                for slot in ["left", "center", "right"] {
+                    let mut text = form.get(band).and_then(|b| b.get(slot)).and_then(Value::as_str).unwrap_or("").to_string();
+                    if ui.add(egui::TextEdit::singleline(&mut text).desired_width(150.0)).changed() {
+                        form[band][slot] = json!(text);
+                    }
+                }
+                ui.end_row();
+            }
+        });
+        flag_field(ui, &mut form, "firstPage", "Show on page 1");
+        ui.horizontal(|ui| {
+            ui.label("Date");
+            text_field(ui, &mut form, "date");
+        });
+        ui.label("Fields: {page}, {scene}, {date}, {title}, {revision}. An empty date is today's.");
+        if ui.button("Apply").clicked() {
+            apply = true;
+        }
+    });
+    if apply {
+        ed.run("headerFooter.set", form.clone());
+    }
+    if open {
+        ed.header_footer = Some(form);
+    }
+}
+
 /// Show whichever dialogs are open.
 pub fn show(ed: &mut Editor, ctx: &Context) {
+    header_footer_window(ed, ctx);
     title_page_window(ed, ctx);
     palette_window(ed, ctx);
     settings_window(ed, ctx);

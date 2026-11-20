@@ -1,0 +1,300 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+//! Headers and footers (SPEC: "headers and footers with placeholder fields (date, scene, label,
+//! page)"), kept in `app_data` under [`HEADER_FOOTER_KEY`].
+//!
+//! Each band (header, footer) has a left, a center and a right text. Fields in braces fill in on
+//! each page: `{page}` the page number, `{scene}` the first scene heading on the page (or the
+//! scene that runs onto it), `{date}` the date (today, or the fixed text set), `{title}` the
+//! script's title, `{revision}` the current revision set's name (M6; empty until there is one).
+//! Other text is printed as it is. Page 1 shows the bands only when asked. The default is the
+//! convention: the page number and a period at the top right, none on page 1 (decision 0021).
+
+use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use wordsmith_doc::props::{Align, CharProps, TabAlign, TabLeader, TabStop};
+use wordsmith_doc::{Document, InlineObject, Paragraph, PartKind, para_block};
+use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session};
+
+use crate::element::{ElementKind, Elements};
+use crate::template;
+
+/// `app_data` key of the header and footer settings.
+pub const HEADER_FOOTER_KEY: &str = "wordsmith.headerFooter";
+/// `app_data` key M6 keeps revision sets under; `{revision}` shows its `current` name.
+pub const REVISIONS_KEY: &str = "wordsmith.revisions";
+/// Longest text one slot keeps, characters.
+pub const MAX_SLOT_CHARS: usize = 200;
+/// Fields a slot may use.
+pub const FIELDS: [&str; 5] = ["page", "scene", "date", "title", "revision"];
+
+/// One band's three slots.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Band {
+    pub left: String,
+    pub center: String,
+    pub right: String,
+}
+
+impl Band {
+    fn is_empty(&self) -> bool {
+        self.left.trim().is_empty() && self.center.trim().is_empty() && self.right.trim().is_empty()
+    }
+
+    fn cleaned(&self) -> Band {
+        let c = |s: &str| s.chars().filter(|c| !c.is_control()).take(MAX_SLOT_CHARS).collect::<String>();
+        Band { left: c(&self.left), center: c(&self.center), right: c(&self.right) }
+    }
+}
+
+/// The header and footer settings.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct HeaderFooter {
+    pub header: Band,
+    pub footer: Band,
+    /// Show the bands on page 1 too.
+    pub first_page: bool,
+    /// The text `{date}` shows; empty for today's date.
+    pub date: String,
+}
+
+impl Default for HeaderFooter {
+    fn default() -> Self {
+        HeaderFooter { header: Band { right: "{page}.".into(), ..Band::default() }, footer: Band::default(), first_page: false, date: String::new() }
+    }
+}
+
+impl HeaderFooter {
+    /// The settings `doc` holds, or the defaults; bad data reads as the defaults, and texts are
+    /// cut to their limits.
+    pub fn of_doc(doc: &Document) -> Self {
+        let Some(v) = doc.app_data.get(HEADER_FOOTER_KEY) else { return Self::default() };
+        let mut h: HeaderFooter = serde_json::from_value((**v).clone()).unwrap_or_default();
+        h.header = h.header.cleaned();
+        h.footer = h.footer.cleaned();
+        h.date = h.date.chars().filter(|c| !c.is_control()).take(MAX_SLOT_CHARS).collect();
+        h
+    }
+
+    pub fn store(&self, doc: &mut Document) {
+        doc.app_data.insert(HEADER_FOOTER_KEY.to_string(), Arc::new(serde_json::to_value(self).unwrap_or_default()));
+    }
+}
+
+/// `headerFooter.get`: the settings.
+fn get(s: &mut Session, _: &Value) -> CmdResult {
+    Ok(serde_json::to_value(HeaderFooter::of_doc(&s.doc)).unwrap_or_default())
+}
+
+/// `headerFooter.set {header?, footer?, firstPage?, date?}`: change the settings given (one undo
+/// step).
+fn set(s: &mut Session, v: &Value) -> CmdResult {
+    let current = serde_json::to_value(HeaderFooter::of_doc(&s.doc)).unwrap_or_default();
+    let mut merged = current;
+    let Some(obj) = v.as_object() else { return Err(CmdError::Params("expected an object".into())) };
+    for (k, val) in obj {
+        match (k.as_str(), val) {
+            ("header" | "footer", Value::Object(slots)) => {
+                for (slot, text) in slots {
+                    if !matches!(slot.as_str(), "left" | "center" | "right") || !text.is_string() {
+                        return Err(CmdError::Params(format!("`{k}.{slot}` must be left, center or right, as text")));
+                    }
+                    merged[k][slot] = text.clone();
+                }
+            }
+            ("firstPage", Value::Bool(_)) | ("date", Value::String(_)) => merged[k] = val.clone(),
+            _ => return Err(CmdError::Params(format!("unknown or bad setting `{k}`"))),
+        }
+    }
+    let mut h: HeaderFooter = serde_json::from_value(merged).map_err(|e| CmdError::Params(e.to_string()))?;
+    h.header = h.header.cleaned();
+    h.footer = h.footer.cleaned();
+    h.store(&mut s.doc);
+    Ok(serde_json::to_value(&h).unwrap_or_default())
+}
+
+pub fn specs() -> Vec<CommandSpec> {
+    vec![
+        CommandSpec::new("headerFooter.get", "Header and Footer Settings", "Script", get).pure(),
+        CommandSpec::new("headerFooter.set", "Set Header and Footer", "Script", set).params(
+            r#"{"header"?: {"left"?, "center"?, "right"?: text with {page} {scene} {date} {title} {revision}}, "footer"?: {...}, "firstPage"?: bool, "date"?: string (empty for today)}"#,
+        ),
+    ]
+}
+
+/// Today's date as "November 19, 2026" (UTC).
+pub fn today() -> String {
+    const MONTHS: [&str; 12] =
+        ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let z = (secs / 86_400) as i64 + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!("{} {day}, {year}", MONTHS.get((month - 1) as usize).copied().unwrap_or(""))
+}
+
+/// Style id of the header and footer lines.
+pub const BAND_STYLE: &str = "ws.Band";
+
+fn field(instr: &str) -> InlineObject {
+    InlineObject::Field { instr: instr.into(), result: String::new(), locked: false, dirty: false, code: false, form: String::new() }
+}
+
+/// Append `text` to `p`, its fields filled in or made live (page, scene).
+fn push_slot(p: &mut Paragraph, text: &str, doc: &Document, date: &str) {
+    let scene_style = Elements::of_doc(doc).id_of(ElementKind::SceneHeading).to_string();
+    let revision = doc.app_data.get(REVISIONS_KEY).and_then(|v| v.get("current")).and_then(Value::as_str).unwrap_or("").to_string();
+    let mut rest = text;
+    while !rest.is_empty() {
+        let next = rest.find('{').and_then(|open| rest[open..].find('}').map(|close| (open, open + close)));
+        let Some((open, close)) = next else {
+            let at = p.len();
+            let _ = p.insert_text(at, rest, &CharProps::default());
+            break;
+        };
+        let at = p.len();
+        let _ = p.insert_text(at, &rest[..open], &CharProps::default());
+        let name = &rest[open + 1..close];
+        let at = p.len();
+        match name {
+            "page" => {
+                let _ = p.insert_object(at, field("PAGE"), &CharProps::default());
+            }
+            "scene" => {
+                let _ = p.insert_object(at, field(&format!("STYLEREF \"{scene_style}\"")), &CharProps::default());
+            }
+            "date" => {
+                let _ = p.insert_text(at, date, &CharProps::default());
+            }
+            "title" => {
+                let _ = p.insert_text(at, &doc.core.title, &CharProps::default());
+            }
+            "revision" => {
+                let _ = p.insert_text(at, &revision, &CharProps::default());
+            }
+            _ => {
+                let _ = p.insert_text(at, &rest[open..=close], &CharProps::default());
+            }
+        }
+        rest = &rest[close + 1..];
+    }
+}
+
+/// The line for `band`: one slot alone is aligned where it belongs; more use tab stops at the
+/// center and the right margin.
+fn band_line(band: &Band, doc: &Document, date: &str) -> Paragraph {
+    let mut p = Paragraph::new();
+    p.props.style = Some(BAND_STYLE.into());
+    let used: Vec<(&str, Align)> = [(&band.left, Align::Left), (&band.center, Align::Center), (&band.right, Align::Right)]
+        .into_iter()
+        .filter(|(t, _)| !t.trim().is_empty())
+        .map(|(t, a)| (t.as_str(), a))
+        .collect();
+    if let [(text, align)] = used.as_slice() {
+        p.props.align = Some(*align);
+        push_slot(&mut p, text, doc, date);
+        return p;
+    }
+    let page = &doc.last_section;
+    let width = (page.page_w - page.margin_left - page.margin_right).max(template::INCH);
+    p.props.tabs = Some(vec![
+        TabStop { pos: width / 2.0, align: TabAlign::Center, leader: TabLeader::None },
+        TabStop { pos: width, align: TabAlign::Right, leader: TabLeader::None },
+    ]);
+    push_slot(&mut p, &band.left, doc, date);
+    for slot in [&band.center, &band.right] {
+        let at = p.len();
+        let _ = p.insert_text(at, "\t", &CharProps::default());
+        push_slot(&mut p, slot, doc, date);
+    }
+    p
+}
+
+/// Give the output script `doc` its header and footer, as its settings say.
+pub fn apply(doc: &mut Document) {
+    let h = HeaderFooter::of_doc(doc);
+    let date = if h.date.trim().is_empty() { today() } else { h.date.clone() };
+    let sheet = Arc::make_mut(&mut doc.styles);
+    let mut style = template::element_style(BAND_STYLE, "Header and Footer", &template::default_formatting(ElementKind::General), BAND_STYLE);
+    style.quick = false;
+    style.para.space_before = Some(0.0);
+    sheet.upsert(style);
+    let header = (!h.header.is_empty()).then(|| band_line(&h.header, doc, &date));
+    let footer = (!h.footer.is_empty()).then(|| band_line(&h.footer, doc, &date));
+    let blank = || {
+        let mut p = Paragraph::new();
+        p.props.style = Some(BAND_STYLE.into());
+        p
+    };
+    let header = header.map(|p| doc.add_part(PartKind::Header, vec![para_block(p)]));
+    let footer = footer.map(|p| doc.add_part(PartKind::Footer, vec![para_block(p)]));
+    let first_header = (!h.first_page).then(|| doc.add_part(PartKind::Header, vec![para_block(blank())]));
+    let first_footer = (!h.first_page).then(|| doc.add_part(PartKind::Footer, vec![para_block(blank())]));
+    let s = &mut doc.last_section;
+    s.headers.default = header;
+    s.footers.default = footer;
+    s.headers.even = None;
+    s.footers.even = None;
+    s.title_page = !h.first_page;
+    s.headers.first = if h.first_page { header } else { first_header };
+    s.footers.first = if h.first_page { footer } else { first_footer };
+    s.header = 0.5 * template::INCH;
+    s.footer = 0.5 * template::INCH;
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+    use crate::template::new_script;
+
+    #[test]
+    fn settings_read_bounded_and_set_in_one_step() {
+        let mut s = crate::new_session();
+        assert_eq!(HeaderFooter::of_doc(&s.doc), HeaderFooter::default());
+        s.run("headerFooter.set", &json!({"footer": {"center": "{title} - {date}"}, "firstPage": true})).unwrap();
+        let h = HeaderFooter::of_doc(&s.doc);
+        assert_eq!(h.footer.center, "{title} - {date}");
+        assert_eq!(h.header.right, "{page}.", "the rest is kept");
+        assert!(h.first_page);
+        assert!(s.run("headerFooter.set", &json!({"header": {"middle": "x"}})).is_err());
+        assert!(s.run("headerFooter.set", &json!({"colour": 1})).is_err());
+        s.run("edit.undo", &json!({})).unwrap();
+        assert_eq!(HeaderFooter::of_doc(&s.doc), HeaderFooter::default());
+        let mut doc = new_script();
+        doc.app_data.insert(HEADER_FOOTER_KEY.into(), Arc::new(json!({"header": {"left": "x".repeat(1000)}, "firstPage": "yes"})));
+        assert_eq!(HeaderFooter::of_doc(&doc), HeaderFooter::default(), "a bad value reads as the defaults");
+        doc.app_data.insert(HEADER_FOOTER_KEY.into(), Arc::new(json!({"header": {"left": "x".repeat(1000)}})));
+        assert_eq!(HeaderFooter::of_doc(&doc).header.left.len(), MAX_SLOT_CHARS);
+    }
+
+    #[test]
+    fn today_reads_as_a_date() {
+        let t = today();
+        assert!(t.split(' ').count() == 3 && t.contains(", 20"), "{t}");
+    }
+
+    #[test]
+    fn slots_fill_fields() {
+        let mut doc = new_script();
+        doc.core.title = "THE TEST".into();
+        doc.app_data.insert(REVISIONS_KEY.into(), Arc::new(json!({"current": "Blue"})));
+        let p = band_line(&Band { left: "{title} {revision} {date} {nope}".into(), ..Band::default() }, &doc, "1 May");
+        assert_eq!(p.text, "THE TEST Blue 1 May {nope}");
+        assert_eq!(p.props.align, Some(Align::Left));
+        let p = band_line(&Band { left: "A".into(), center: "{scene}".into(), right: "{page}.".into() }, &doc, "");
+        assert_eq!(p.text.matches('\t').count(), 2);
+        assert_eq!(p.objects.len(), 2, "scene and page are live fields");
+    }
+}
