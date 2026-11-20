@@ -68,7 +68,8 @@ cargo xtask ci
 It runs rustfmt, a crate-root lint check, clippy, all tests, the license and
 asset attribution check, the layering check and the wasm build.
 
-- `docs/SPEC.md`: the behavior spec, the only source for screenplay features.
+- `docs/SPEC.md`: the behavior spec v0.1 was built from.
+- `docs/SPEC-2.md`: the clean-room functional spec for work after v0.1, with its audit, questions and plan (decision 0030).
 - `docs/REUSE.md`: what we reuse, and the license and branding rules.
 - `docs/decisions/`: the choices the spec left open.
 - `docs/spec-audit.md` and `docs/gaps.md`: what v0.1 covers and what it does not.

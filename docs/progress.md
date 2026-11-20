@@ -44,3 +44,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m8/bundles | cargo xtask bundle (macOS .app zip, Linux tar.gz with .desktop, Windows zip); hand-started release workflow that publishes nothing; macOS bundle built and run; 1752 tests pass |
 | 2026-11-19 | m8/docs | User guide, README with screenshots, CHANGELOG, spec audit, gaps rewritten, hostile-input corpus (no crashes), right-click element menu, keyboard guide from the registry; typing 16.0–17.6 ms at 150 pages; 1757 tests pass |
 | 2026-11-19 | main | Version 0.1.0, tagged v0.1.0 as a starting point; remote added and pushed |
+| 2026-11-19 | spec2/intake | SPEC-2 added word for word; audit against v0.1 (11 [STD] values differ, kept), questions for the spec author, decision 0030, v0.2 plan M9–M14; docs only |

@@ -35,3 +35,4 @@ what would make us revisit it.
 | [0027](0027-reports-and-revised-pages.md) | Revised pages, scene lengths and the character report |
 | [0028](0028-outlining.md) | Outlining: story board, lanes, outline elements |
 | [0029](0029-release.md) | The command line, the MCP server and the release |
+| [0030](0030-spec-2.md) | SPEC-2 and what v0.1 built |
