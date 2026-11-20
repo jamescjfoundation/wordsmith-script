@@ -1,6 +1,6 @@
 # The Wordsmith Script file format (`.wss`)
 
-Format version 1. A `.wss` file is UTF-8 plain text made to be read by people,
+Format version 2. A `.wss` file is UTF-8 plain text made to be read by people,
 compared with `diff`, and kept in version control. Every script setting lives
 in the file: element definitions, autocomplete lists, scene-heading
 separators, more-and-continued texts, and (as later milestones add them)
@@ -58,6 +58,10 @@ ANNA
   *italic*` mean what they look like. Each marker toggles only its own style.
 - `\` escapes the next character: `\*`, `\_`, `\\`. A text line that would
   start with `@` or `=` is written with a `\` in front.
+- From version 2, notes' anchors are marked in the text: `{n12}` starts the
+  text note 12 is attached to and `{/n}` ends it; a `{` in the text is
+  written `\{`. The notes themselves are in `appData` under
+  `wordsmith.notes` (`{"12": {"text": "…", "author": "…"}}`).
 - Inline pictures and fields are not part of a script and are not written.
 
 ## Versions and migrations
@@ -67,6 +71,11 @@ version before, so every older file stays readable. A file from a newer
 version is refused with a message naming both versions. Version 1 is the
 first; `crates/wordsmith-format/tests/fixtures/v1-short.wss` is a stored
 version-1 file that the tests read on every build.
+
+| Version | Change | Migration from the one before |
+| --- | --- | --- |
+| 1 | The first format (M4) | — |
+| 2 | Note anchors in the text (`{n12}…{/n}`, `\{` for a brace), M5 | Every `{` in version-1 text is escaped, so it stays a brace |
 
 ## Limits
 

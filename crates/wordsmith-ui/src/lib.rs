@@ -53,6 +53,7 @@ pub fn ui_specs() -> Vec<CommandSpec> {
         CommandSpec::new("view.normal", "Normal View", "View", |s, _| open(s, "view.normal")).key("Mod+Alt+1").pure(),
         CommandSpec::new("view.page", "Page View", "View", |s, _| open(s, "view.page")).key("Mod+Alt+2").pure(),
         CommandSpec::new("view.speed", "Speed View", "View", |s, _| open(s, "view.speed")).key("Mod+Alt+3").pure(),
+        CommandSpec::new("view.note", "Note…", "Edit", |s, _| open(s, "note")).key("Mod+Alt+N").pure(),
         CommandSpec::new("view.tables", "Tables", "View", |s, _| open(s, "view.tables")).key("Mod+Alt+T").pure(),
         CommandSpec::new("view.cards", "Index Cards", "View", |s, _| open(s, "view.cards")).key("Mod+Alt+4").pure(),
         CommandSpec::new("view.scenes", "Scene View", "View", |s, _| open(s, "view.scenes")).key("Mod+Alt+5").pure(),

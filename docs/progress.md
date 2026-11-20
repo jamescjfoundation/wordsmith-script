@@ -30,3 +30,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m5/headers | Header and footer bands with {page}, {scene}, {date}, {title}, {revision}; first-page rule; window; golden PDFs unchanged; 1692 tests pass |
 | 2026-11-19 | m5/scenes | Scene commands (list, move, heading, summary, go to); index cards and scene view with drag to reorder; 1697 tests pass |
 | 2026-11-19 | m5/tables | Tables panel (scenes, characters) with cell editing, row reorder and CSV; character rename everywhere; 1702 tests pass |
+| 2026-11-19 | m5/notes | Notes anchored by a text mark; commands, page view tint, popover, Notes table; native format 2 with migration; Fountain writes notes; M5 complete; 1709 tests pass |

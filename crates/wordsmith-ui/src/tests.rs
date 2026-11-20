@@ -685,3 +685,43 @@ fn the_tables_panel_edits_the_script_and_exports_csv() {
     assert_eq!(std::fs::read_to_string(dir.join("Cast.csv")).unwrap(), "Character,Speeches,Scenes,First scene\r\nZOE,1,1,1\r\n");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn notes_in_the_editor() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("element.action", json!({}));
+    frame(&ctx, &mut ed, vec![text("Rain hits the window.")]);
+    // Select "Rain" and open a new note.
+    frame(
+        &ctx,
+        &mut ed,
+        vec![
+            key(Key::Home, Modifiers::NONE),
+            key(Key::ArrowRight, Modifiers::SHIFT),
+            key(Key::ArrowRight, Modifiers::SHIFT),
+            key(Key::ArrowRight, Modifiers::SHIFT),
+            key(Key::ArrowRight, Modifiers::SHIFT),
+        ],
+    );
+    let alt = Modifiers { alt: true, ..cmd() };
+    frame(&ctx, &mut ed, vec![key(Key::N, alt)]);
+    assert_eq!(ed.note_popover, Some((None, String::new())), "a new note");
+    frame(&ctx, &mut ed, vec![]);
+    ed.note_popover = None;
+    ed.run("note.add", json!({"text": "Snow?"}));
+    // With the caret in the noted text, the same command opens that note.
+    frame(&ctx, &mut ed, vec![key(Key::Home, Modifiers::NONE), key(Key::ArrowRight, Modifiers::NONE)]);
+    frame(&ctx, &mut ed, vec![key(Key::N, alt)]);
+    assert_eq!(ed.note_popover.as_ref().map(|p| p.1.as_str()), Some("Snow?"));
+    frame(&ctx, &mut ed, vec![]);
+    // The Notes table lists it; editing its cell edits the note.
+    ed.tables = Some(crate::tables::Table::Notes);
+    frame(&ctx, &mut ed, vec![]);
+    let mut e = crate::tables::CellEdit::new(crate::tables::Table::Notes, 1, "text", "Snow?");
+    e.text = "Hail.".into();
+    let (id, params) = crate::tables::commit(&e).unwrap();
+    ed.run(id, params);
+    assert_eq!(ed.session.run("note.list", &json!({})).unwrap()[0]["text"], "Hail.");
+}

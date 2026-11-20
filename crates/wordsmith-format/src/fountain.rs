@@ -379,10 +379,19 @@ fn escape_title(text: &str) -> String {
     out
 }
 
-/// Fountain text for a paragraph's contents: emphasis markers, escapes, and `[[` broken so it
-/// is not read as a note.
-fn marked(p: &Paragraph) -> String {
-    crate::emphasis::encode(p).replace("[[", "[\\[")
+/// Fountain text for a paragraph's contents: emphasis markers, escapes, `[[` broken so it is not
+/// read as a note, and the notes that end in it.
+fn marked(p: &Paragraph, note: &dyn Fn(u32) -> Option<String>) -> String {
+    // Notes go in between private-use marks, so breaking `[[` in the text leaves theirs whole.
+    crate::emphasis::encode_with(p, false, &|id| note(id).map(|t| format!(" \u{E000}{t}\u{E001}")))
+        .replace("[[", "[\\[")
+        .replace('\u{E000}', "[[")
+        .replace('\u{E001}', "]]")
+}
+
+/// A note's text as Fountain writes it inside `[[ ]]`: on one line, and never closing early.
+fn note_text(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ").replace("]]", "] ]").replace("[[", "[ [")
 }
 
 /// One line: line breaks become spaces (headings, cues, transitions, outline lines).
@@ -466,6 +475,10 @@ pub fn write(doc: &Document) -> String {
         blocks.push(title_page.join("\n"));
     }
     let paras: Vec<&Paragraph> = doc.body.iter().filter_map(|b| b.as_para()).collect();
+    // Notes are written as `[[ ]]` where their text ends (the reader leaves such notes out).
+    let notes = wordsmith_script::notes::Notes::of_doc(doc);
+    let anchors = wordsmith_script::notes::anchors(doc);
+    let para_blocks: Vec<usize> = doc.body.iter().enumerate().filter(|(_, b)| b.as_para().is_some()).map(|(i, _)| i).collect();
     let mut in_speech = false;
     for (n, p) in paras.iter().enumerate() {
         let kind = elements.of_para(p).kind;
@@ -476,7 +489,12 @@ pub fn write(doc: &Document) -> String {
                 continue;
             }
         }
-        let text = marked(p);
+        let block = para_blocks.get(n).copied().unwrap_or(usize::MAX);
+        let note = |id: u32| {
+            let ends_here = anchors.get(&id).is_some_and(|a| a.end.0 == block);
+            notes.notes.get(&id).filter(|_| ends_here).map(|nt| note_text(&nt.text)).filter(|t| !t.is_empty())
+        };
+        let text = marked(p, &note);
         if text.is_empty() && !matches!(kind, ElementKind::Character) {
             // An empty paragraph keeps its place as empty Action.
             blocks.push("!".into());
@@ -771,6 +789,24 @@ mod tests {
         assert_eq!(TitlePage::of_doc(&again.doc), page);
         assert_eq!(lines(&again), lines(&s));
         assert_eq!(write(&again.doc), text);
+    }
+
+    #[test]
+    fn notes_are_written_where_their_text_ends() {
+        let mut s = wordsmith_script::new_session();
+        s.run("element.action", &serde_json::json!({})).unwrap();
+        s.run("text.insert", &serde_json::json!({"text": "Rain hits **x** [[y]].\nMore."})).unwrap();
+        let start = wordsmith_doc::Pos { off: 0, path: wordsmith_doc::Path::top(0), ..s.sel.focus.clone() };
+        s.sel = wordsmith_engine::Selection {
+            anchor: start,
+            focus: wordsmith_doc::Pos { off: 9, path: wordsmith_doc::Path::top(0), ..s.sel.focus.clone() },
+        };
+        s.run("note.add", &serde_json::json!({"text": "Snow? ]] not here"})).unwrap();
+        let text = write(&s.doc);
+        assert!(text.contains("Rain hits [[Snow? ] ] not here]] \\*\\*x\\*\\* [\\[y]]."), "{text}");
+        // Reading it back leaves the note out and keeps the text.
+        let back = read(&text).unwrap();
+        assert!(lines(&back).iter().any(|(_, t)| t == "Rain hits  **x** [[y]]."), "{:?}", lines(&back));
     }
 
     #[test]

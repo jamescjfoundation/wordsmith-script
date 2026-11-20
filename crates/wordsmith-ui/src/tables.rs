@@ -14,6 +14,7 @@ use crate::editor::Editor;
 pub enum Table {
     Scenes,
     Characters,
+    Notes,
 }
 
 /// A cell being edited: the table, its row, its column, and the text so far.
@@ -43,11 +44,14 @@ pub fn commit(edit: &CellEdit) -> Option<(&'static str, Value)> {
         (Table::Scenes, "heading") => Some(("scene.setHeading", json!({"scene": edit.row, "text": edit.text}))),
         (Table::Scenes, "summary") => Some(("scene.setSummary", json!({"scene": edit.row, "text": edit.text}))),
         (Table::Characters, "name") => Some(("character.rename", json!({"from": edit.was, "to": edit.text}))),
+        // A note's row is its id.
+        (Table::Notes, "text") => Some(("note.edit", json!({"id": edit.row, "text": edit.text}))),
         _ => None,
     }
 }
 
 enum Act {
+    Run(&'static str, Value),
     Commit(CellEdit),
     Cancel,
     Edit(CellEdit),
@@ -142,20 +146,53 @@ fn characters_table(ed: &mut Editor, ui: &mut Ui, act: &mut Option<Act>) {
     }
 }
 
+fn notes_table(ed: &mut Editor, ui: &mut Ui, act: &mut Option<Act>) {
+    let rows = ed.session.run("note.list", &json!({})).ok().and_then(|v| v.as_array().cloned()).unwrap_or_default();
+    let mut editing = ed.table_edit.clone();
+    if rows.is_empty() {
+        ui.label("No notes yet. Select some text and choose Edit › Note… to add one.");
+    }
+    egui::Grid::new("notes_table").striped(true).num_columns(4).show(ui, |ui| {
+        for h in ["Scene", "Attached to", "Note", ""] {
+            ui.label(RichText::new(h).strong());
+        }
+        ui.end_row();
+        for r in &rows {
+            let id = r["id"].as_u64().unwrap_or(0) as usize;
+            ui.label(r["scene"].as_u64().map(|n| (n + 1).to_string()).unwrap_or_default());
+            if r["attached"].as_bool() == Some(true) {
+                if ui.link(r["quote"].as_str().unwrap_or("")).on_hover_text("Go to the text").clicked() {
+                    *act = Some(Act::Run("note.goto", json!({"id": id})));
+                }
+            } else {
+                ui.label(RichText::new("(its text was deleted)").weak());
+            }
+            cell(ui, &mut editing, (Table::Notes, id, "text"), r["text"].as_str().unwrap_or(""), act);
+            if ui.small_button("Delete").clicked() {
+                *act = Some(Act::Run("note.delete", json!({"id": id})));
+            }
+            ui.end_row();
+        }
+    });
+    if act.is_none() {
+        ed.table_edit = editing;
+    }
+}
+
 /// The panel, at the right of the window, while it is open.
 pub fn panel(ed: &mut Editor, ui: &mut Ui) {
     let Some(table) = ed.tables else { return };
     egui::Panel::right("tables").resizable(true).default_size(460.0).show(ui, |ui| {
         let mut act = None;
         ui.horizontal(|ui| {
-            for (t, label) in [(Table::Scenes, "Scenes"), (Table::Characters, "Characters")] {
+            for (t, label) in [(Table::Scenes, "Scenes"), (Table::Characters, "Characters"), (Table::Notes, "Notes")] {
                 if ui.selectable_label(table == t, label).clicked() {
                     ed.tables = Some(t);
                     ed.table_edit = None;
                 }
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button("Export CSV…").clicked() {
+                if table != Table::Notes && ui.button("Export CSV…").clicked() {
                     let id = if table == Table::Scenes { "tables.exportScenesCsv" } else { "tables.exportCharactersCsv" };
                     ed.run(id, json!({}));
                 }
@@ -165,6 +202,7 @@ pub fn panel(ed: &mut Editor, ui: &mut Ui) {
         egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| match table {
             Table::Scenes => scenes_table(ed, ui, &mut act),
             Table::Characters => characters_table(ed, ui, &mut act),
+            Table::Notes => notes_table(ed, ui, &mut act),
         });
         match act {
             Some(Act::Commit(e)) => {
@@ -174,6 +212,10 @@ pub fn panel(ed: &mut Editor, ui: &mut Ui) {
                 }
             }
             Some(Act::Cancel) => ed.table_edit = None,
+            Some(Act::Run(id, params)) => {
+                ed.structure = None;
+                ed.run(id, params);
+            }
             Some(Act::Edit(e)) => ed.table_edit = Some(e),
             Some(Act::Move { from, onto }) if from != onto => {
                 let count = ed.scene_list().len();

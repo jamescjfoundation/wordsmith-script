@@ -459,8 +459,50 @@ fn header_footer_window(ed: &mut Editor, ctx: &Context) {
     }
 }
 
+/// The note popover, beside the caret: a note's text to edit, or a new note for the selection.
+fn note_popover(ed: &mut Editor, ctx: &Context) {
+    let Some((id, mut text)) = ed.note_popover.take() else { return };
+    let at = ed.caret_rect().map_or(egui::pos2(200.0, 200.0), |r| r.right_bottom() + egui::vec2(8.0, 8.0));
+    let mut keep = true;
+    let mut action: Option<(&str, Value)> = None;
+    egui::Area::new(egui::Id::new("note_popover")).order(egui::Order::Foreground).fixed_pos(at).show(ctx, |ui| {
+        egui::Frame::popup(ui.style()).show(ui, |ui| {
+            ui.label(if id.is_some() { "Note" } else { "New note" });
+            let r = ui.add(egui::TextEdit::multiline(&mut text).desired_rows(4).desired_width(260.0));
+            if id.is_none() && !r.has_focus() && text.is_empty() {
+                r.request_focus();
+            }
+            ui.horizontal(|ui| {
+                if ui.button("Save").clicked() {
+                    action = Some(match id {
+                        Some(i) => ("note.edit", json!({"id": i, "text": text})),
+                        None => ("note.add", json!({"text": text})),
+                    });
+                    keep = false;
+                }
+                if let Some(i) = id
+                    && ui.button("Delete").clicked()
+                {
+                    action = Some(("note.delete", json!({"id": i})));
+                    keep = false;
+                }
+                if ui.button("Close").clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                    keep = false;
+                }
+            });
+        });
+    });
+    if let Some((cmd, params)) = action {
+        ed.run(cmd, params);
+    }
+    if keep {
+        ed.note_popover = Some((id, text));
+    }
+}
+
 /// Show whichever dialogs are open.
 pub fn show(ed: &mut Editor, ctx: &Context) {
+    note_popover(ed, ctx);
     header_footer_window(ed, ctx);
     title_page_window(ed, ctx);
     palette_window(ed, ctx);

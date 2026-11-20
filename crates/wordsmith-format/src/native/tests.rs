@@ -132,3 +132,22 @@ fn missing_settings_are_filled_and_unknown_elements_read_as_general() {
     assert_eq!(empty.body.len(), 1);
     let _ = new_script();
 }
+
+#[test]
+fn notes_and_their_anchors_round_trip_and_version_1_braces_stay_braces() {
+    let mut s = wordsmith_script::new_session();
+    s.run("text.insert", &json!({"text": "INT. A {B} - DAY"})).unwrap();
+    s.sel = wordsmith_engine::Selection { anchor: wordsmith_doc::Pos { off: 5, ..s.sel.focus.clone() }, focus: s.sel.focus.clone() };
+    s.run("note.add", &json!({"text": "Is {B} right?"})).unwrap();
+    let text = write(&s.doc);
+    assert!(text.contains("INT. {n1}A \\{B} - DAY{/n}"), "{text}");
+    let back = read(&text).unwrap();
+    assert_eq!(back.body, s.doc.body);
+    assert_eq!(wordsmith_script::notes::Notes::of_doc(&back), wordsmith_script::notes::Notes::of_doc(&s.doc));
+    assert_eq!(write(&back), text, "stable");
+    // A version 1 file with braces reads them as text.
+    let v1 = text.replacen("Wordsmith Script 2", "Wordsmith Script 1", 1).replace("{n1}", "").replace("{/n}", "").replace("\\{", "{");
+    let old = read(&v1).unwrap();
+    assert_eq!(old.body[0].as_para().map(|p| p.text.as_str()), Some("INT. A {B} - DAY"));
+    assert!(old.body[0].as_para().unwrap().run_ranges().all(|(_, c)| c.note.is_none()));
+}

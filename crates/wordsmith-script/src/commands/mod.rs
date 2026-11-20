@@ -66,6 +66,7 @@ pub fn specs() -> Vec<CommandSpec> {
     all.extend(crate::header_footer::specs());
     all.extend(scene::specs());
     all.extend(character::specs());
+    all.extend(crate::notes::specs());
     all
 }
 

@@ -244,6 +244,8 @@ pub struct Editor {
     pub structure: Option<crate::structure::Structure>,
     /// The Tables panel's table, while the panel is open.
     pub tables: Option<crate::tables::Table>,
+    /// The note popover: the note's id (none for a new note) and its text being edited.
+    pub note_popover: Option<(Option<u32>, String)>,
     /// The table cell being edited.
     pub table_edit: Option<crate::tables::CellEdit>,
     /// The scene listing, for one revision.
@@ -297,6 +299,7 @@ impl Editor {
             structure: None,
             tables: None,
             table_edit: None,
+            note_popover: None,
             scene_cache: None,
             seen_rev: 0,
         }
@@ -318,6 +321,11 @@ impl Editor {
             return;
         }
         self.run_now(id, params);
+    }
+
+    /// The caret's rectangle on screen in the last frame drawn.
+    pub fn caret_rect(&self) -> Option<Rect> {
+        self.caret_screen
     }
 
     /// The script's scenes as `scene.list` gives them, kept for one revision.
@@ -538,6 +546,14 @@ impl Editor {
                 Some("view.page") => self.set_view(View::Page),
                 Some("view.normal") => self.set_view(View::Normal),
                 Some("view.speed") => self.set_view(View::Speed),
+                Some("note") => {
+                    // The note at the caret, or a new one for the selection.
+                    let here = self.session.run("note.at", &json!({})).ok().filter(|v| !v.is_null());
+                    self.note_popover = Some(match here {
+                        Some(v) => (v["id"].as_u64().and_then(|i| u32::try_from(i).ok()), v["text"].as_str().unwrap_or("").to_string()),
+                        None => (None, String::new()),
+                    });
+                }
                 Some("view.tables") => {
                     self.tables = if self.tables.is_some() { None } else { Some(crate::tables::Table::Scenes) };
                     self.table_edit = None;
@@ -875,6 +891,7 @@ impl Editor {
         let to_screen = |page: usize, x: f32, y: f32| origins.get(page).map(|r| r.min + vec2(x * zoom, y * zoom));
         self.draw_gutter(ui, &painter, &pag, &origins, zoom);
         self.draw_find_matches(&painter, &pag, &origins, zoom);
+        self.draw_notes(&painter, &pag, &origins, zoom);
 
         // Selection, then the caret.
         if !self.session.sel.is_collapsed() {
@@ -1006,6 +1023,33 @@ impl Editor {
                 for (page, r) in pag.layout.selection_rects(pag.doc(), &a, &b, 0) {
                     if let Some(min) = to_screen(page, r.x, r.y) {
                         painter.rect_filled(Rect::from_min_size(min, vec2(r.w * zoom, r.h * zoom)), 0.0, fill);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Noted text: a light tint, with a mark in the left margin of its first line.
+    fn draw_notes(&self, painter: &egui::Painter, pag: &Shown, origins: &[Rect], zoom: f32) {
+        let to_screen = |page: usize, x: f32, y: f32| origins.get(page).map(|r| r.min + vec2(x * zoom, y * zoom));
+        let fill = Color32::from_rgba_unmultiplied(120, 180, 255, 60);
+        let mark = Color32::from_rgb(70, 130, 220);
+        let mut first: std::collections::HashSet<u32> = std::collections::HashSet::new();
+        for (block, b) in self.session.doc.body.iter().enumerate() {
+            let Some(p) = b.as_para() else { continue };
+            for (range, props) in p.run_ranges() {
+                let Some(id) = props.note else { continue };
+                let at = |off| wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(block), off };
+                let (Some(a), Some(z)) = (pag.to_output(&at(range.start)), pag.to_output(&at(range.end))) else { continue };
+                for (page, r) in pag.layout.selection_rects(pag.doc(), &a, &z, 0) {
+                    let Some(min) = to_screen(page, r.x, r.y) else { continue };
+                    let rect = Rect::from_min_size(min, vec2(r.w * zoom, r.h * zoom));
+                    painter.rect_filled(rect, 0.0, fill);
+                    if first.insert(id)
+                        && let Some(page_rect) = origins.get(page)
+                    {
+                        let x = page_rect.min.x + 0.6 * 72.0 * zoom;
+                        painter.circle_filled(egui::pos2(x, rect.center().y), 4.0 * zoom, mark);
                     }
                 }
             }

@@ -3,7 +3,7 @@
 //! The format is documented in `docs/format.md`; decision 0017 explains the choices.
 //!
 //! ```text
-//! Wordsmith Script 1
+//! Wordsmith Script 2
 //! === settings ===
 //! { ...sorted, pretty-printed JSON: page, styles, core, appData... }
 //! === script ===
@@ -28,7 +28,7 @@ use wordsmith_script::template::new_script;
 use wordsmith_script::{ElementKind, Elements};
 
 /// The format version this build writes.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 /// The first line's words before the version number.
 pub const MAGIC: &str = "Wordsmith Script";
 /// Largest native file read, bytes.
@@ -104,7 +104,7 @@ pub fn write(doc: &Document) -> String {
             out.push_str(" page-break");
         }
         out.push('\n');
-        let encoded = crate::emphasis::encode(p);
+        let encoded = crate::emphasis::encode_with(p, true, &|_| None);
         // An empty paragraph has no text lines at all.
         let text_lines: Vec<&str> = if encoded.is_empty() { Vec::new() } else { encoded.split('\n').collect() };
         for line in text_lines {
@@ -147,7 +147,12 @@ fn migrate(
     paragraphs: Vec<(String, Vec<String>, String)>,
 ) -> Result<(Value, Vec<(String, Vec<String>, String)>), ReadError> {
     match from {
-        // Format 1 is the first; later versions add `1 => { ...; migrate(2, ...) }` steps.
+        // 1 → 2: notes' anchors are marked in the text (`{n12}…{/n}`), so a `{` in older text is
+        // escaped to stay a plain brace.
+        1 => {
+            let paragraphs = paragraphs.into_iter().map(|(id, attrs, text)| (id, attrs, text.replace('{', "\\{"))).collect();
+            migrate(2, settings, paragraphs)
+        }
         VERSION => Ok((settings, paragraphs)),
         v if v > VERSION => Err(ReadError::NewerVersion(v)),
         v => Err(ReadError::Damaged(format!("unknown format {v}"))),
@@ -238,7 +243,7 @@ pub fn read(text: &str) -> Result<Document, ReadError> {
         .map(|(id, attrs, text)| {
             // A paragraph of an element the file does not define reads as General.
             let style = if elements.get(&id).is_some() { id } else { general.clone() };
-            let mut p = crate::emphasis::decode(&style, &text, false);
+            let mut p = crate::emphasis::decode_with(&style, &text, false, true);
             if attrs.iter().any(|a| a == "page-break") {
                 p.props.page_break_before = Some(true);
             }
