@@ -10,6 +10,8 @@ publish.workspace = true
 [dependencies]
 wordsmith-script.workspace = true
 wordsmith-doc.workspace = true
+# The automation file gateway (paths agents may read and write).
+wordsmith-engine.workspace = true
 serde = { workspace = true }
 serde_json = { workspace = true }
 # RTF import and export (M4).
@@ -17,6 +19,10 @@ craft-rtf = { workspace = true }
 # Text-based PDF import: craft-pdf's guarded page interpreter.
 craft-pdf = { workspace = true, features = ["interpret"] }
 kurbo = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# Crash-safe writes for saving, exporting and backups (M4).
+craft-atomic = { workspace = true }
 
 [dev-dependencies]
 hayro-syntax = "0.7.2"

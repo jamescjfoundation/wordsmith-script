@@ -368,3 +368,211 @@ fn dark_theme_typewriter_and_focus_mode() {
     frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE), key(Key::Escape, Modifiers::NONE)]);
     assert!(!ed.focus_mode);
 }
+
+/// A fresh folder for one test.
+fn temp_dir(name: &str) -> std::path::PathBuf {
+    let n = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+    let dir = std::env::temp_dir().join(format!("wordsmith-ui-{name}-{}-{n}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+/// Type a little script with the keyboard.
+fn type_scene(ctx: &egui::Context, ed: &mut Editor) {
+    frame(ctx, ed, vec![]);
+    frame(ctx, ed, vec![text("int"), key(Key::Tab, Modifiers::NONE), text("kitchen"), key(Key::Enter, Modifiers::NONE), text("Rain.")]);
+}
+
+#[test]
+fn save_as_open_and_the_window_title() {
+    let ctx = ctx();
+    let dir = temp_dir("save");
+    let mut ed = editor();
+    assert_eq!(ed.window_title(), "Untitled — Wordsmith Script");
+    type_scene(&ctx, &mut ed);
+    assert_eq!(ed.window_title(), "Untitled • — Wordsmith Script");
+    // Save with no file asks for one.
+    frame(&ctx, &mut ed, vec![key(Key::S, cmd())]);
+    assert!(ed.session.dirty, "nothing saved yet: a dialog was asked for");
+    let path = dir.join("Kitchen");
+    ed.run("file.saveAsPath", json!({"path": path}));
+    assert_eq!(ed.message, "");
+    assert!(!ed.session.dirty);
+    assert_eq!(ed.window_title(), "Kitchen — Wordsmith Script");
+    assert!(dir.join("Kitchen.wss").exists(), ".wss is added");
+    let saved = lines(&ed);
+    // Ctrl+S now saves to the file without asking.
+    frame(&ctx, &mut ed, vec![text(" More.")]);
+    frame(&ctx, &mut ed, vec![key(Key::S, cmd())]);
+    assert!(!ed.session.dirty);
+    let mut other = editor();
+    other.run("file.openPath", json!({"path": dir.join("Kitchen.wss")}));
+    assert_eq!(other.message, "");
+    assert_eq!(lines(&other), lines(&ed));
+    assert_ne!(lines(&other), saved);
+    assert_eq!(other.window_title(), "Kitchen — Wordsmith Script");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn unsaved_changes_are_never_lost_without_asking() {
+    let ctx = ctx();
+    let mut ed = editor();
+    type_scene(&ctx, &mut ed);
+    let before = lines(&ed);
+    // New over unsaved changes asks; Cancel keeps everything.
+    frame(&ctx, &mut ed, vec![key(Key::N, cmd())]);
+    assert_eq!(ed.unsaved, Some(crate::editor::Then::New));
+    assert_eq!(lines(&ed), before);
+    ed.answer_unsaved(crate::editor::UnsavedAnswer::Cancel);
+    assert_eq!(lines(&ed), before);
+    assert!(ed.session.dirty);
+    // Opening over them by command is refused unless told to discard.
+    let dir = temp_dir("unsaved");
+    let other = dir.join("Other.wss");
+    wordsmith_format::files::save(&other, &wordsmith_script::new_script()).unwrap();
+    ed.run("file.openPath", json!({"path": other}));
+    assert!(ed.message.contains("unsaved changes"), "{}", ed.message);
+    assert_eq!(lines(&ed), before);
+    // Closing asks too; Don't Save lets it close.
+    assert!(!ed.may_close());
+    assert_eq!(ed.unsaved, Some(crate::editor::Then::Close));
+    ed.answer_unsaved(crate::editor::UnsavedAnswer::DontSave);
+    assert!(ed.close_confirmed);
+    // Don't Save before New starts the new script.
+    let mut ed = editor();
+    type_scene(&ctx, &mut ed);
+    ed.run("file.new", json!({}));
+    ed.answer_unsaved(crate::editor::UnsavedAnswer::DontSave);
+    assert!(!ed.session.dirty);
+    assert_eq!(lines(&ed).len(), 1);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn save_in_the_prompt_saves_then_carries_on() {
+    let ctx = ctx();
+    let dir = temp_dir("prompt-save");
+    let mut ed = editor();
+    type_scene(&ctx, &mut ed);
+    ed.run("file.saveAsPath", json!({"path": dir.join("Draft.wss")}));
+    frame(&ctx, &mut ed, vec![text(" Again.")]);
+    let typed = lines(&ed);
+    ed.run("file.new", json!({}));
+    ed.answer_unsaved(crate::editor::UnsavedAnswer::Save);
+    assert_eq!(lines(&ed).len(), 1, "saved, then a new script");
+    let mut back = editor();
+    back.run("file.openPath", json!({"path": dir.join("Draft.wss")}));
+    assert_eq!(lines(&back), typed);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn importing_text_asks_whether_it_is_a_script() {
+    let dir = temp_dir("import");
+    let path = dir.join("notes.txt");
+    std::fs::write(&path, "INT. KITCHEN - NIGHT\n\nRain.\n\nANNA\nHello.\n").unwrap();
+    let mut ed = editor();
+    ed.run("file.openPath", json!({"path": path}));
+    let q = ed.import_question.clone().unwrap();
+    assert!(q.guess, "it looks like a script");
+    assert_eq!(lines(&ed).len(), 1, "nothing imported before the answer");
+    ed.answer_import(Some(true));
+    assert_eq!(lines(&ed), [l("SceneHeading", "INT. KITCHEN - NIGHT"), l("Action", "Rain."), l("Character", "ANNA"), l("Dialogue", "Hello.")]);
+    assert!(ed.session.dirty, "an import is a new, unsaved script");
+    assert_eq!(ed.window_title(), "notes • — Wordsmith Script");
+    assert!(ed.session.path.is_none(), "Save asks where: the text file is not overwritten");
+    let mut plain = editor();
+    plain.run("file.openPath", json!({"path": path}));
+    plain.answer_import(Some(false));
+    assert!(lines(&plain).iter().all(|(e, _)| e == "Action"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn exports_write_each_format() {
+    let ctx = ctx();
+    let dir = temp_dir("export");
+    let mut ed = editor();
+    type_scene(&ctx, &mut ed);
+    for (id, ext) in [("file.exportFountain", "fountain"), ("file.exportText", "txt"), ("file.exportRtf", "rtf"), ("file.exportHtml", "html")] {
+        ed.run(id, json!({"path": dir.join("Out")}));
+        assert_eq!(ed.message, "", "{id}");
+        assert!(dir.join(format!("Out.{ext}")).exists(), "{id}");
+    }
+    assert!(ed.session.dirty, "exporting is not saving");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn saves_make_backups_and_auto_save_waits_for_a_pause() {
+    let ctx = ctx();
+    let dir = temp_dir("autosave");
+    let mut ed = editor();
+    ed.backups.dir = Some(dir.join("Backups"));
+    type_scene(&ctx, &mut ed);
+    ed.run("file.saveAsPath", json!({"path": dir.join("Draft.wss")}));
+    assert_eq!(wordsmith_format::files::backups_of(&dir.join("Backups"), "Draft").len(), 1);
+    let t0 = std::time::Instant::now();
+    ed.tick(t0);
+    frame(&ctx, &mut ed, vec![text(" Typed.")]);
+    let wait = ed.tick(t0);
+    assert_eq!(wait, Some(std::time::Duration::from_secs(15 * 60)));
+    ed.tick(t0 + std::time::Duration::from_secs(14 * 60));
+    assert!(ed.session.dirty);
+    ed.tick(t0 + std::time::Duration::from_secs(15 * 60 + 1));
+    assert!(!ed.session.dirty, "auto-saved");
+    assert_eq!(wordsmith_format::files::backups_of(&dir.join("Backups"), "Draft").len(), 2);
+    let mut back = editor();
+    back.run("file.openPath", json!({"path": dir.join("Draft.wss")}));
+    assert_eq!(lines(&back), lines(&ed));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn preferences_round_trip_through_their_file() {
+    use crate::prefs::{Prefs, PrefsFile};
+    let dir = temp_dir("prefs");
+    let mut ed = editor();
+    ed.set_view(crate::editor::View::Speed);
+    ed.dark = true;
+    ed.autosave.every = std::time::Duration::from_secs(5 * 60);
+    ed.backups.keep = 50;
+    let t0 = std::time::Instant::now();
+    {
+        let (mut file, shown, problem) = PrefsFile::open(&dir);
+        assert!(problem.is_none() && shown == Prefs::default(), "no file yet: the defaults");
+        assert_eq!(file.save(&shown.of(&ed), t0, false), Ok(None));
+        // A second change within the interval waits; forcing writes it.
+        ed.dark = false;
+        assert!(file.save(&shown.of(&ed), t0, false).unwrap().is_some());
+        ed.dark = true;
+        assert_eq!(file.save(&shown.of(&ed), t0, true), Ok(None));
+    }
+    let (_, read, problem) = PrefsFile::open(&dir);
+    assert!(problem.is_none());
+    let mut fresh = editor();
+    read.apply(&mut fresh);
+    assert_eq!(fresh.view, crate::editor::View::Speed);
+    assert!(fresh.dark);
+    assert_eq!(fresh.autosave.every, std::time::Duration::from_secs(5 * 60));
+    assert_eq!(fresh.backups.keep, 50);
+    // Values out of range are brought back in.
+    let mut wild = Prefs::default();
+    wild.autosave.minutes = 0;
+    wild.backups.keep = 99_999;
+    wild.view.zoom = f32::NAN;
+    wild.apply(&mut fresh);
+    assert_eq!(fresh.autosave.every, std::time::Duration::from_secs(60));
+    assert_eq!(fresh.backups.keep, 10_000);
+    assert_eq!(fresh.zoom, 1.0);
+    // A missing key takes its default; a damaged file is moved aside.
+    std::fs::write(dir.join(PrefsFile::NAME), r#"{"view": {"dark": true}}"#).unwrap();
+    let (_, partial, problem) = PrefsFile::open(&dir);
+    assert!(problem.is_none() && partial.view.dark && partial.autosave == crate::prefs::AutoSavePrefs::default());
+    std::fs::write(dir.join(PrefsFile::NAME), "{ not json").unwrap();
+    let (_, damaged, problem) = PrefsFile::open(&dir);
+    assert!(problem.is_some() && damaged == Prefs::default());
+    assert!(dir.join("preferences.json.damaged").exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}

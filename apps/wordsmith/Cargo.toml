@@ -13,6 +13,9 @@ eframe.workspace = true
 egui.workspace = true
 craft-dialogs.workspace = true
 wordsmith-control-key.workspace = true
+# The personal dictionary's file (M4).
+craft-proof.workspace = true
+serde_json.workspace = true
 
 [lints]
 workspace = true

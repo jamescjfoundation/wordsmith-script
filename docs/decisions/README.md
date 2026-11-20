@@ -25,3 +25,4 @@ what would make us revisit it.
 | [0017](0017-native-format.md) | The native format |
 | [0018](0018-fountain.md) | Fountain reading and writing |
 | [0019](0019-import-rules.md) | Import classification rules (and the exports made to read back) |
+| [0020](0020-saving.md) | Saving, auto-save, backups and preferences |

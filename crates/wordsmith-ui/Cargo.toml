@@ -18,10 +18,13 @@ wordsmith-render.workspace = true
 egui.workspace = true
 raw-window-handle.workspace = true
 serde_json.workspace = true
+serde.workspace = true
 log.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 craft-dialogs.workspace = true
+# Crash-safe writes of the preferences file (M4).
+craft-atomic.workspace = true
 
 [lints]
 workspace = true
