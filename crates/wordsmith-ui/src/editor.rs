@@ -287,6 +287,8 @@ pub struct Editor {
     applied_theme: Option<(bool, bool)>,
     /// Open the scripts open at the last close when the app starts.
     pub reopen_last: bool,
+    /// The ribbon, side panels and File page.
+    pub chrome: crate::ribbon::Chrome,
 }
 
 impl Editor {
@@ -352,6 +354,7 @@ impl Editor {
             stats: Default::default(),
             applied_theme: None,
             reopen_last: false,
+            chrome: Default::default(),
         }
     }
 
@@ -876,6 +879,8 @@ impl Editor {
             && self.settings.is_none()
             && self.board.edit.is_none()
             && !crate::tools::has_keyboard(self)
+            && !self.chrome.keytips
+            && self.chrome.backstage.is_none()
             && !ui.ctx().text_edit_focused()
     }
 
@@ -1087,7 +1092,11 @@ impl Editor {
             m.set_focus_lock_filter(response.id, egui::EventFilter { tab: true, horizontal_arrows: true, vertical_arrows: true, escape: false })
         });
         let painter = ui.painter_at(area);
-        let (desk, paper) = if self.dark { (Color32::from_gray(24), Color32::from_gray(40)) } else { (Color32::from_gray(96), Color32::WHITE) };
+        let (desk, paper) = if self.dark {
+            (crate::theme::Tokens::of(true, self.extra_dark).canvas, Color32::from_gray(40))
+        } else {
+            (crate::theme::LIGHT.canvas, Color32::WHITE)
+        };
         painter.rect_filled(area, 0.0, desk);
 
         let mut origins: Vec<Rect> = Vec::with_capacity(layout.pages.len());
@@ -1416,28 +1425,28 @@ impl Editor {
             ui.ctx().set_theme(theme);
         }
         if self.applied_theme != Some((self.dark, self.extra_dark)) {
-            let mut v = if self.dark { egui::Visuals::dark() } else { egui::Visuals::light() };
-            if self.dark && self.extra_dark {
-                v.panel_fill = Color32::from_gray(6);
-                v.window_fill = Color32::from_gray(12);
-                v.extreme_bg_color = Color32::BLACK;
-                v.faint_bg_color = Color32::from_gray(14);
-            }
-            ui.ctx().set_visuals(v);
+            let tokens = crate::theme::Tokens::of(self.dark, self.extra_dark);
+            tokens.set(ui.ctx());
+            ui.ctx().set_visuals(crate::theme::visuals(&tokens));
             self.applied_theme = Some((self.dark, self.extra_dark));
         }
         // Tracked changes record the time.
         self.session.now = crate::now_secs();
         self.handle_keys(ui);
         if !self.focus_mode {
-            crate::chrome::menu_bar(self, ui);
-            crate::chrome::toolbar(self, ui);
+            crate::ribbon::show(self, ui);
             crate::chrome::find_bar(self, ui);
             crate::chrome::status_bar(self, ui);
             crate::workspace::tab_bar(self, ui);
             crate::tables::panel(self, ui);
             crate::strip::panel(self, ui);
             crate::workspace::split_panel(self, ui);
+        }
+        if self.chrome.backstage.is_some() {
+            egui::CentralPanel::default().show(ui, |ui| crate::backstage::show(self, ui));
+            self.suggestion_list(ui.ctx());
+            crate::dialogs::show(self, ui.ctx());
+            return;
         }
         egui::CentralPanel::default().show(ui, |ui| match self.structure {
             Some(crate::structure::Structure::Cards) => crate::structure::cards(self, ui),

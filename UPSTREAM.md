@@ -19,6 +19,8 @@ Apache-2.0. Each copied file keeps its header; changed files add
 | wordsmith-pdf | `crates/pdf` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; PDF creator and producer say Wordsmith Script; one golden hash re-recorded |
 | wordsmith-engine | `crates/engine` (parts) | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Trimmed to session, undo, registry, recovery and file-access confinement; see `docs/decisions/0006-engine-trim.md`. `file_access.rs` and `recovery/desktop.rs` are upstream with one-line changes; the rest is cut down from upstream files |
 | wordsmith-control-key | `crates/control-key` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Profile folder and variables renamed |
+| wordsmith-ui (`src/icons.rs`) | `crates/ui-egui/src/icons.rs` | `f8ec3cc0fa884369c4f3ebbd9ca3085398f5ec31` | 2026-11-20 | Library icons and the Discord icon cut; `wordcraft_doc` renamed (decision 0037) |
+| wordsmith-ui (`src/ribbon_fit.rs`) | `crates/ui-egui/src/ribbon_fit.rs` | `f8ec3cc0fa884369c4f3ebbd9ca3085398f5ec31` | 2026-11-20 | Tests that need WordCraft's app cut; `Id::unique` → `Id::new`; fixed language code (decision 0037) |
 | wordsmith-mcp | `crates/mcp` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Tools trimmed, one document per session, rebranded; see `docs/decisions/0007-mcp-trim.md` |
 
 ## Pinned dependencies

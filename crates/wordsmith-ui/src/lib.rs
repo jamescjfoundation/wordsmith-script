@@ -9,6 +9,7 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 pub mod autosave;
+pub mod backstage;
 pub mod board;
 pub mod chrome;
 pub mod dialogs;
@@ -16,15 +17,20 @@ pub mod editor;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod files;
 pub mod fonts;
+pub mod icons;
 pub mod keys;
 pub mod outline;
 pub mod prefs;
 pub mod production;
 pub mod reports;
+pub mod ribbon;
+pub mod ribbon_fit;
+pub mod script_icons;
 pub mod snapshot;
 pub mod strip;
 pub mod structure;
 pub mod tables;
+pub mod theme;
 pub mod tools;
 pub mod workspace;
 

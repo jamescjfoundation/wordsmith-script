@@ -1065,3 +1065,56 @@ fn tabs_split_keys_templates_and_statistics() {
     frame(&ctx, &mut ed, vec![]);
     assert!(ed.stats.window.is_some());
 }
+
+#[test]
+fn every_ribbon_command_is_registered() {
+    let reg = crate::registry();
+    let missing: Vec<&&str> = crate::ribbon::tabs::RIBBON_COMMANDS.iter().filter(|id| reg.get(id).is_none()).collect();
+    assert!(missing.is_empty(), "not registered: {missing:?}");
+    // Every command a ribbon icon is chosen for exists too.
+    for id in crate::ribbon::tabs::RIBBON_COMMANDS {
+        let _ = crate::script_icons::for_command(id);
+    }
+}
+
+#[test]
+fn the_ribbon_draws_every_tab_at_three_widths_and_in_every_theme() {
+    use crate::ribbon::Tab;
+    for (w, dark, extra) in [(800.0, false, false), (1280.0, true, false), (1920.0, true, true)] {
+        let ctx = ctx();
+        let mut ed = editor();
+        ed.dark = dark;
+        ed.extra_dark = extra;
+        for tab in [Tab::Write, Tab::Insert, Tab::Plan, Tab::Production, Tab::Review, Tab::View] {
+            ed.chrome.tab = tab;
+            let input = RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(w, 800.0))), ..Default::default() };
+            let mut out = ctx.run_ui(input, |ui| ed.ui(ui));
+            out.textures_delta.clear();
+        }
+        // The contextual tabs come with their views.
+        ed.structure = Some(crate::structure::Structure::Board);
+        assert!(crate::ribbon::tabs_now(&ed).contains(&Tab::Board));
+        ed.chrome.tab = Tab::Board;
+        frame(&ctx, &mut ed, vec![]);
+        ed.structure = None;
+        frame(&ctx, &mut ed, vec![]);
+        assert_eq!(ed.chrome.tab, Tab::Write, "the contextual tab went with its view");
+    }
+}
+
+#[test]
+fn key_tips_open_a_tab_and_run_a_control() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(&ctx, &mut ed, vec![key(Key::F10, Modifiers::NONE)]);
+    assert!(ed.chrome.keytips);
+    // V opens the View tab, whose first control (Page) has the letter A.
+    frame(&ctx, &mut ed, vec![text("v")]);
+    assert_eq!(ed.chrome.tab, crate::ribbon::Tab::View);
+    frame(&ctx, &mut ed, vec![]);
+    ed.set_view(crate::editor::View::Speed);
+    frame(&ctx, &mut ed, vec![text("a")]);
+    assert_eq!(ed.view, crate::editor::View::Page);
+    assert!(!ed.chrome.keytips);
+}

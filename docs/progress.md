@@ -52,3 +52,4 @@ One line per merge to `main`, newest last.
 | 2026-11-20 | m13/production | Dual dialogue, lock tools, scene number options, revision display, print choices and preview, sides, watermark, header/footer options, change tracking, comparison; decision 0035 |
 | 2026-11-20 | m14/workspace | Templates and text documents, Welcome window, recent files, reopen last, revert, merge, tabs, split views, zoom steps, extra dark, statistics, goals, sprints, own keys; decision 0036 |
 | 2026-11-20 | ui/plan | v0.3 plan for the interface: ribbon, side panels, backstage, status bar (docs only) |
+| 2026-11-20 | m15/frame | Tokens, icons, ribbon with every tab and key tips, quick-access row, status bar redone, menu bar optional; decision 0037 |
