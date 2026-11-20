@@ -65,6 +65,7 @@ fn sample() -> Result<Editor, String> {
 }
 
 fn shot(ed: &mut Editor, out: &Path, name: &str) -> Result<(), String> {
+    ed.forget_drawn_pages();
     let pic = wordsmith_ui::snapshot::render(ed, SIZE, PPP, Vec::new(), 4);
     let path = out.join(format!("{name}.png"));
     std::fs::write(&path, pic.to_png()).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -79,6 +80,16 @@ fn run(out: &Path) -> Result<(), String> {
     ed.chrome.right = Some(wordsmith_ui::ribbon::Panel::Scene);
     shot(&mut ed, out, "page-view")?;
     ed.chrome.right = None;
+    ed.chrome.tab = wordsmith_ui::ribbon::Tab::Production;
+    ed.chrome.right = Some(wordsmith_ui::ribbon::Panel::Revisions);
+    shot(&mut ed, out, "ribbon-production")?;
+    ed.chrome.tab = wordsmith_ui::ribbon::Tab::Review;
+    ed.chrome.right = Some(wordsmith_ui::ribbon::Panel::Element);
+    ed.chrome.left = Some(wordsmith_ui::ribbon::Panel::Characters);
+    shot(&mut ed, out, "ribbon-review")?;
+    ed.chrome.tab = wordsmith_ui::ribbon::Tab::Write;
+    ed.chrome.right = None;
+    ed.chrome.left = Some(wordsmith_ui::ribbon::Panel::Scenes);
     ed.structure = Some(Structure::Cards);
     shot(&mut ed, out, "index-cards")?;
     ed.structure = Some(Structure::Board);

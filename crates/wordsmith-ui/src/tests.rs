@@ -1172,3 +1172,24 @@ fn every_side_panel_draws_and_acts_through_commands() {
     assert_eq!(ed.chrome.left, Some(Panel::Characters));
     assert!(ed.panels.open.iter().any(|n| n == "ANNA"));
 }
+
+#[test]
+fn every_menu_command_is_on_the_ribbon_or_the_file_page() {
+    let src = include_str!("chrome.rs");
+    let menu = &src[src.find("pub fn menu_bar").unwrap_or(0)..src.find("pub fn toolbar").unwrap_or(src.len())];
+    let mut missing = Vec::new();
+    for piece in menu.split('"').skip(1).step_by(2) {
+        let is_id = piece.contains('.') && piece.chars().all(|c| c.is_ascii_alphanumeric() || c == '.') && !piece.ends_with('.');
+        // Queries the menus use to draw themselves, not commands they offer.
+        let query = matches!(piece, "format.state");
+        if is_id && !query && !crate::ribbon::tabs::RIBBON_COMMANDS.contains(&piece) && !crate::backstage::BACKSTAGE_COMMANDS.contains(&piece) {
+            missing.push(piece.to_string());
+        }
+    }
+    missing.dedup();
+    assert!(missing.is_empty(), "menu commands with no place on the ribbon or the File page: {missing:?}");
+    let reg = crate::registry();
+    for id in crate::backstage::BACKSTAGE_COMMANDS {
+        assert!(reg.get(id).is_some(), "{id}");
+    }
+}

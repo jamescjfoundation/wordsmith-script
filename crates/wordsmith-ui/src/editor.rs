@@ -594,6 +594,12 @@ impl Editor {
         }
     }
 
+    /// Forget the drawn page images (they belong to one egui context; the offscreen renderer
+    /// starts a new one for each picture).
+    pub fn forget_drawn_pages(&mut self) {
+        self.pages.clear();
+    }
+
     /// Forget everything shown for the script before (after a tab switch).
     fn reset_caches(&mut self) {
         self.paginated = None;
