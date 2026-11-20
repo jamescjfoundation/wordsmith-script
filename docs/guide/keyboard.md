@@ -26,6 +26,8 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | Command | Keys |
 | --- | --- |
 | Preferences… | `Mod+,` |
+| Print Preview | `Mod+Alt+P` |
+| Print… | `Mod+Alt+Shift+P` |
 | New Script | `Mod+N` |
 | Open… | `Mod+O` |
 | Print | `Mod+P` |
@@ -37,6 +39,7 @@ current). Custom elements can have keys of their own (Format › Element Setting
 
 | Command | Keys |
 | --- | --- |
+| Dual Dialogue | `Mod+Shift+D` |
 | Toggle Case | `Mod+Shift+K` |
 
 ## Format › Element
@@ -112,6 +115,12 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | Select Right | `Shift+Right` |
 | Select Up | `Shift+Up` |
 | Up | `Up` |
+
+## Production › Changes
+
+| Command | Keys |
+| --- | --- |
+| Track Changes | `Mod+Shift+C` |
 
 ## Tools
 

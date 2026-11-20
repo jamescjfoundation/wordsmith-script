@@ -362,18 +362,18 @@ fn lock_a_blue_revision_and_print_only_the_revised_pages() {
     // Revise a line on page 2 (block 40 is on it).
     s.sel = wordsmith_engine::Selection::caret(wordsmith_doc::Pos { off: 4, path: wordsmith_doc::Path::top(40), ..s.sel.focus.clone() });
     s.run("text.insert", &json!({"text": " (changed)"})).unwrap();
-    let (bytes, pages) = super::pdf_with(&s.doc, super::PrintOptions { revised_only: true, marks: true }).unwrap();
+    let (bytes, pages) = super::pdf_with(&s.doc, super::PrintOptions { revised_only: true, marks: true, ..Default::default() }).unwrap();
     assert_eq!(pages, 1);
     let rows = &page_rows(&bytes);
     assert_eq!(rows.len(), 1, "only the revised page");
     assert_eq!(rows[0][0], "2.", "with its locked label");
     assert!(rows[0].iter().any(|l| l.contains("(changed)") && l.ends_with(" *")), "{:#?}", rows[0]);
     // Without marks.
-    let (bytes, _) = super::pdf_with(&s.doc, super::PrintOptions { revised_only: true, marks: false }).unwrap();
+    let (bytes, _) = super::pdf_with(&s.doc, super::PrintOptions { revised_only: true, marks: false, ..Default::default() }).unwrap();
     assert!(page_rows(&bytes)[0].iter().all(|l| !l.ends_with(" *")));
     // With nothing revised there is nothing to print.
     s.run("revision.clearRevised", &json!({"all": true})).unwrap();
-    assert!(super::pdf_with(&s.doc, super::PrintOptions { revised_only: true, marks: true }).is_err());
+    assert!(super::pdf_with(&s.doc, super::PrintOptions { revised_only: true, marks: true, ..Default::default() }).is_err());
 }
 
 #[test]
@@ -396,4 +396,39 @@ fn hidden_outline_elements_leave_the_pages() {
     assert_eq!(s.doc.body.len(), 5);
     s.run("outline.show", &json!({})).unwrap();
     assert!(rows(&s).iter().any(|l| l == "ACT ONE"));
+}
+
+#[test]
+fn print_choices_pick_pages_sides_and_sets() {
+    use serde_json::json;
+    let mut s = crate::new_session();
+    let mut body = Vec::new();
+    for (n, who) in [(1, "ANNA"), (2, "BEN"), (3, "ANNA")] {
+        body.push(wordsmith_doc::para_block(crate::template::paragraph("SceneHeading", &format!("INT. ROOM {n} - DAY"))));
+        body.push(wordsmith_doc::para_block(crate::template::paragraph("Character", who)));
+        body.push(wordsmith_doc::para_block(crate::template::paragraph("Dialogue", "Words.")));
+        let mut brk = crate::template::paragraph("Action", "End of the scene.");
+        brk.props.page_break_before = Some(false);
+        body.push(wordsmith_doc::para_block(brk));
+    }
+    s.doc.body = body;
+    // One scene a page.
+    for i in [4, 8] {
+        if let Some(wordsmith_doc::Block::Para(p)) = s.doc.body.get_mut(i).map(std::sync::Arc::make_mut) {
+            p.props.page_break_before = Some(true);
+        }
+    }
+    let pages = |o: super::PrintOptions| super::pdf_with(&s.doc, o).map(|r| r.1);
+    assert_eq!(pages(super::PrintOptions::default()), Ok(3));
+    assert_eq!(pages(super::PrintOptions { pages: Some((2, 3)), ..Default::default() }), Ok(2));
+    assert_eq!(pages(super::PrintOptions { scenes: Some((1, 1)), ..Default::default() }), Ok(1));
+    assert_eq!(pages(super::PrintOptions { reverse: true, ..Default::default() }), Ok(3));
+    assert_eq!(pages(super::PrintOptions { unrevised_only: true, ..Default::default() }), Ok(3));
+    assert!(pages(super::PrintOptions { set: Some(0), ..Default::default() }).is_err(), "nothing revised in set 0");
+    // Sides: ANNA's two scenes, keeping their numbers 1 and 3.
+    let sides = super::sides_of(&s.doc, "anna");
+    assert_eq!(crate::scene_numbers::numbers(&sides), ["1", "3"]);
+    assert_eq!(pages(super::PrintOptions { sides: Some("Anna".into()), ..Default::default() }), Ok(2));
+    let o = super::PrintOptions::of(&json!({"pages": [5, 2], "sides": " ", "reverse": true}));
+    assert_eq!((o.pages, o.sides, o.reverse), (Some((2, 5)), None, true));
 }

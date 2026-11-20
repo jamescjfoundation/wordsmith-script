@@ -47,13 +47,18 @@ pub fn add_style(out: &mut Document) {
 /// A text box `w` points wide at `x` points from the page's left edge, `y` points below the top
 /// of its paragraph's space before, holding `lines` (an empty line is kept as a blank line).
 pub fn margin_box(out: &mut Document, x: f32, y: f32, w: f32, lines: &[String], align: Align) -> InlineObject {
+    margin_box_in(out, x, y, w, lines, align, None)
+}
+
+/// [`margin_box`] in `font` (the margin style's when `None`).
+pub fn margin_box_in(out: &mut Document, x: f32, y: f32, w: f32, lines: &[String], align: Align, font: Option<&str>) -> InlineObject {
     add_style(out);
     let blocks = lines
         .iter()
         .map(|l| {
             // A blank line still takes its line.
             let text = if l.is_empty() { "\u{a0}" } else { l.as_str() };
-            let mut p = Paragraph::with_text(text, CharProps::default());
+            let mut p = Paragraph::with_text(text, CharProps { font: font.map(str::to_string), ..CharProps::default() });
             p.props.style = Some(MARGIN_STYLE.into());
             p.props.align = Some(align);
             para_block(p)

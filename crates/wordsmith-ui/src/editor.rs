@@ -554,7 +554,13 @@ impl Editor {
                 Some("about") => self.show_about = true,
                 Some("recover") => self.recovery = Some(RecoveryPrompt),
                 Some("exportPdf") => self.ask_export_path(),
-                Some("open" | "import" | "saveAs" | "export" | "macrosFrom") => self.ask_file(&req),
+                Some("open" | "import" | "saveAs" | "export" | "macrosFrom" | "compare") => {
+                    if req["open"] == "compare" {
+                        // The comparison opens in the window.
+                        self.dialog_params = Some(json!({"open": true, "discard": self.discard_ok}));
+                    }
+                    self.ask_file(&req)
+                }
                 Some("importQuestion") => {
                     let path = req.get("path").and_then(Value::as_str).unwrap_or("").to_string();
                     let guess = req.get("guess").and_then(Value::as_bool).unwrap_or(true);
@@ -1244,6 +1250,8 @@ impl Editor {
         if ui.ctx().theme() != theme {
             ui.ctx().set_theme(theme);
         }
+        // Tracked changes record the time.
+        self.session.now = crate::now_secs();
         self.handle_keys(ui);
         if !self.focus_mode {
             crate::chrome::menu_bar(self, ui);

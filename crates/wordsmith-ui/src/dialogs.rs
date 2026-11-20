@@ -475,12 +475,20 @@ fn header_footer_window(ed: &mut Editor, ctx: &Context) {
                 ui.end_row();
             }
         });
-        flag_field(ui, &mut form, "firstPage", "Show on page 1");
+        flag_field(ui, &mut form, "firstPage", "Show the header on page 1");
+        let mut footer_first = form["firstPageFooter"].as_bool().unwrap_or(form["firstPage"].as_bool().unwrap_or(false));
+        if ui.checkbox(&mut footer_first, "Show the footer on page 1").changed() {
+            form["firstPageFooter"] = json!(footer_first);
+        }
+        ui.horizontal(|ui| {
+            ui.label("First page number");
+            number_field(ui, &mut form, "startPage", 1.0..=100_000.0, 1.0);
+        });
         ui.horizontal(|ui| {
             ui.label("Date");
             text_field(ui, &mut form, "date");
         });
-        ui.label("Fields: {page}, {scene}, {date}, {title}, {revision}. An empty date is today's.");
+        ui.label("Fields: {page}, {scene}, {date}, {title}, {revision}, {collated} (every revision set used). An empty date is today's.");
         if ui.button("Apply").clicked() {
             apply = true;
         }
@@ -548,8 +556,8 @@ fn revisions_window(ed: &mut Editor, ctx: &Context) {
         if rev.sets.is_empty() {
             ui.label("No revision sets yet. Next Revision starts Blue (the original draft is White).");
         }
-        egui::Grid::new("revision_sets").num_columns(6).show(ui, |ui| {
-            for h in ["Current", "Name", "Color", "Bold", "Underline", "Strike"] {
+        egui::Grid::new("revision_sets").num_columns(7).show(ui, |ui| {
+            for h in ["Current", "Name", "Color", "Bold", "Underline", "Strike", "Mark"] {
                 ui.label(egui::RichText::new(h).strong());
             }
             ui.end_row();
@@ -572,6 +580,11 @@ fn revisions_window(ed: &mut Editor, ctx: &Context) {
                         action = Some(("revision.configure", json!({"set": {"index": i, key: b}})));
                     }
                 }
+                // The set's own margin mark (empty: the script's).
+                let mut mark = set.mark.clone();
+                if ui.add(egui::TextEdit::singleline(&mut mark).desired_width(24.0).char_limit(1)).changed() {
+                    action = Some(("revision.configure", json!({"set": {"index": i, "mark": mark}})));
+                }
                 ui.end_row();
             }
         });
@@ -592,6 +605,10 @@ fn revisions_window(ed: &mut Editor, ctx: &Context) {
             }
             ui.label("from the page's left edge");
         });
+        let mut active_only = rev.active_only;
+        if ui.checkbox(&mut active_only, "Show only the current set (otherwise every set, collated)").changed() {
+            action = Some(("revision.configure", json!({"activeOnly": active_only})));
+        }
         let mut show_marks = rev.show_marks;
         if ui.checkbox(&mut show_marks, "Show revision marks").changed() {
             action = Some(("revision.configure", json!({"showMarks": show_marks})));

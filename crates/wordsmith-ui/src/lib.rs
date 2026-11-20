@@ -19,6 +19,7 @@ pub mod fonts;
 pub mod keys;
 pub mod outline;
 pub mod prefs;
+pub mod production;
 pub mod reports;
 pub mod snapshot;
 pub mod strip;
@@ -97,6 +98,9 @@ pub fn ui_specs() -> Vec<CommandSpec> {
         CommandSpec::new("view.character", "Character Details…", "Script", |s, _| open(s, "tool.character")).pure(),
         CommandSpec::new("view.highlights", "Show Character Highlights", "View", |s, _| open(s, "tool.highlights")).pure(),
         CommandSpec::new("view.strip", "Structure Strip", "View", |s, _| open(s, "tool.strip")).key("Mod+Alt+S").pure(),
+        CommandSpec::new("view.print", "Print…", "File", |s, _| open(s, "tool.print")).key("Mod+Alt+Shift+P").pure(),
+        CommandSpec::new("view.watermark", "Watermark…", "Production", |s, _| open(s, "tool.watermark")).pure(),
+        CommandSpec::new("view.sceneNumbers", "Scene Numbers…", "Production", |s, _| open(s, "tool.sceneNumbers")).pure(),
         CommandSpec::new("view.reformat", "Reformat…", "Tools", |s, _| open(s, "tool.reformat")).pure(),
         CommandSpec::new("app.preferences", "Preferences…", "File", |s, _| open(s, "preferences")).key("Mod+,").pure(),
         CommandSpec::new("edit.copy", "Copy", "Edit", |s, _| {

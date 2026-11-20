@@ -26,6 +26,13 @@ behavior; every addition below is new.
   in beats; story board and index cards as PDF; cards per row and script-text
   cards; the structure strip above the script; nesting bars for outline
   paragraphs.
+- **Production (M13):** dual dialogue (also from Fountain `^`); relock, move a
+  locked page's start, lock or unlock one page, edit a page number; scene
+  number options (start, restart, A2 letters, sides, font, one number by
+  hand); a mark per revision set and current-set-only display; print ranges,
+  one set, unrevised pages, sides, reverse, collated copies and preview; a
+  watermark; header and footer start page and `{collated}`; change tracking;
+  comparing two versions.
 
 ## 0.1.0 (2026-11-19)
 

@@ -42,6 +42,9 @@ pub struct Session {
     pub registry: Arc<Registry>,
     /// Author name for notes and revisions.
     pub author: String,
+    /// The time now (Unix seconds), set by the front end; 0 when it has no clock. Tracked
+    /// changes record it.
+    pub now: u64,
     /// Last message for the status bar / agents.
     pub status: String,
     /// How the document is laid out for the editor: page view is [`ViewMode::Print`]; the

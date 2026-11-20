@@ -322,3 +322,144 @@ pub fn specs() -> Vec<CommandSpec> {
 
 #[cfg(test)]
 mod tests;
+
+/// The page the caret is on, the pages and their labels, as (index, page start, labels).
+fn caret_page(s: &Session) -> Result<(usize, Option<(usize, usize)>, Vec<Vec<Piece>>, Vec<String>), CmdError> {
+    let pag = crate::paginate::paginate(&s.doc);
+    let (pages, labels) = label_pages(&s.doc, pag.pages.clone());
+    let labels = labels.unwrap_or_else(|| (1..=pages.len()).map(|n| n.to_string()).collect());
+    let (cb, co) = (s.sel.focus.path.last(), s.sel.focus.off);
+    let mut index = 0;
+    for (i, pg) in pages.iter().enumerate() {
+        if let Some((b, o)) = page_start(pg)
+            && (b, o) <= (cb, co)
+        {
+            index = i;
+        }
+    }
+    let start = pages.get(index).and_then(|p| page_start(p));
+    Ok((index, start, pages, labels))
+}
+
+/// The lock that starts the caret's page, if that page is locked.
+fn caret_lock(s: &Session) -> Result<Option<u32>, CmdError> {
+    let (_, start, _, _) = caret_page(s)?;
+    let marks = lock_marks(&s.doc);
+    Ok(start.and_then(|st| marks.iter().find(|(_, pos)| **pos == st).map(|(id, _)| *id)))
+}
+
+/// Put lock `id`'s mark on the first character at or after (`block`, `off`).
+fn place_mark(doc: &mut Document, id: u32, block: usize, off: usize) -> Result<(), CmdError> {
+    remove_marks(doc, &|x| x == id)?;
+    let len = doc
+        .body
+        .get(block)
+        .and_then(|b| b.as_para())
+        .and_then(|p| p.text.get(off..))
+        .and_then(|t| t.chars().next())
+        .map(char::len_utf8)
+        .ok_or_else(|| CmdError::Failed("a locked page must start with some text".into()))?;
+    let a = Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(block), off };
+    let b = Pos { off: off + len, ..a.clone() };
+    doc.format_range(&a, &b, &|c| c.page_lock = Some(id))?;
+    Ok(())
+}
+
+/// `lock.relock`: unlock every page and lock them again as they are now (numbered 1, 2, 3).
+fn relock(s: &mut Session, v: &Value) -> CmdResult {
+    unlock_all(s, v)?;
+    lock(s, v)
+}
+
+/// `lock.adjustBreak {by}`: move the caret page's locked start down (`by` 1) or up (-1) one
+/// paragraph.
+fn adjust_break(s: &mut Session, v: &Value) -> CmdResult {
+    let by = v.get("by").and_then(Value::as_i64).unwrap_or(1);
+    let id = caret_lock(s)?.ok_or_else(|| CmdError::Failed("the caret's page is not a locked page".into()))?;
+    let (block, _) = lock_marks(&s.doc).get(&id).copied().ok_or_else(|| CmdError::Failed("the locked page's start is gone".into()))?;
+    let mut to = block as i64;
+    // The next (or previous) paragraph with text.
+    loop {
+        to += by.signum();
+        if to < 0 || to as usize >= s.doc.body.len() {
+            return Err(CmdError::Failed("there is no paragraph to move the page's start to".into()));
+        }
+        if s.doc.body.get(to as usize).and_then(|b| b.as_para()).is_some_and(|p| !p.text.is_empty()) {
+            break;
+        }
+    }
+    let marks = lock_marks(&s.doc);
+    if marks.values().any(|(b, _)| *b == to as usize) {
+        return Err(CmdError::Failed("that paragraph already starts a locked page".into()));
+    }
+    place_mark(&mut s.doc, id, to as usize, 0)?;
+    Ok(json!({"block": to}))
+}
+
+/// `lock.setLabel {label}`: change the caret's locked page's number.
+fn set_label(s: &mut Session, v: &Value) -> CmdResult {
+    let label: String = v.get("label").and_then(Value::as_str).unwrap_or("").chars().filter(|c| c.is_ascii_alphanumeric()).take(24).collect();
+    if label.is_empty() {
+        return Err(CmdError::Params("`label` is letters and digits, such as 12 or 12A".into()));
+    }
+    let id = caret_lock(s)?.ok_or_else(|| CmdError::Failed("the caret's page is not a locked page".into()))?;
+    let mut locks = Locks::of_doc(&s.doc);
+    if locks.pages.iter().any(|l| l.id != id && l.label.eq_ignore_ascii_case(&label)) {
+        return Err(CmdError::Params(format!("another locked page is already {label}")));
+    }
+    if let Some(l) = locks.pages.iter_mut().find(|l| l.id == id) {
+        l.label = label.clone();
+    }
+    locks.store(&mut s.doc);
+    Ok(json!({"label": label}))
+}
+
+/// `lock.lockPage`: start a new locked page at the caret's paragraph, lettered after the page
+/// it is on (12A, or the next letters free).
+fn lock_page(s: &mut Session, _: &Value) -> CmdResult {
+    let mut locks = Locks::of_doc(&s.doc);
+    if !locks.is_locked() {
+        return Err(CmdError::Failed("lock the pages first".into()));
+    }
+    let (index, _, _, labels) = caret_page(s)?;
+    let block = s.sel.focus.path.last();
+    if lock_marks(&s.doc).values().any(|(b, _)| *b == block) {
+        return Err(CmdError::Failed("this paragraph already starts a locked page".into()));
+    }
+    let base = labels.get(index).cloned().unwrap_or_default();
+    let used: Vec<String> = labels.iter().chain(locks.pages.iter().map(|l| &l.label)).cloned().collect();
+    let label = (1..).map(|n| format!("{base}{}", letters(n))).find(|l| !used.contains(l)).unwrap_or_default();
+    let id = locks.pages.iter().map(|l| l.id).chain(lock_marks(&s.doc).keys().copied()).max().unwrap_or(0) + 1;
+    place_mark(&mut s.doc, id, block, 0)?;
+    let at = locks.pages.iter().position(|l| l.label == base).map_or(locks.pages.len(), |i| i + 1);
+    locks.pages.insert(at, Lock { id, label: label.clone(), level: locks.level().max(1) });
+    locks.store(&mut s.doc);
+    Ok(json!({"label": label}))
+}
+
+/// `lock.unlockPage`: unlock the caret's page, so its text flows back onto the page before.
+fn unlock_page(s: &mut Session, _: &Value) -> CmdResult {
+    let id = caret_lock(s)?.ok_or_else(|| CmdError::Failed("the caret's page is not a locked page".into()))?;
+    let mut locks = Locks::of_doc(&s.doc);
+    if locks.pages.first().is_some_and(|l| l.id == id) {
+        return Err(CmdError::Failed("the first locked page stays locked; use Unlock All Pages".into()));
+    }
+    remove_marks(&mut s.doc, &|x| x == id)?;
+    locks.pages.retain(|l| l.id != id);
+    locks.store(&mut s.doc);
+    Ok(Value::Null)
+}
+
+fn is_locked(s: &Session) -> Option<&'static str> {
+    if Locks::of_doc(&s.doc).is_locked() { None } else { Some("the pages are not locked") }
+}
+
+pub fn more_specs() -> Vec<CommandSpec> {
+    vec![
+        CommandSpec::new("lock.relock", "Relock Pages", "Production", relock).when(is_locked),
+        CommandSpec::new("lock.adjustBreak", "Move Page Start", "Production", adjust_break).params(r#"{"by": 1 | -1}"#).when(is_locked),
+        CommandSpec::new("lock.setLabel", "Edit Page Number", "Production", set_label).params(r#"{"label": string}"#).when(is_locked),
+        CommandSpec::new("lock.lockPage", "Lock New Page Here", "Production", lock_page).when(is_locked),
+        CommandSpec::new("lock.unlockPage", "Unlock This Page", "Production", unlock_page).when(is_locked),
+    ]
+}

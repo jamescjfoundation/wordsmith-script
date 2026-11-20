@@ -45,6 +45,9 @@ pub struct RevisionSet {
     pub bold: bool,
     pub underline: bool,
     pub strike: bool,
+    /// This set's own margin mark; empty for the script's.
+    #[serde(default)]
+    pub mark: String,
 }
 
 impl Default for RevisionSet {
@@ -62,7 +65,7 @@ pub fn cycle_set(n: usize) -> RevisionSet {
         Some(r) => format!("{r} {base}"),
         None => format!("{base} {}", round + 1),
     };
-    RevisionSet { name, color: color.into(), bold: false, underline: false, strike: false }
+    RevisionSet { name, color: color.into(), bold: false, underline: false, strike: false, mark: String::new() }
 }
 
 /// The revision settings.
@@ -83,11 +86,24 @@ pub struct Revisions {
     pub color_pages: bool,
     /// Show the margin marks (off: print without marks).
     pub show_marks: bool,
+    /// Show only the current set's marks, styles and page colors (SPEC-2 11.3 "active set");
+    /// off shows every set, collated.
+    #[serde(default)]
+    pub active_only: bool,
 }
 
 impl Default for Revisions {
     fn default() -> Self {
-        Revisions { sets: Vec::new(), current: String::new(), mode: false, mark: "*".into(), mark_at: 8.0, color_pages: false, show_marks: true }
+        Revisions {
+            sets: Vec::new(),
+            current: String::new(),
+            mode: false,
+            mark: "*".into(),
+            mark_at: 8.0,
+            color_pages: false,
+            show_marks: true,
+            active_only: false,
+        }
     }
 }
 
@@ -109,6 +125,7 @@ impl Revisions {
         r.sets.truncate(MAX_SETS);
         for s in &mut r.sets {
             s.name = s.name.chars().filter(|c| !c.is_control()).take(40).collect();
+            s.mark = s.mark.chars().find(|c| !c.is_control() && !c.is_whitespace()).map_or(String::new(), |c| c.to_string());
             if parse_color(&s.color).is_none() {
                 s.color = "#FFFFFF".into();
             }
@@ -259,6 +276,9 @@ fn configure(s: &mut Session, v: &Value) -> CmdResult {
     if let Some(b) = v.get("showMarks").and_then(Value::as_bool) {
         r.show_marks = b;
     }
+    if let Some(b) = v.get("activeOnly").and_then(Value::as_bool) {
+        r.active_only = b;
+    }
     if let Some(set) = v.get("set") {
         let i = set
             .get("index")
@@ -278,6 +298,9 @@ fn configure(s: &mut Session, v: &Value) -> CmdResult {
         if let Some(c) = set.get("color").and_then(Value::as_str) {
             parse_color(c).ok_or_else(|| CmdError::Params("`color` must be #RRGGBB".into()))?;
             target.color = c.trim().to_uppercase();
+        }
+        if let Some(m) = set.get("mark").and_then(Value::as_str) {
+            target.mark = m.chars().find(|c| !c.is_whitespace() && !c.is_control()).map_or(String::new(), |c| c.to_string());
         }
         for (key, field) in [("bold", &mut target.bold), ("underline", &mut target.underline), ("strike", &mut target.strike)] {
             if let Some(b) = set.get(key).and_then(Value::as_bool) {
@@ -358,14 +381,50 @@ fn rollback(s: &mut Session, v: &Value) -> CmdResult {
     Ok(json!({"current": r.current}))
 }
 
+/// The next (or previous) revised text from the caret, wrapping round.
+fn step(s: &mut Session, forward: bool) -> CmdResult {
+    let mut spots: Vec<(usize, usize, usize)> = Vec::new();
+    for (i, b) in s.doc.body.iter().enumerate() {
+        let Some(p) = b.as_para() else { continue };
+        if p.mark.revised.is_some() && !p.run_ranges().any(|(_, c)| c.revised.is_some()) {
+            spots.push((i, 0, 0));
+        }
+        let mut last_end = None;
+        for (r, c) in p.run_ranges() {
+            if c.revised.is_none() {
+                continue;
+            }
+            match spots.last_mut() {
+                Some(x) if x.0 == i && last_end == Some(r.start) => x.2 = r.end,
+                _ => spots.push((i, r.start, r.end)),
+            }
+            last_end = Some(r.end);
+        }
+    }
+    let here = (s.sel.focus.path.last(), s.sel.focus.off);
+    let pick = if forward {
+        spots.iter().find(|x| (x.0, x.1) > here).or_else(|| spots.first())
+    } else {
+        let (a, _) = s.sel.ordered();
+        let start = (a.path.last(), a.off);
+        spots.iter().rev().find(|x| (x.0, x.1) < start).or_else(|| spots.last())
+    };
+    let Some(&(block, a, b)) = pick else { return Err(CmdError::Failed("nothing is marked revised".into())) };
+    let at = |off| wordsmith_doc::Pos { story: wordsmith_doc::StoryRef::Body, path: wordsmith_doc::Path::top(block), off };
+    s.sel = wordsmith_engine::Selection { anchor: at(a), focus: at(b) };
+    wordsmith_engine::cmd::sel_result(s)
+}
+
 pub fn specs() -> Vec<CommandSpec> {
     vec![
+        CommandSpec::new("revision.gotoNext", "Next Revised Text", "Production", |s, _| step(s, true)).pure(),
+        CommandSpec::new("revision.gotoPrevious", "Previous Revised Text", "Production", |s, _| step(s, false)).pure(),
         CommandSpec::new("revision.settings", "Revision Settings", "Production", settings).pure(),
         CommandSpec::new("revision.mode", "Revision Mode", "Production", mode).params(r#"{"on"?: bool}"#),
         CommandSpec::new("revision.next", "Next Revision", "Production", next),
         CommandSpec::new("revision.setCurrent", "Set Current Revision", "Production", set_current).params(r#"{"name": string}"#),
         CommandSpec::new("revision.configure", "Revision Options", "Production", configure)
-            .params(r##"{"mark"?: char, "markAt"?: inches, "colorPages"?: bool, "showMarks"?: bool, "set"?: {"index": number, "name"?, "color"?: "#RRGGBB", "bold"?, "underline"?, "strike"?}}"##),
+            .params(r##"{"mark"?: char, "markAt"?: inches, "colorPages"?: bool, "showMarks"?: bool, "activeOnly"?: bool, "set"?: {"index": number, "name"?, "color"?: "#RRGGBB", "bold"?, "underline"?, "strike"?, "mark"?: char}}"##),
         CommandSpec::new("revision.markRevised", "Mark Revised", "Production", mark_revised),
         CommandSpec::new("revision.clearRevised", "Clear Revised", "Production", clear_revised).params(r#"{"all"?: bool}"#),
         CommandSpec::new("revision.rollback", "Roll Back Revisions", "Production", rollback).params(r#"{"to": set name, or "" for the original}"#),

@@ -28,7 +28,7 @@ pub const REVISIONS_KEY: &str = "wordsmith.revisions";
 /// Longest text one slot keeps, characters.
 pub const MAX_SLOT_CHARS: usize = 200;
 /// Fields a slot may use.
-pub const FIELDS: [&str; 5] = ["page", "scene", "date", "title", "revision"];
+pub const FIELDS: [&str; 6] = ["page", "scene", "date", "title", "revision", "collated"];
 
 /// One band's three slots.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -60,11 +60,22 @@ pub struct HeaderFooter {
     pub first_page: bool,
     /// The text `{date}` shows; empty for today's date.
     pub date: String,
+    /// Show the footer on page 1, apart from the header (`None`: as `first_page` says).
+    pub first_page_footer: Option<bool>,
+    /// The number of the script's first page (unlocked scripts), 1 by default.
+    pub start_page: u32,
 }
 
 impl Default for HeaderFooter {
     fn default() -> Self {
-        HeaderFooter { header: Band { right: "{page}.".into(), ..Band::default() }, footer: Band::default(), first_page: false, date: String::new() }
+        HeaderFooter {
+            header: Band { right: "{page}.".into(), ..Band::default() },
+            footer: Band::default(),
+            first_page: false,
+            date: String::new(),
+            first_page_footer: None,
+            start_page: 1,
+        }
     }
 }
 
@@ -77,6 +88,7 @@ impl HeaderFooter {
         h.header = h.header.cleaned();
         h.footer = h.footer.cleaned();
         h.date = h.date.chars().filter(|c| !c.is_control()).take(MAX_SLOT_CHARS).collect();
+        h.start_page = h.start_page.clamp(1, 100_000);
         h
     }
 
@@ -106,7 +118,9 @@ fn set(s: &mut Session, v: &Value) -> CmdResult {
                     merged[k][slot] = text.clone();
                 }
             }
-            ("firstPage", Value::Bool(_)) | ("date", Value::String(_)) => merged[k] = val.clone(),
+            ("firstPage", Value::Bool(_)) | ("date", Value::String(_)) | ("firstPageFooter", Value::Bool(_) | Value::Null) => merged[k] = val.clone(),
+            // A window's number field may send 5.0.
+            ("startPage", Value::Number(n)) => merged[k] = serde_json::json!(n.as_f64().unwrap_or(1.0).clamp(1.0, 100_000.0) as u32),
             _ => return Err(CmdError::Params(format!("unknown or bad setting `{k}`"))),
         }
     }
@@ -121,7 +135,7 @@ pub fn specs() -> Vec<CommandSpec> {
     vec![
         CommandSpec::new("headerFooter.get", "Header and Footer Settings", "Script", get).pure(),
         CommandSpec::new("headerFooter.set", "Set Header and Footer", "Script", set).params(
-            r#"{"header"?: {"left"?, "center"?, "right"?: text with {page} {scene} {date} {title} {revision}}, "footer"?: {...}, "firstPage"?: bool, "date"?: string (empty for today)}"#,
+            r#"{"header"?: {"left"?, "center"?, "right"?: text with {page} {scene} {date} {title} {revision} {collated}}, "footer"?: {...}, "firstPage"?: bool, "firstPageFooter"?: bool|null, "startPage"?: number, "date"?: string (empty for today)}"#,
         ),
     ]
 }
@@ -154,6 +168,18 @@ fn field(instr: &str) -> InlineObject {
 fn push_slot(p: &mut Paragraph, text: &str, doc: &Document, date: &str, label: Option<&str>) {
     let scene_style = Elements::of_doc(doc).id_of(ElementKind::SceneHeading).to_string();
     let revision = doc.app_data.get(REVISIONS_KEY).and_then(|v| v.get("current")).and_then(Value::as_str).unwrap_or("").to_string();
+    // Every revision set with marks in the script, oldest first.
+    let collated = {
+        let rev = crate::revisions::Revisions::of_doc(doc);
+        let mut used = std::collections::BTreeSet::new();
+        for b in &doc.body {
+            if let Some(p) = b.as_para() {
+                used.extend(p.mark.revised);
+                used.extend(p.run_ranges().filter_map(|(_, c)| c.revised));
+            }
+        }
+        used.into_iter().filter_map(|i| rev.set(i).map(|s| s.name.clone())).collect::<Vec<_>>().join(", ")
+    };
     let mut rest = text;
     while !rest.is_empty() {
         let next = rest.find('{').and_then(|open| rest[open..].find('}').map(|close| (open, open + close)));
@@ -187,6 +213,9 @@ fn push_slot(p: &mut Paragraph, text: &str, doc: &Document, date: &str, label: O
             }
             "revision" => {
                 let _ = p.insert_text(at, &revision, &CharProps::default());
+            }
+            "collated" => {
+                let _ = p.insert_text(at, &collated, &CharProps::default());
             }
             _ => {
                 let _ = p.insert_text(at, &rest[open..=close], &CharProps::default());
@@ -248,15 +277,20 @@ pub fn apply(doc: &mut Document, labels: Option<&[String]>) {
         let header = header.map(|p| doc.add_part(PartKind::Header, vec![para_block(p)]));
         let footer = footer.map(|p| doc.add_part(PartKind::Footer, vec![para_block(p)]));
         let first_header = (!h.first_page).then(|| doc.add_part(PartKind::Header, vec![para_block(blank())]));
-        let first_footer = (!h.first_page).then(|| doc.add_part(PartKind::Footer, vec![para_block(blank())]));
+        let footer_first = h.first_page_footer.unwrap_or(h.first_page);
+        let first_footer = (!footer_first).then(|| doc.add_part(PartKind::Footer, vec![para_block(blank())]));
         let s = &mut doc.last_section;
+        if h.start_page != 1 {
+            s.page_num_start = Some(h.start_page);
+            s.page_num_set = true;
+        }
         s.headers.default = header;
         s.footers.default = footer;
         s.headers.even = None;
         s.footers.even = None;
-        s.title_page = !h.first_page;
+        s.title_page = !h.first_page || !footer_first;
         s.headers.first = if h.first_page { header } else { first_header };
-        s.footers.first = if h.first_page { footer } else { first_footer };
+        s.footers.first = if footer_first { footer } else { first_footer };
         s.header = 0.5 * template::INCH;
         s.footer = 0.5 * template::INCH;
         return;
@@ -286,7 +320,8 @@ pub fn apply(doc: &mut Document, labels: Option<&[String]>) {
         } else {
             doc.add_part(PartKind::Header, vec![para_block(blank())])
         });
-        sect.footers.default = Some(if show && !h.footer.is_empty() {
+        let show_footer = page > 0 || h.first_page_footer.unwrap_or(h.first_page);
+        sect.footers.default = Some(if show_footer && !h.footer.is_empty() {
             let line = band_line(&h.footer, doc, &date, Some(label));
             doc.add_part(PartKind::Footer, vec![para_block(line)])
         } else {
@@ -348,5 +383,23 @@ mod tests {
         let p = band_line(&Band { left: "A".into(), center: "{scene}".into(), right: "{page}.".into() }, &doc, "", None);
         assert_eq!(p.text.matches('\t').count(), 2);
         assert_eq!(p.objects.len(), 2, "scene and page are live fields");
+    }
+}
+
+#[cfg(test)]
+mod spec2_tests {
+    use crate::commands::new_session;
+    use serde_json::json;
+
+    #[test]
+    fn start_page_first_page_footer_and_collated_sets() {
+        let mut s = new_session();
+        s.run("headerFooter.set", &json!({"startPage": 5.0, "firstPageFooter": true, "footer": {"left": "{collated}"}})).unwrap();
+        let h = super::HeaderFooter::of_doc(&s.doc);
+        assert_eq!((h.start_page, h.first_page_footer), (5, Some(true)));
+        let pag = crate::paginate::paginate(&s.doc);
+        assert_eq!(pag.doc.last_section.page_num_start, Some(5));
+        assert!(pag.doc.last_section.footers.first.is_some());
+        assert!(s.run("headerFooter.set", &json!({"startPage": "five"})).is_err());
     }
 }
