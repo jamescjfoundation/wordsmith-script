@@ -23,8 +23,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use wordsmith_doc::props::{CharProps, Underline};
-use wordsmith_doc::{CoreProps, Document, Paragraph, SectionProps, StyleSheet, para_block};
+use wordsmith_doc::{CoreProps, Document, SectionProps, StyleSheet, para_block};
 use wordsmith_script::template::new_script;
 use wordsmith_script::{ElementKind, Elements};
 
@@ -78,93 +77,6 @@ impl std::fmt::Display for ReadError {
     }
 }
 
-/// Text with emphasis markers and escapes for one paragraph (runs → `**`, `*`, `_`).
-fn encode_text(p: &Paragraph) -> String {
-    let mut out = String::with_capacity(p.text.len() + 8);
-    let (mut b, mut i, mut u) = (false, false, false);
-    for (range, props) in p.run_ranges() {
-        let nb = props.bold == Some(true);
-        let ni = props.italic == Some(true);
-        let nu = props.underline.is_some_and(|x| x != Underline::None);
-        // Each marker toggles its own style, so order does not matter.
-        if nb != b {
-            out.push_str("**");
-        }
-        if ni != i {
-            out.push('*');
-        }
-        if nu != u {
-            out.push('_');
-        }
-        (b, i, u) = (nb, ni, nu);
-        for c in p.text.get(range).unwrap_or("").chars() {
-            match c {
-                '\\' | '*' | '_' => {
-                    out.push('\\');
-                    out.push(c);
-                }
-                // Inline objects (pictures, fields) are not kept in a script.
-                wordsmith_doc::para::OBJ => {}
-                _ => out.push(c),
-            }
-        }
-    }
-    if b {
-        out.push_str("**");
-    }
-    if i {
-        out.push('*');
-    }
-    if u {
-        out.push('_');
-    }
-    out
-}
-
-/// A paragraph of element `style` from encoded text: markers toggle bold, italic and underline.
-fn decode_text(style: &str, text: &str) -> Paragraph {
-    let mut p = Paragraph::new();
-    p.props.style = Some(style.to_string());
-    let (mut b, mut i, mut u) = (false, false, false);
-    let mut piece = String::new();
-    let flush = |p: &mut Paragraph, piece: &mut String, b: bool, i: bool, u: bool| {
-        if piece.is_empty() {
-            return;
-        }
-        let props =
-            CharProps { bold: b.then_some(true), italic: i.then_some(true), underline: u.then_some(Underline::Single), ..CharProps::default() };
-        let at = p.len();
-        let _ = p.insert_text(at, piece, &props);
-        piece.clear();
-    };
-    let mut chars = text.chars().peekable();
-    while let Some(c) = chars.next() {
-        match c {
-            '\\' => {
-                if let Some(n) = chars.next() {
-                    piece.push(n);
-                }
-            }
-            '*' if chars.peek() == Some(&'*') => {
-                chars.next();
-                flush(&mut p, &mut piece, b, i, u);
-                b = !b;
-            }
-            '*' => {
-                flush(&mut p, &mut piece, b, i, u);
-                i = !i;
-            }
-            '_' => {
-                flush(&mut p, &mut piece, b, i, u);
-                u = !u;
-            }
-            _ => piece.push(c),
-        }
-    }
-    flush(&mut p, &mut piece, b, i, u);
-    p
-}
-
 /// The file's text for `doc`.
 pub fn write(doc: &Document) -> String {
     let mut page = doc.last_section.clone();
@@ -192,7 +104,7 @@ pub fn write(doc: &Document) -> String {
             out.push_str(" page-break");
         }
         out.push('\n');
-        let encoded = encode_text(p);
+        let encoded = crate::emphasis::encode(p);
         // An empty paragraph has no text lines at all.
         let text_lines: Vec<&str> = if encoded.is_empty() { Vec::new() } else { encoded.split('\n').collect() };
         for line in text_lines {
@@ -326,7 +238,7 @@ pub fn read(text: &str) -> Result<Document, ReadError> {
         .map(|(id, attrs, text)| {
             // A paragraph of an element the file does not define reads as General.
             let style = if elements.get(&id).is_some() { id } else { general.clone() };
-            let mut p = decode_text(&style, &text);
+            let mut p = crate::emphasis::decode(&style, &text, false);
             if attrs.iter().any(|a| a == "page-break") {
                 p.props.page_break_before = Some(true);
             }

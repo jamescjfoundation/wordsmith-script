@@ -158,3 +158,17 @@ fn golden_scripts_survive_the_native_format() {
         assert_eq!(native::write(&back), saved, "{name}: stable bytes");
     }
 }
+
+#[test]
+fn golden_scripts_survive_a_fountain_round_trip() {
+    for name in SCRIPTS {
+        let text = std::fs::read_to_string(dir().join(format!("{name}.fountain"))).expect("golden script");
+        let doc = fountain::read(&text).expect("reads").doc;
+        let written = fountain::write(&doc);
+        let back = fountain::read(&written).expect("our Fountain reads");
+        let lines = |d: &wordsmith_doc::Document| wordsmith_script::commands::text::body_lines(&wordsmith_script::session_for(d.clone()));
+        assert_eq!(lines(&back.doc), lines(&doc), "{name}");
+        assert_eq!(back.doc.core.title, doc.core.title, "{name}: title");
+        assert_eq!(fountain::write(&back.doc), written, "{name}: stable text");
+    }
+}
