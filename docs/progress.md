@@ -28,3 +28,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m4/save | Open, import, save, save as, exports in the editor; unsaved-changes prompt; auto-save (15 min, 10 s idle); timestamped backups; preferences file; all writes atomic; M4 complete; 1681 tests pass |
 | 2026-11-19 | m5/title-page | Title page fields, window and printed page before the script (numbered from 1 after it); Fountain and PDF import read it; `wordsmith-cli convert`; 1687 tests pass |
 | 2026-11-19 | m5/headers | Header and footer bands with {page}, {scene}, {date}, {title}, {revision}; first-page rule; window; golden PDFs unchanged; 1692 tests pass |
+| 2026-11-19 | m5/scenes | Scene commands (list, move, heading, summary, go to); index cards and scene view with drag to reorder; 1697 tests pass |

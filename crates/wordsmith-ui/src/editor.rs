@@ -240,6 +240,10 @@ pub struct Editor {
     pub title_page: Option<Value>,
     /// The header and footer settings being edited, while their window is open.
     pub header_footer: Option<Value>,
+    /// The index cards or the scene view, when one shows instead of the script.
+    pub structure: Option<crate::structure::Structure>,
+    /// The scene listing, for one revision.
+    scene_cache: Option<(u64, Arc<Vec<Value>>)>,
     /// The revision auto-save last saw, to notice changes.
     seen_rev: u64,
 }
@@ -286,6 +290,8 @@ impl Editor {
             show_prefs: false,
             title_page: None,
             header_footer: None,
+            structure: None,
+            scene_cache: None,
             seen_rev: 0,
         }
     }
@@ -306,6 +312,20 @@ impl Editor {
             return;
         }
         self.run_now(id, params);
+    }
+
+    /// The script's scenes as `scene.list` gives them, kept for one revision.
+    pub fn scene_list(&mut self) -> Arc<Vec<Value>> {
+        let rev = self.session.rev();
+        if let Some((r, list)) = &self.scene_cache
+            && *r == rev
+        {
+            return list.clone();
+        }
+        let list: Vec<Value> = self.session.run("scene.list", &json!({})).ok().and_then(|v| v.as_array().cloned()).unwrap_or_default();
+        let list = Arc::new(list);
+        self.scene_cache = Some((rev, list.clone()));
+        list
     }
 
     /// Run a command without asking about unsaved changes.
@@ -512,6 +532,8 @@ impl Editor {
                 Some("view.page") => self.set_view(View::Page),
                 Some("view.normal") => self.set_view(View::Normal),
                 Some("view.speed") => self.set_view(View::Speed),
+                Some("view.cards") => self.structure = Some(crate::structure::Structure::Cards),
+                Some("view.scenes") => self.structure = Some(crate::structure::Structure::Scenes),
                 Some("view.dark") => self.dark = !self.dark,
                 Some("view.typewriter") => self.typewriter = !self.typewriter,
                 Some("view.focus") => self.focus_mode = !self.focus_mode,
@@ -634,6 +656,18 @@ impl Editor {
         }
         let events = ui.input(|i| i.events.clone());
         for event in events {
+            // In the card and scene views, typing does not reach the script: only shortcuts with
+            // a modifier run, and Escape goes back to the script.
+            if self.structure.is_some() {
+                match &event {
+                    Event::Key { key: egui::Key::Escape, pressed: true, .. } => {
+                        self.structure = None;
+                        continue;
+                    }
+                    Event::Key { modifiers, .. } if modifiers.command || modifiers.ctrl || modifiers.alt => {}
+                    _ => continue,
+                }
+            }
             match event {
                 Event::Text(text) => self.run("text.insert", json!({"text": text})),
                 Event::Paste(text) => self.run("text.insert", json!({"text": text})),
@@ -689,6 +723,7 @@ impl Editor {
     /// Switch views. Up and Down follow the view's lines.
     pub fn set_view(&mut self, view: View) {
         self.view = view;
+        self.structure = None;
         self.session.view_mode = match view {
             View::Page => wordsmith_layout::ViewMode::Print,
             View::Normal | View::Speed => wordsmith_layout::ViewMode::Web,
@@ -1003,8 +1038,12 @@ impl Editor {
             crate::chrome::find_bar(self, ui);
             crate::chrome::status_bar(self, ui);
         }
-        egui::CentralPanel::default().show(ui, |ui| {
-            egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| self.page_view(ui));
+        egui::CentralPanel::default().show(ui, |ui| match self.structure {
+            Some(crate::structure::Structure::Cards) => crate::structure::cards(self, ui),
+            Some(crate::structure::Structure::Scenes) => crate::structure::scene_view(self, ui),
+            None => {
+                egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| self.page_view(ui));
+            }
         });
         self.suggestion_list(ui.ctx());
         crate::dialogs::show(self, ui.ctx());

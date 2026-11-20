@@ -27,3 +27,4 @@ what would make us revisit it.
 | [0019](0019-import-rules.md) | Import classification rules (and the exports made to read back) |
 | [0020](0020-saving.md) | Saving, auto-save, backups and preferences |
 | [0021](0021-title-page-and-headers.md) | Title page, headers and footers |
+| [0022](0022-scenes-and-tables.md) | Index cards, scene view and tables |
