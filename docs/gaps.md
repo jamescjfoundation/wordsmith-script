@@ -86,3 +86,14 @@ on 2026-11-19) and are `#[ignore]`d until we decide how to supply it:
   yet. Only the macOS gate has been run locally. Copied tests that read system fonts may behave differently on Linux and Windows runners without craft-fonts.
 - The minimum Rust version (1.95) is declared but not tested in CI; local and
   CI builds use current stable.
+
+## Imports (M4, decision 0019)
+
+- Emphasis (bold, italic, underline) is not kept by the plain-text, RTF and
+  PDF imports; only Fountain and the native format keep it.
+- A PDF page cannot show two things: a scene heading with no intro that ends
+  in punctuation reads back as Action in capitals, and a paragraph split
+  across a page reads back as two paragraphs. Line breaks inside a paragraph
+  become spaces.
+- PDFs with scene numbers in the margins (M6) and title pages (M5) are not
+  handled yet; a scanned PDF is refused (no text recognition).

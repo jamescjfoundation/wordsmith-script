@@ -102,12 +102,12 @@ fn styled(id: &str, text: &str) -> Paragraph {
     crate::emphasis::decode(id, text, true)
 }
 
-fn is_upper(line: &str) -> bool {
+pub(crate) fn is_upper(line: &str) -> bool {
     line.chars().any(char::is_alphabetic) && !line.chars().any(char::is_lowercase)
 }
 
 /// A scene heading's text and number, if `line` is one.
-fn scene_heading(line: &str) -> Option<(String, Option<String>)> {
+pub(crate) fn scene_heading(line: &str) -> Option<(String, Option<String>)> {
     let (body, number) = match (line.rfind('#'), line.trim_end().ends_with('#')) {
         (Some(_), true) => {
             let t = line.trim_end();

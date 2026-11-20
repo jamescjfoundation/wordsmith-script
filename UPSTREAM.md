@@ -25,7 +25,7 @@ Apache-2.0. Each copied file keeps its header; changed files add
 
 | Source | Pin | Crates |
 | --- | --- | --- |
-| craft-libs | `rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a"` (the commit WordCraft pins) | every craft-libs crate we use, plus the patched `krilla` |
+| craft-libs | `rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a"` (the commit WordCraft pins) | every craft-libs crate we use, plus the patched `krilla` and the patched Hayro reader crates (`hayro-syntax`, `hayro-interpret`, `hayro-cmap`, `hayro-postscript`, `hayro-jbig2`) that craft-pdf's reader needs |
 | craft-libs v0.1.0 | no git tag exists; see `docs/decisions/0004-craft-libs-pins.md` | craft-atomic, craft-settings, craft-quit, craft-print, craft-ui (not used yet) |
 
 Build inputs WordCraft's CI supplies and we do not yet (see `docs/gaps.md`):

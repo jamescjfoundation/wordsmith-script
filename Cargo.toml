@@ -72,6 +72,7 @@ craft-pdf = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93
 craft-dialogs = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 craft-mcp-server = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 craft-zip = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
+craft-rtf = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a", version = "=0.1.0" }
 
 # Foundation (versions as WordCraft pins them)
 kurbo = { version = "0.13", features = ["serde"] }
@@ -141,3 +142,10 @@ debug = 0
 # during unwinding is rejected. Same pin as WordCraft.
 [patch.crates-io]
 krilla = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a" }
+# Required by craft-pdf's reader (PDF import, M4): craft-libs carries a patched Hayro snapshot
+# (limits, cancellation, malformed-file fixes; vendor/README.craft-reader.md there). Same pin.
+hayro-syntax = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a" }
+hayro-interpret = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a" }
+hayro-cmap = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a" }
+hayro-postscript = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a" }
+hayro-jbig2 = { git = "https://github.com/storytold/craft-libs", rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a" }

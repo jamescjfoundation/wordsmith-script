@@ -172,3 +172,53 @@ fn golden_scripts_survive_a_fountain_round_trip() {
         assert_eq!(fountain::write(&back.doc), written, "{name}: stable text");
     }
 }
+
+#[test]
+fn golden_scripts_come_back_from_their_pdfs() {
+    // Line breaks inside a paragraph are not visible in a PDF: compare with them as spaces.
+    let flat = |d: &wordsmith_doc::Document| {
+        wordsmith_script::commands::text::body_lines(&wordsmith_script::session_for(d.clone()))
+            .into_iter()
+            .map(|(e, t)| (e, t.split_whitespace().collect::<Vec<_>>().join(" ")))
+            .collect::<Vec<_>>()
+    };
+    for name in SCRIPTS {
+        let text = std::fs::read_to_string(dir().join(format!("{name}.fountain"))).expect("golden script");
+        let doc = fountain::read(&text).expect("reads").doc;
+        let bytes = wordsmith_script::export::pdf(&doc).expect("pdf");
+        let back = wordsmith_format::import::pdf(&bytes).expect("imports");
+        let (want, got) = (flat(&doc), flat(&back));
+        if let Some(d) = std::env::var_os("DUMP_IMPORT") {
+            let dump = |v: &Vec<(String, String)>| v.iter().map(|(e, t)| format!("{e}\t{t}\n")).collect::<String>();
+            let d = std::path::PathBuf::from(d);
+            let _ = std::fs::write(d.join(format!("{name}.want")), dump(&want));
+            let _ = std::fs::write(d.join(format!("{name}.got")), dump(&got));
+        }
+        // Two things a page cannot show (decision 0019): a heading with no intro that ends in
+        // punctuation looks exactly like Action in capitals, and a paragraph split across a
+        // page looks like two. Everything else must match.
+        let (mut ambiguous, mut splits) = (0, 0);
+        let (mut i, mut j) = (0, 0);
+        while i < want.len() && j < got.len() {
+            let (w, g) = (&want[i], &got[j]);
+            if w == g {
+            } else if w.0 == "SceneHeading" && g.0 == "Action" && w.1 == g.1 && w.1.ends_with(['.', '!', '?', '"', '-', ':', ';', ',']) {
+                ambiguous += 1;
+            } else if let Some(next) = got.get(j + 1)
+                && w.0 == g.0
+                && next.0 == g.0
+                && w.1 == format!("{} {}", g.1, next.1)
+            {
+                splits += 1;
+                j += 1;
+            } else {
+                panic!("{name}: paragraph {i}: {w:?} came back as {g:?}");
+            }
+            i += 1;
+            j += 1;
+        }
+        assert_eq!((i, j), (want.len(), got.len()), "{name}: every paragraph accounted for");
+        eprintln!("{name}: {} paragraphs; {ambiguous} punctuated headings read as Action; {splits} split by a page", want.len());
+        assert!(ambiguous + splits <= want.len() / 50, "{name}: too many ambiguities");
+    }
+}
