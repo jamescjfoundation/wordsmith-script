@@ -56,15 +56,78 @@ pub fn write_file(path: &str, bytes: &[u8]) -> Result<(), String> {
     }
 }
 
+/// What to print or export.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PrintOptions {
+    /// Only the pages with revised text (no title page).
+    pub revised_only: bool,
+    /// The revision marks in the margins.
+    pub marks: bool,
+}
+
+impl Default for PrintOptions {
+    fn default() -> Self {
+        PrintOptions { revised_only: false, marks: true }
+    }
+}
+
+impl PrintOptions {
+    fn of(v: &Value) -> Self {
+        PrintOptions {
+            revised_only: v.get("revisedOnly").and_then(Value::as_bool).unwrap_or(false),
+            marks: v.get("marks").and_then(Value::as_bool).unwrap_or(true),
+        }
+    }
+}
+
+/// The PDF of `doc` as `opts` ask, and how many pages it has.
+pub fn pdf_with(doc: &Document, opts: PrintOptions) -> Result<(Vec<u8>, usize), String> {
+    let doc = if opts.marks {
+        std::borrow::Cow::Borrowed(doc)
+    } else {
+        let mut copy = doc.clone();
+        let mut r = crate::revisions::Revisions::of_doc(&copy);
+        r.show_marks = false;
+        r.store(&mut copy);
+        std::borrow::Cow::Owned(copy)
+    };
+    let pag = paginate(&doc);
+    if !opts.revised_only {
+        let bytes = printed(&doc, &pag)?;
+        return Ok((bytes, pag.pages.len()));
+    }
+    let pages: Vec<usize> = pag.page_revisions.iter().enumerate().filter(|(_, r)| r.is_some()).map(|(i, _)| i).collect();
+    if pages.is_empty() {
+        return Err("no page has revised text".into());
+    }
+    let n = pages.len();
+    let bytes = wordsmith_pdf::export_layout(&pag.doc, &pag.layout, &PdfOptions { pages: Some(pages), ..PdfOptions::default() })
+        .map_err(|e| e.to_string())?;
+    Ok((bytes, n))
+}
+
 fn export_pdf(s: &mut Session, v: &Value) -> CmdResult {
     let path = p::req_str(v, "path")?.to_string();
     if !path.to_lowercase().ends_with(".pdf") {
         return Err(CmdError::Params("`path` must end in .pdf".into()));
     }
-    let pag = paginate(&s.doc);
-    let bytes = printed(&s.doc, &pag).map_err(CmdError::Failed)?;
+    let (bytes, pages) = pdf_with(&s.doc, PrintOptions::of(v)).map_err(CmdError::Failed)?;
     write_file(&path, &bytes).map_err(CmdError::Failed)?;
-    Ok(json!({"path": path, "pages": pag.pages.len(), "bytes": bytes.len()}))
+    Ok(json!({"path": path, "pages": pages, "bytes": bytes.len()}))
+}
+
+/// `file.exportRevisedPdf {path}`: export only the revised pages.
+fn export_revised_pdf(s: &mut Session, v: &Value) -> CmdResult {
+    let mut v = v.clone();
+    v["revisedOnly"] = json!(true);
+    export_pdf(s, &v)
+}
+
+/// `file.printRevised`: print only the revised pages.
+fn print_revised(s: &mut Session, v: &Value) -> CmdResult {
+    let mut v = if v.is_object() { v.clone() } else { json!({}) };
+    v["revisedOnly"] = json!(true);
+    print(s, &v)
 }
 
 /// The `lp` arguments for a print job: the printer (else the default), copies and title; the
@@ -128,17 +191,27 @@ fn print(s: &mut Session, v: &Value) -> CmdResult {
         return Err(CmdError::Params(format!("`copies` is 1 to {MAX_COPIES}")));
     }
     let printer = p::str(v, "printer");
-    let pag = paginate(&s.doc);
-    let bytes = printed(&s.doc, &pag).map_err(CmdError::Failed)?;
+    let (bytes, pages) = pdf_with(&s.doc, PrintOptions::of(v)).map_err(CmdError::Failed)?;
     let title = if s.doc.core.title.is_empty() { "Script".to_string() } else { s.doc.core.title.clone() };
     let job = send_to_printer(&bytes, printer, copies as u32, &title).map_err(CmdError::Failed)?;
-    Ok(json!({"job": job, "pages": pag.pages.len()}))
+    Ok(json!({"job": job, "pages": pages}))
 }
 
 pub fn specs() -> Vec<CommandSpec> {
     vec![
-        CommandSpec::new("file.exportPdf", "Export PDF", "File", export_pdf).params(r#"{"path": string ending in .pdf}"#).pure(),
-        CommandSpec::new("file.print", "Print", "File", print).params(r#"{"printer"?: string, "copies"?: 1-999}"#).key("Mod+P").pure(),
+        CommandSpec::new("file.exportPdf", "Export PDF", "File", export_pdf)
+            .params(r#"{"path": string ending in .pdf, "revisedOnly"?: bool, "marks"?: bool}"#)
+            .pure(),
+        CommandSpec::new("file.exportRevisedPdf", "Export Revised Pages", "File", export_revised_pdf)
+            .params(r#"{"path": string ending in .pdf, "marks"?: bool}"#)
+            .pure(),
+        CommandSpec::new("file.print", "Print", "File", print)
+            .params(r#"{"printer"?: string, "copies"?: 1-999, "revisedOnly"?: bool, "marks"?: bool}"#)
+            .key("Mod+P")
+            .pure(),
+        CommandSpec::new("file.printRevised", "Print Revised Pages", "File", print_revised)
+            .params(r#"{"printer"?: string, "copies"?: 1-999, "marks"?: bool}"#)
+            .pure(),
     ]
 }
 

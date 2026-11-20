@@ -315,6 +315,8 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds, labe
                 if newest.is_some() {
                     page_newest = page_newest.max(newest);
                     set_styles(&mut para, &rev);
+                }
+                if newest.is_some() && rev.show_marks {
                     let y = out.styles.resolve_para(&para.props).space_before.max(0.0);
                     let lines: Vec<String> = flags.iter().map(|f| if *f { rev.mark.clone() } else { String::new() }).collect();
                     let mark = super::margin::margin_box(&mut out, rev.mark_at * template::INCH, y, 0.5 * template::INCH, &lines, Align::Left);

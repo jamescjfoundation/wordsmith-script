@@ -85,8 +85,9 @@ fn scenes_table(ed: &mut Editor, ui: &mut Ui, act: &mut Option<Act>) {
     let scenes = ed.scene_list();
     let pag = ed.paginated();
     let mut editing = ed.table_edit.clone();
-    egui::Grid::new("scenes_table").striped(true).num_columns(5).show(ui, |ui| {
-        for h in ["#", "Heading", "Page", "Characters", "Summary"] {
+    let eighths = wordsmith_script::reports::scene_eighths(&ed.session.doc, &pag);
+    egui::Grid::new("scenes_table").striped(true).num_columns(6).show(ui, |ui| {
+        for h in ["#", "Heading", "Page", "Length", "Characters", "Summary"] {
             ui.label(RichText::new(h).strong());
         }
         ui.end_row();
@@ -106,6 +107,7 @@ fn scenes_table(ed: &mut Editor, ui: &mut Ui, act: &mut Option<Act>) {
             if ui.link(page.map(|p| p.to_string()).unwrap_or_default()).on_hover_text("Go to the scene").clicked() {
                 *act = Some(Act::Open(i));
             }
+            ui.label(eighths.get(i).map(|e| wordsmith_script::reports::format_eighths(*e)).unwrap_or_default());
             let who: Vec<&str> = sc["characters"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
             ui.add(egui::Label::new(who.join(", ")).truncate());
             cell(ui, &mut editing, (Table::Scenes, i, "summary"), sc["summary"].as_str().unwrap_or(""), act);

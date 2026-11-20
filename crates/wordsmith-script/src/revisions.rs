@@ -81,11 +81,13 @@ pub struct Revisions {
     pub mark_at: f32,
     /// Color whole pages in PDF output with the newest set on them.
     pub color_pages: bool,
+    /// Show the margin marks (off: print without marks).
+    pub show_marks: bool,
 }
 
 impl Default for Revisions {
     fn default() -> Self {
-        Revisions { sets: Vec::new(), current: String::new(), mode: false, mark: "*".into(), mark_at: 8.0, color_pages: false }
+        Revisions { sets: Vec::new(), current: String::new(), mode: false, mark: "*".into(), mark_at: 8.0, color_pages: false, show_marks: true }
     }
 }
 
@@ -254,6 +256,9 @@ fn configure(s: &mut Session, v: &Value) -> CmdResult {
     if let Some(b) = v.get("colorPages").and_then(Value::as_bool) {
         r.color_pages = b;
     }
+    if let Some(b) = v.get("showMarks").and_then(Value::as_bool) {
+        r.show_marks = b;
+    }
     if let Some(set) = v.get("set") {
         let i = set
             .get("index")
@@ -360,7 +365,7 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("revision.next", "Next Revision", "Production", next),
         CommandSpec::new("revision.setCurrent", "Set Current Revision", "Production", set_current).params(r#"{"name": string}"#),
         CommandSpec::new("revision.configure", "Revision Options", "Production", configure)
-            .params(r##"{"mark"?: char, "markAt"?: inches, "colorPages"?: bool, "set"?: {"index": number, "name"?, "color"?: "#RRGGBB", "bold"?, "underline"?, "strike"?}}"##),
+            .params(r##"{"mark"?: char, "markAt"?: inches, "colorPages"?: bool, "showMarks"?: bool, "set"?: {"index": number, "name"?, "color"?: "#RRGGBB", "bold"?, "underline"?, "strike"?}}"##),
         CommandSpec::new("revision.markRevised", "Mark Revised", "Production", mark_revised),
         CommandSpec::new("revision.clearRevised", "Clear Revised", "Production", clear_revised).params(r#"{"all"?: bool}"#),
         CommandSpec::new("revision.rollback", "Roll Back Revisions", "Production", rollback).params(r#"{"to": set name, or "" for the original}"#),

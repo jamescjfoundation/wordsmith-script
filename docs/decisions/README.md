@@ -32,3 +32,4 @@ what would make us revisit it.
 | [0024](0024-revisions.md) | Revisions |
 | [0025](0025-scene-numbers.md) | Scene numbers |
 | [0026](0026-page-locking.md) | Page locking and the page-label scheme |
+| [0027](0027-reports-and-revised-pages.md) | Revised pages, scene lengths and the character report |
