@@ -25,6 +25,10 @@ struct App {
     prefs: Option<(PrefsFile, Prefs)>,
     /// The personal dictionary's file.
     dictionary: Option<PathBuf>,
+    /// The settings folder (statistics are kept there).
+    settings: Option<PathBuf>,
+    /// When the statistics were last written.
+    stats_saved: Instant,
 }
 
 impl App {
@@ -53,10 +57,41 @@ impl App {
             craft_proof::load_user_dictionary(&words);
             dictionary = Some(words);
         }
+        let settings = wordsmith_control_key::settings_dir();
+        if let Some(dir) = &settings {
+            editor.stats.data = wordsmith_ui::workspace::file::load(dir);
+        }
+        let last_open = prefs.as_ref().map(|(_, p)| p.workspace.last_open.clone()).unwrap_or_default();
         if let Some(path) = open {
             editor.run("file.openPath", json!({"path": path}));
+        } else if editor.reopen_last && !last_open.is_empty() {
+            // The scripts open at the last close, each in its tab.
+            for (i, path) in last_open.iter().enumerate() {
+                if i > 0 {
+                    editor.new_tab();
+                }
+                editor.run("file.openPath", json!({"path": path}));
+            }
+            editor.switch_tab(0);
+        } else if editor.tools.show_start_on_launch {
+            editor.tools.start = true;
         }
-        App { editor, offered_recovery: false, prefs, dictionary }
+        App { editor, offered_recovery: false, prefs, dictionary, settings, stats_saved: Instant::now() }
+    }
+
+    /// Write the statistics when they changed (at most once a minute, unless `force`).
+    fn save_stats(&mut self, force: bool) {
+        let Some(dir) = &self.settings else { return };
+        if !self.editor.stats.dirty || (!force && self.stats_saved.elapsed() < std::time::Duration::from_secs(60)) {
+            return;
+        }
+        match wordsmith_ui::workspace::file::save(dir, &self.editor.stats.data) {
+            Ok(()) => {
+                self.editor.stats.dirty = false;
+                self.stats_saved = Instant::now();
+            }
+            Err(e) => self.editor.message = format!("Writing statistics could not be saved: {e}"),
+        }
     }
 
     /// Keep the preferences file up to date with what the editor shows.
@@ -99,6 +134,10 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         }
         self.save_prefs(Some(ctx), false);
+        self.save_stats(false);
+        if wordsmith_ui::workspace::sprint_left(&self.editor).is_some() {
+            ctx.request_repaint_after(std::time::Duration::from_secs(1));
+        }
         ctx.send_viewport_cmd(egui::ViewportCommand::Title(self.editor.window_title()));
     }
 
@@ -110,6 +149,7 @@ impl eframe::App for App {
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.editor.session.finish_recovery();
         self.save_prefs(None, true);
+        self.save_stats(true);
         if let Some(words) = &self.dictionary
             && let Err(e) = craft_proof::save_user_dictionary(words, &[])
         {

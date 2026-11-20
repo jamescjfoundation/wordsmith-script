@@ -65,12 +65,48 @@ pub const MAX_IDLE_SECONDS: u32 = 600;
 /// Most backups kept per script (SPEC: up to 10,000).
 pub const MAX_BACKUPS: u32 = 10_000;
 
+/// The workspace: recent scripts, what opens at launch, the writer, keys (SPEC-2 2, 19).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct WorkspacePrefs {
+    pub recent: Vec<String>,
+    /// Open the scripts that were open when the app last closed.
+    pub reopen_last: bool,
+    /// The scripts open when the app last closed.
+    pub last_open: Vec<String>,
+    /// Show the start window when the app starts with no script to open.
+    pub show_start: bool,
+    /// The writer's name, for notes and tracked changes.
+    pub writer: String,
+    pub extra_dark: bool,
+    /// The writer's own keys: shortcut → command id ("" turns a key off).
+    pub keys: std::collections::BTreeMap<String, String>,
+}
+
+impl Default for WorkspacePrefs {
+    fn default() -> Self {
+        WorkspacePrefs {
+            recent: Vec::new(),
+            reopen_last: false,
+            last_open: Vec::new(),
+            show_start: true,
+            writer: String::new(),
+            extra_dark: false,
+            keys: Default::default(),
+        }
+    }
+}
+
+/// Most keys of the writer's own kept.
+pub const MAX_KEYS: usize = 500;
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Prefs {
     pub view: ViewPrefs,
     pub autosave: AutoSavePrefs,
     pub backups: BackupPrefs,
+    pub workspace: WorkspacePrefs,
 }
 
 impl Prefs {
@@ -90,6 +126,16 @@ impl Prefs {
         ed.autosave.idle = Duration::from_secs(u64::from(self.autosave.idle_seconds.clamp(1, MAX_IDLE_SECONDS)));
         ed.backups.enabled = self.backups.enabled;
         ed.backups.keep = self.backups.keep.clamp(1, MAX_BACKUPS) as usize;
+        let w = &self.workspace;
+        ed.recent = w.recent.iter().filter(|r| !r.is_empty() && r.len() < 4_096).take(crate::workspace::MAX_RECENT).cloned().collect();
+        ed.extra_dark = w.extra_dark;
+        ed.keys = w.keys.iter().take(MAX_KEYS).filter(|(k, v)| k.len() <= 40 && v.len() <= 80).map(|(k, v)| (k.clone(), v.clone())).collect();
+        ed.tools.show_start_on_launch = w.show_start;
+        ed.reopen_last = w.reopen_last;
+        let writer: String = w.writer.chars().filter(|c| !c.is_control()).take(80).collect();
+        if !writer.trim().is_empty() {
+            ed.session.author = writer.trim().to_string();
+        }
     }
 
     /// The preferences `ed` shows now; the backups folder stays as `self` has it.
@@ -116,6 +162,15 @@ impl Prefs {
                 enabled: ed.backups.enabled,
                 keep: ed.backups.keep.clamp(1, MAX_BACKUPS as usize) as u32,
                 folder: self.backups.folder.clone(),
+            },
+            workspace: WorkspacePrefs {
+                recent: ed.recent.clone(),
+                reopen_last: ed.reopen_last,
+                last_open: ed.open_paths(),
+                show_start: ed.tools.show_start_on_launch,
+                writer: ed.session.author.clone(),
+                extra_dark: ed.extra_dark,
+                keys: ed.keys.clone(),
             },
         }
     }

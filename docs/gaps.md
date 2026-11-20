@@ -1,74 +1,90 @@
 # Gaps
 
-What v0.1 does not do, and anything else we know is missing, as of the end of
-M8 (2026-11-19). `docs/spec-audit.md` checks every Verified and Sourced spec
-item for M1 to M7; the ones it marks as gaps are here with their reasons.
+What the app does not do, and anything else we know is missing, as of the end of
+M14 (2026-11-20). `docs/spec-audit.md` checks `docs/SPEC.md` for v0.1;
+`docs/spec2-audit.md` checks `docs/SPEC-2.md`, with what v0.2 added in its last
+section. Questions for the SPEC-2 author are in `docs/spec2-questions.md`; until
+they are answered, the values v0.1 built stay (decision 0030).
 
 ## Writing and formatting
 
-- Copying element settings from a template, and global line-spacing presets
-  (tighter or looser pages): v0.1 ships one screenplay template.
-- A4 paper: the page size is the template's US Letter.
-- More and continued texts cannot have their own font; they use the script's.
+- Copying element settings from another script's template (the built-in templates
+  set their own; "Template Formatting for All" restores the screenplay's).
+- Global line-spacing presets (tighter or looser pages) and A4 paper.
+- More and continued texts cannot have their own font.
 - Dark colors are not carried into the PDF.
-- Emoji are drawn only where the bundled or system fonts have them; not
-  tested.
-- Input methods: WordCraft's composition safeguards were cut (decision 0006);
-  egui's own text events work, but composing text is not specially protected.
+- No emoji font is bundled: emoji show only where the interface or system fonts
+  have them.
+- Input methods: composing text is not specially protected (decision 0006).
 - Shift+Tab, Page Up and Page Down, and word deletion are not assigned.
-- Spelling is English only (decision 0014).
-- Teleplay, stage play and other templates, writing stats and the sprint
-  timer, structure colors, the inclusivity report: later (ROADMAP).
+- Spelling is English only (decision 0014); no thesaurus or names lookup (no
+  allowlisted data, question 10).
+- The clipboard carries plain text, so pasting cannot bring element types in.
+- Indents keep v0.1's range rule (0 to 8.5 in, half an inch apart), not SPEC-2's.
+- Alternate lines, pictures in the script and in beats, and labels in headers are
+  not built.
 
 ## Views
 
-- Printing index cards and the scene view to PDF.
-- Story board images and exporting the board to PDF (ROADMAP).
+- The second speech of dual dialogue is edited in the normal and speed views; the
+  page view shows it but the caret cannot go into it there.
 - Hidden outline elements still show in the normal and speed views (decision
   0028).
-- The Tables panel has three fixed tables (scenes, characters, notes):
-  adding, renaming, reordering and filtering tabs, and character highlight
-  colors, are not built.
-- Notes are not printed; threaded replies are not built; Fountain import
-  leaves notes inside text out (export writes them).
+- No ribbon layout or customisable toolbar groups.
+- Notes are not printed; threaded replies are not built; Fountain import leaves
+  notes inside text out (export writes them).
 
 ## Production
 
-- Clearing revised text clears the marks of the text selected; the spec's
-  rule (a mark goes only when its whole line is cleared) is not followed.
-- Page locking: relock from the cursor, adjusting a locked page's start,
-  editing a page number by hand, locking a new page at the cursor and
-  unlocking one page (decision 0026). Lock Pages again adds a level instead.
-- Numbering shots, characters or dialogue; a settable starting page number.
-- Breakdown tagging and scheduling export: out of scope (kickoff).
+- Clearing revised text clears the marks of the text selected; the rule that a
+  mark goes only when its whole line is cleared is not followed.
+- Deleting across a locked page break is allowed (decision 0035).
+- Numbering shots, characters or dialogue.
+- Breakdown tagging, scheduling export, the tags report and the tagging-mode
+  indicator: out of scope until the owner says otherwise (question 9).
+- Tracked changes are not seen by spelling, find or exports: deleted text reads as
+  still there until it is accepted. Paragraph breaks are not tracked.
+- Picture watermarks; a `{file}` header field.
+- A review-only copy (notes allowed, text locked).
 
 ## Files
 
-- Imports (decision 0019): emphasis is not kept from plain text, RTF or PDF;
-  a PDF page cannot show a heading with no intro that ends in punctuation
-  (read as Action) or a paragraph split across a page (read as two); line
-  breaks inside a paragraph become spaces; a scanned PDF is refused.
+- Imports (decision 0019): emphasis is not kept from plain text, RTF or PDF; a PDF
+  page cannot show a heading with no intro that ends in punctuation (read as
+  Action) or a paragraph split across a page (read as two); line breaks inside a
+  paragraph become spaces; a scanned PDF is refused.
 - Saves made outside the window (the command line, MCP) make no backup copy.
-- The backups folder can be set only by editing `preferences.json`.
-- No file locking: a script opened twice can be saved from both.
+- The backups folder can be set only by editing `preferences.json`; the app does
+  not warn when it is missing or full, and has no command to open it.
+- No file locking: a script opened twice can be saved from both. Read-only files
+  open as a copy.
 - The web build cannot open, save or export files.
+- Plain text with layout (indents as spaces) is not an export of its own.
+- Other products' script formats: they need an interface spec (SPEC-2 20).
+
+## Workspace
+
+- Tabs after the first have no crash recovery of their own.
+- Read-aloud, collaboration and the assistant are not built (question 9 and
+  ROADMAP).
+- Tablet handedness, tooltips settings, update checks and usage data are not
+  built.
 
 ## Release and tooling (decision 0029)
 
-- Bundles, not installers. The macOS app is not signed or notarized, and
-  opening a document from the Finder or Explorer does not open it in the app
-  (the command line does). No application icon.
-- The CI and release workflows have never run on GitHub's runners: there is
-  no remote. Only the macOS gate and the macOS bundle were run here; the
-  Linux and Windows builds are untested.
+- Bundles, not installers. The macOS app is not signed or notarized, and opening
+  a document from the Finder or Explorer does not open it in the app (the command
+  line does). No application icon.
+- The CI and release workflows are on GitHub, but their runs (Linux, macOS,
+  Windows) have not been checked from here; only the macOS gate and the macOS
+  bundle were run on this machine.
 - The minimum Rust version (1.95) is declared but not tested.
-- Typing in a 150-page script takes 16 to 17.6 ms a keystroke (median), about
-  one 60 Hz frame (`docs/performance.md`).
-- Printing to a real printer, and the Windows print path, are untested
-  (decision 0013).
-- The interface was tested headlessly and by its own offscreen pictures, not
-  by hand with a real mouse in a running window (drags, dialogs, the close
-  prompt).
+- Typing in a 150-page script takes 16 to 17.6 ms a keystroke (median) as of
+  v0.1 (`docs/performance.md`); not measured again after v0.2's additions.
+- Printing to a real printer, the Windows print path and the print preview's
+  viewer are untested (decision 0013).
+- The interface was tested headlessly and by its own offscreen pictures, not by
+  hand with a real mouse in a running window.
 
 ## Copied-code tests ignored for missing build inputs
 
@@ -78,7 +94,7 @@ These WordCraft tests pass when the build input is present (checked on
 - `wordsmith-layout`: `auto_hyphenation_breaks_long_words`,
   `fragmented_hidden_text_lays_out_like_the_visible_text`,
   `hyphenation_and_proofing_follow_each_runs_language`: they need craft-i18n
-  language data, whose English dictionaries carry the SCOWL notice (not on
-  the allowlist; decision 0014).
-- `wordsmith-fonts`: `a_thai_run_with_latin_falls_back_to_one_face`: it needs
-  a Thai face (craft-fonts), not needed for screenplays.
+  language data, whose English dictionaries carry the SCOWL notice (not on the
+  allowlist; decision 0014).
+- `wordsmith-fonts`: `a_thai_run_with_latin_falls_back_to_one_face`: it needs a
+  Thai face (craft-fonts), not needed for screenplays.

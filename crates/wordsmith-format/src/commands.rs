@@ -72,7 +72,21 @@ fn open_path(s: &mut Session, v: &Value) -> CmdResult {
     match kind {
         Kind::Native | Kind::Fountain => {
             let doc = files::open(&path).map_err(failed)?;
-            replace(s, doc, &path, kind == Kind::Native, false);
+            let template = doc.app_data.contains_key(wordsmith_script::templates::TEMPLATE_KEY);
+            let read_only = std::fs::metadata(&path).is_ok_and(|m| m.permissions().readonly());
+            if template {
+                // A template starts a new, untitled script.
+                replace(s, wordsmith_script::templates::from_template(doc), &path, false, false);
+                s.file_name = Some("Untitled".into());
+            } else if read_only && kind == Kind::Native {
+                // A file that cannot be written opens as a copy: Save asks where to keep it.
+                replace(s, doc, &path, false, false);
+                s.push_ui_request(
+                    json!({"notice": format!("{} is read-only; it is open as a copy, so Save asks where to keep it.", path.display())}),
+                );
+            } else {
+                replace(s, doc, &path, kind == Kind::Native, false);
+            }
         }
         Kind::Text | Kind::Rtf => {
             let Some(as_script) = v.get("asScript").and_then(Value::as_bool) else {
@@ -258,6 +272,65 @@ fn compare_with(s: &mut Session, v: &Value) -> CmdResult {
     Ok(summary.to_json())
 }
 
+/// `file.saveAsTemplate {path?}`: save a copy of the script as a template (`.wst`); opening it
+/// later starts a new script from it.
+fn save_as_template(s: &mut Session, v: &Value) -> CmdResult {
+    let Some(path) = path_of(v) else { return ask(s, "export", json!({"format": "template", "name": script_name(s)})) };
+    let path = path.with_extension("wst");
+    let mut doc = s.doc.clone();
+    doc.app_data.insert(wordsmith_script::templates::TEMPLATE_KEY.into(), std::sync::Arc::new(json!(true)));
+    files::save(&path, &doc).map_err(failed)?;
+    Ok(json!({"saved": path.display().to_string()}))
+}
+
+/// `file.revert {discard?}`: put back the script as last saved.
+fn revert(s: &mut Session, _: &Value) -> CmdResult {
+    let path = s.path.clone().ok_or_else(|| failed("the script has not been saved yet".into()))?;
+    open_path(s, &json!({"path": path.display().to_string(), "discard": true}))
+}
+
+/// `file.merge {paths}`: a new script made of several scripts one after another (the first
+/// one's elements and settings).
+fn merge(s: &mut Session, v: &Value) -> CmdResult {
+    let paths: Vec<PathBuf> =
+        v.get("paths").and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_str).map(PathBuf::from).collect()).unwrap_or_default();
+    if paths.len() < 2 {
+        return Err(CmdError::Params("`paths` names at least two scripts".into()));
+    }
+    if s.dirty && v.get("discard").and_then(Value::as_bool) != Some(true) {
+        return Err(failed("save the script first: the merged script replaces it in the window".into()));
+    }
+    let mut out: Option<wordsmith_doc::Document> = None;
+    for path in &paths {
+        let doc = files::open(path).map_err(failed)?;
+        match out.as_mut() {
+            None => out = Some(doc),
+            Some(o) => {
+                let elements = wordsmith_script::Elements::of_doc(o);
+                let theirs = wordsmith_script::Elements::of_doc(&doc);
+                for b in &doc.body {
+                    if let Some(p) = b.as_para() {
+                        let mut q = p.clone();
+                        // An element the first script lacks reads as General.
+                        let id = theirs.of_para(p).id.clone();
+                        q.props.style =
+                            Some(if elements.get(&id).is_some() { id } else { elements.id_of(wordsmith_script::ElementKind::General).to_string() });
+                        q.props.scene_id = None;
+                        q.props.bookmark = None;
+                        o.body.push(wordsmith_doc::para_block(q));
+                    }
+                }
+            }
+        }
+    }
+    let doc = out.ok_or_else(|| failed("nothing to merge".into()))?;
+    s.set_document(doc);
+    s.path = None;
+    s.file_name = Some("Merged".into());
+    s.dirty = true;
+    Ok(json!({"merged": paths.len()}))
+}
+
 /// `macro.copyFromPath {path}`: replace this script's macros with another script's.
 fn copy_macros_from(s: &mut Session, v: &Value) -> CmdResult {
     let path = path_of(v).ok_or_else(|| CmdError::Params("`path` is required".into()))?;
@@ -290,6 +363,10 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("compare.withFile", "Compare with Another Version…", "Production", compare_with)
             .params(r#"{"path"?: string, "open"?: bool, "discard"?: bool}"#)
             .pure(),
+        CommandSpec::new("file.saveAsTemplate", "Save as Template…", "File", save_as_template).params(r#"{"path"?: string}"#).pure(),
+        CommandSpec::new("file.revert", "Revert to Saved", "File", revert)
+            .when(|s| if s.path.is_none() { Some("the script has not been saved yet") } else { None }),
+        CommandSpec::new("file.merge", "Merge Scripts", "File", merge).params(r#"{"paths": [string], "discard"?: bool}"#),
         CommandSpec::new("file.import", "Import…", "File", |s, _| ask(s, "import", json!({}))).pure(),
         CommandSpec::new("file.save", "Save", "File", save).key("Mod+S").pure(),
         CommandSpec::new("file.saveAs", "Save As…", "File", |s, _| ask(s, "saveAs", json!({"name": script_name(s)}))).key("Mod+Shift+S").pure(),
@@ -303,4 +380,52 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("file.exportRevisedPdfAs", "Export Revised Pages…", "File › Export", export_revised_as).pure(),
         CommandSpec::new("file.exportHtml", "Export HTML…", "File › Export", export_html).params(PATH).pure(),
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A session with the screenplay commands and these file commands.
+    fn session() -> Session {
+        let mut all = wordsmith_script::commands::specs();
+        all.extend(specs());
+        Session::with_registry(wordsmith_script::new_script(), std::sync::Arc::new(wordsmith_engine::cmd::registry_with(all)))
+    }
+
+    fn dir(name: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("wordsmith-commands-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        let _ = std::fs::create_dir_all(&d);
+        d
+    }
+
+    #[test]
+    fn templates_revert_and_merge() {
+        let d = dir("templates");
+        let mut s = session();
+        s.run("text.insert", &json!({"text": "int. hall\nRain."})).unwrap();
+        let t = d.join("Mine.wst");
+        s.run("file.saveAsTemplate", &json!({"path": t.display().to_string()})).unwrap();
+        // Opening the template starts a new, untitled script.
+        let mut o = session();
+        o.run("file.openPath", &json!({"path": t.display().to_string()})).unwrap();
+        assert!(o.path.is_none());
+        assert!(!o.doc.app_data.contains_key(wordsmith_script::templates::TEMPLATE_KEY));
+        // Revert puts back the saved script.
+        let a = d.join("A.wss");
+        s.run("file.saveAsPath", &json!({"path": a.display().to_string()})).unwrap();
+        s.run("text.insert", &json!({"text": " More."})).unwrap();
+        s.run("file.revert", &json!({})).unwrap();
+        assert_eq!(wordsmith_script::commands::text::body_lines(&s)[1].1, "Rain.");
+        // Merge two scripts.
+        let b = d.join("B.wss");
+        let mut other = session();
+        other.run("text.insert", &json!({"text": "ext. yard\nSun."})).unwrap();
+        other.run("file.saveAsPath", &json!({"path": b.display().to_string()})).unwrap();
+        s.run("file.merge", &json!({"paths": [a.display().to_string(), b.display().to_string()]})).unwrap();
+        assert_eq!(wordsmith_script::scenes(&s.doc).len(), 2);
+        assert!(s.path.is_none() && s.dirty);
+        let _ = std::fs::remove_dir_all(&d);
+    }
 }

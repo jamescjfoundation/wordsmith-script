@@ -171,3 +171,30 @@ leading presets, a highlight palette and Cast List ordering are not.
 | Preferences file | Built; most listed preferences, editable shortcuts and toolbars are not |
 | Templates beyond the screenplay | Not built |
 | Keymap ([DEF]) | Partly: Mod+N/O/S/P, Z/Y, F and Mod+0 to 9 are bound; Mod+B/I/U, G, R, J, M, Mod+Enter and Shift+digit are not. Mod+Alt+digit already switches views (`docs/guide/keyboard.md`), so macros need other keys |
+
+## After v0.2 (M9 to M14, 2026-11-20)
+
+The milestones in `docs/plans/v0.2.md` built most of what the tables above mark
+not built or partly built. Each milestone's plan lists what it covers; the
+decisions are 0031 to 0036. What SPEC-2 asks for that is still not built is in
+`docs/gaps.md`. In brief:
+
+| SPEC-2 | Now |
+| --- | --- |
+| 2 Files | New from template, save as template, templates by category, Welcome window, recent files, reopen last, revert, merge, read-only files open as a copy. Not built: review-only copy, plain text with layout, backup-folder warnings. |
+| 3 Editor | Sequence element, structure ranks, Return/Tab hint, reset to element, toggle case, smart quotes and sentence capitals (off by default), select scene, new scene, page break, reformat tool, dual dialogue, element color, highlight, strike, small letters, template formatting. Not built: pasting element types, the quick element picker on a held key. |
+| 4 Autocomplete | Unchanged (list contents wait for question 3). |
+| 5 Macros | Built. |
+| 6 Formatting | Built, with the highlighter palette. Leading presets not built. |
+| 7 Page layout | Watermark (text), header and footer start page, first-page footer, `{collated}`. Not built: picture watermarks, `{file}`, markers' own font, target length. |
+| 8 Views | Split views, zoom steps, tabs, extra dark, cards per row and script-text cards, structure strip, outline nesting bars, status bar switches. Not built: ribbon, toolbar groups, typewriter highlight styles. |
+| 9 Planning | Several boards, arrange, link styles and colors, lists in beats, board and card PDFs, scene properties, structure strip. Not built: pictures in beats. |
+| 10 Navigation | Go To, bookmarks and labels, find by element, table sort, filter, columns and own tabs, note titles, types and colors, next and previous note. Not built: alternate lines, pictures, labels in headers. |
+| 11 Production | Scene number options, revision display, per-set marks, lock tools, change tracking, comparison. Not built: breakdown tagging (question 9), blocking deletes across locked breaks. |
+| 12 Characters | Traits, representation chart, highlighted speeches, arc beats, non-speaking characters. |
+| 13 Reports | Every report but tags. |
+| 14 Checking | Format checker. Not built: thesaurus, names lookup, repeated-word spelling actions. |
+| 15 Read-aloud, 16 Collaboration | Not built. |
+| 17 Productivity | Sprint timer, writing statistics, goals. |
+| 18 Printing | Ranges, sets, unrevised pages, sides, reverse, collate, preview, title page choice, format check before printing. |
+| 19 Preferences | Writer name, reopen last, Welcome window, statistics, sprint length, keys. Not built: tablet handedness, tooltips, update checks. |

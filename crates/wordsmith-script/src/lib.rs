@@ -36,6 +36,7 @@ pub mod spelling;
 pub mod storyboard;
 pub mod strip;
 pub mod template;
+pub mod templates;
 pub mod title_page;
 pub mod tracking;
 pub mod typing;
