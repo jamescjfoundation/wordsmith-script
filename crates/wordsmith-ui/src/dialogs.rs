@@ -420,6 +420,7 @@ pub fn prefs_body(ed: &mut Editor, ui: &mut egui::Ui) {
     ui.heading("Starting");
     ui.checkbox(&mut ed.reopen_last, "Open the scripts that were open when the app last closed");
     ui.checkbox(&mut ed.tools.show_start_on_launch, "Show the Welcome window when no script opens");
+    ui.checkbox(&mut ed.updates.check_at_start, "Check for updates when the app starts");
     ui.separator();
     ui.heading("Writer");
     ui.horizontal(|ui| {
@@ -679,4 +680,5 @@ pub fn show(ed: &mut Editor, ctx: &Context) {
     prefs_window(ed, ctx);
     import_window(ed, ctx);
     unsaved_window(ed, ctx);
+    crate::updates::window(ed, ctx);
 }

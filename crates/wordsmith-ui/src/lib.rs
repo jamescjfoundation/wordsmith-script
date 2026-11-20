@@ -33,6 +33,7 @@ pub mod structure;
 pub mod tables;
 pub mod theme;
 pub mod tools;
+pub mod updates;
 pub mod workspace;
 
 use std::sync::Arc;
@@ -100,6 +101,7 @@ pub fn ui_specs() -> Vec<CommandSpec> {
         CommandSpec::new("view.revisions", "Revision Sets…", "Production", |s, _| open(s, "revisions")).pure(),
         CommandSpec::new("view.headerFooter", "Header and Footer…", "Format", |s, _| open(s, "headerFooter")).pure(),
         CommandSpec::new("help.about", "About Wordsmith Script", "Help", |s, _| open(s, "about")).pure(),
+        CommandSpec::new("help.checkForUpdates", "Check for Updates…", "Help", |s, _| open(s, "tool.checkUpdates")).pure(),
         CommandSpec::new("file.exportPdfAs", "Export PDF…", "File", |s, _| open(s, "exportPdf")).key("Mod+Shift+E").pure(),
         CommandSpec::new("file.recoverPrompt", "Recover Unsaved Scripts…", "File", |s, _| open(s, "recover")).pure(),
         CommandSpec::new("view.goto", "Go To…", "Go", |s, _| open(s, "tool.goto")).key("Mod+G").pure(),

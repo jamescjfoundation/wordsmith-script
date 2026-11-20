@@ -1,0 +1,4 @@
+# Text files are LF on every checkout. Tests compare generated text (golden
+# pagination, the keyboard guide) with files in the repository byte for byte,
+# and Git for Windows would otherwise check them out with CRLF.
+* text=auto eol=lf

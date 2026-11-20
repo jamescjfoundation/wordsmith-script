@@ -63,6 +63,7 @@ pub const BACKSTAGE_COMMANDS: &[&str] = &[
     "app.preferences",
     "view.keys",
     "help.about",
+    "help.checkForUpdates",
     "file.recoverPrompt",
     "view.start",
 ];
@@ -137,7 +138,7 @@ pub fn show(ed: &mut Editor, ui: &mut Ui) {
                 }
                 crate::workspace::keys_body(ed, ui);
             }
-            Page::About => about(ui),
+            Page::About => about(ed, ui),
         });
     });
 }
@@ -430,8 +431,11 @@ fn compare(ed: &mut Editor, ui: &mut Ui) {
     action(ed, ui, "compare.withFile", json!({}), "Compare with Another Version…", "Scenes are matched first, then their paragraphs.");
 }
 
-fn about(ui: &mut Ui) {
+fn about(ed: &mut Editor, ui: &mut Ui) {
     let t = Tokens::get(ui.ctx());
     heading(ui, "About");
     ui.label(RichText::new(crate::about_text()).font(regular(BODY)).color(t.text));
+    sub(ui, "Updates");
+    crate::updates::actions(ed, ui);
+    ui.checkbox(&mut ed.updates.check_at_start, "Check for updates when the app starts");
 }

@@ -67,12 +67,17 @@ they are answered, the values v0.1 built stay (decision 0030).
 - Tabs after the first have no crash recovery of their own.
 - Read-aloud, collaboration and the assistant are not built (question 9 and
   ROADMAP).
-- Tablet handedness, tooltips settings, update checks and usage data are not
-  built.
+- Tablet handedness, tooltips settings and usage data are not built.
 
-## Release and tooling (decision 0029)
+## Release and tooling (decisions 0029 and 0038)
 
-- Bundles, not installers. The macOS app is not signed or notarized, and opening
+- Updates replace the app in place only on macOS and Linux (tar.gz in a
+  writable folder); unsigned Windows copies are sent to the release page. The
+  update has not been tried end to end: there is no published release yet.
+- No AppImage, deb, rpm or MSI; `SHA256SUMS.txt` is not GPG-signed; one DMG per
+  macOS architecture, not a universal one.
+- Bundles, not installers (a disk image on macOS). The macOS app is signed ad
+  hoc only, not with a Developer ID, and not notarized, and opening
   a document from the Finder or Explorer does not open it in the app (the command
   line does). No application icon.
 - The CI and release workflows are on GitHub, but their runs (Linux, macOS,

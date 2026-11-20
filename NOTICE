@@ -26,3 +26,7 @@ This software is based in part on the work of the Independent JPEG Group
 Some Rust dependencies are under the Zlib and Unicode-3.0 licenses, as well
 as MIT, Apache-2.0, BSD and ISC. Each crate's license is in its own package;
 docs/decisions/0001-license-allowlist.md lists which ones and why.
+
+The desktop app's update check carries Mozilla's list of root certificates
+(through the webpki-root-certs crate), shared under the Community Data License
+Agreement - Permissive, Version 2.0: https://cdla.dev/permissive-2-0/

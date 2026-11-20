@@ -3,11 +3,13 @@
 //! (decision 0029), in `dist/`:
 //!
 //! - macOS: `Wordsmith Script.app` (the app, the command-line tool, an Info.plist that opens
-//!   `.wss` and Fountain files) zipped with the licenses;
+//!   `.wss` and Fountain files), signed ad hoc, on a disk image with the licenses and a link to
+//!   Applications;
 //! - Linux: a folder with `bin/`, a `.desktop` file and the licenses, as a `.tar.gz`;
-//! - Windows: the two programs and the licenses, as a `.zip`.
+//! - Windows: the two programs and the licenses, as a portable `.zip`.
 //!
-//! Nothing is uploaded or published.
+//! Files are named `wordsmith-script-<version>-<os>-<arch>[-portable].<ext>`, the names the
+//! in-app update looks for (decision 0038). Nothing is uploaded or published.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -92,6 +94,29 @@ MimeType=text/x-fountain;application/x-wordsmith-script;
 "
 }
 
+/// The release file name for `os` and `arch` (Rust's names), as craft-update reads them:
+/// `macos-aarch64`, `windows-x64`, `linux-x86_64`.
+pub fn asset_name(version: &str, os: &str, arch: &str) -> String {
+    match os {
+        "macos" => format!("wordsmith-script-{version}-macos-{arch}.dmg"),
+        "windows" => {
+            let arch = match arch {
+                "x86_64" => "x64",
+                "aarch64" => "arm64",
+                "x86" => "x86",
+                other => other,
+            };
+            format!("wordsmith-script-{version}-windows-{arch}-portable.zip")
+        }
+        _ => format!("wordsmith-script-{version}-{os}-{arch}.tar.gz"),
+    }
+}
+
+/// Strips an extension the bundle adds, for the staging folder's name.
+fn stem(file: &str) -> &str {
+    file.strip_suffix(".dmg").or_else(|| file.strip_suffix("-portable.zip")).or_else(|| file.strip_suffix(".tar.gz")).unwrap_or(file)
+}
+
 pub fn bundle(root: &Path) -> TaskResult {
     cargo(root, &["build", "--release", "--locked", "-p", "wordsmith", "-p", "wordsmith-cli"])?;
     let version = version(root)?;
@@ -102,9 +127,12 @@ pub fn bundle(root: &Path) -> TaskResult {
     std::fs::create_dir_all(&dist).map_err(|e| format!("{}: {e}", dist.display()))?;
     let app_bin = release.join(format!("wordsmith{exe}"));
     let cli_bin = release.join(format!("wordsmith-cli{exe}"));
-    let out: PathBuf = match std::env::consts::OS {
+    let file = asset_name(&version, std::env::consts::OS, arch);
+    let name = stem(&file).to_string();
+    let out: PathBuf = dist.join(&file);
+    let _ = std::fs::remove_file(&out);
+    match std::env::consts::OS {
         "macos" => {
-            let name = format!("wordsmith-script-{version}-macos-{arch}");
             let stage = dist.join(&name);
             let _ = std::fs::remove_dir_all(&stage);
             let app = stage.join("Wordsmith Script.app/Contents");
@@ -114,13 +142,17 @@ pub fn bundle(root: &Path) -> TaskResult {
             for d in DOCS {
                 copy(&root.join(d), &stage.join(d))?;
             }
-            let zip = dist.join(format!("{name}.zip"));
-            let _ = std::fs::remove_file(&zip);
-            run(Command::new("ditto").args(["-c", "-k", "--keepParent"]).arg(&stage).arg(&zip))?;
-            zip
+            // Ad hoc: the bundle is sealed, so the update's signature check can read it, but no
+            // developer identity is claimed (a Developer ID is a stop rule, decision 0029).
+            run(Command::new("codesign").args(["--force", "--deep", "--sign", "-"]).arg(stage.join("Wordsmith Script.app")))?;
+            #[cfg(unix)]
+            std::os::unix::fs::symlink("/Applications", stage.join("Applications")).map_err(|e| format!("Applications link: {e}"))?;
+            run(Command::new("hdiutil")
+                .args(["create", "-volname", "Wordsmith Script", "-fs", "HFS+", "-format", "UDZO", "-ov", "-srcfolder"])
+                .arg(&stage)
+                .arg(&out))?;
         }
         "windows" => {
-            let name = format!("wordsmith-script-{version}-windows-{arch}");
             let stage = dist.join(&name);
             let _ = std::fs::remove_dir_all(&stage);
             copy(&app_bin, &stage.join("wordsmith.exe"))?;
@@ -128,14 +160,10 @@ pub fn bundle(root: &Path) -> TaskResult {
             for d in DOCS {
                 copy(&root.join(d), &stage.join(d))?;
             }
-            let zip = dist.join(format!("{name}.zip"));
-            let _ = std::fs::remove_file(&zip);
             // Windows' own tar writes zip archives.
-            run(Command::new("tar").current_dir(&dist).args(["-a", "-c", "-f"]).arg(&zip).arg(&name))?;
-            zip
+            run(Command::new("tar").current_dir(&dist).args(["-a", "-c", "-f"]).arg(&out).arg(&name))?;
         }
         _ => {
-            let name = format!("wordsmith-script-{version}-linux-{arch}");
             let stage = dist.join(&name);
             let _ = std::fs::remove_dir_all(&stage);
             copy(&app_bin, &stage.join("bin/wordsmith"))?;
@@ -144,11 +172,9 @@ pub fn bundle(root: &Path) -> TaskResult {
             for d in DOCS {
                 copy(&root.join(d), &stage.join(d))?;
             }
-            let tgz = dist.join(format!("{name}.tar.gz"));
-            run(Command::new("tar").current_dir(&dist).arg("-czf").arg(&tgz).arg(&name))?;
-            tgz
+            run(Command::new("tar").current_dir(&dist).arg("-czf").arg(&out).arg(&name))?;
         }
-    };
+    }
     println!("\nxtask: bundle written to {}", out.display());
     Ok(())
 }
@@ -162,5 +188,13 @@ mod tests {
         let plist = info_plist("0.1.0");
         assert!(plist.contains("<string>0.1.0</string>") && plist.contains("<string>wss</string>") && plist.contains("<string>fountain</string>"));
         assert!(desktop_entry().contains("Exec=wordsmith %f"));
+    }
+
+    #[test]
+    fn release_files_are_named_as_the_update_looks_for_them() {
+        assert_eq!(asset_name("0.2.0", "macos", "aarch64"), "wordsmith-script-0.2.0-macos-aarch64.dmg");
+        assert_eq!(asset_name("0.2.0", "windows", "x86_64"), "wordsmith-script-0.2.0-windows-x64-portable.zip");
+        assert_eq!(asset_name("0.2.0-rc.1", "linux", "x86_64"), "wordsmith-script-0.2.0-rc.1-linux-x86_64.tar.gz");
+        assert_eq!(stem(&asset_name("0.2.0", "windows", "aarch64")), "wordsmith-script-0.2.0-windows-arm64");
     }
 }

@@ -77,6 +77,7 @@ pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
         // These are pages of the File page (v0.3).
         "tool.start" | "tool.templates" => ed.chrome.backstage = Some(crate::backstage::Page::New),
         "tool.keys" => ed.chrome.backstage = Some(crate::backstage::Page::Keys),
+        "tool.checkUpdates" => ed.updates.check_now(),
         "tool.stats" => ed.stats.window = Some(("words", "week")),
         "tool.sprint" => crate::workspace::toggle_sprint(ed),
         "tool.extraDark" => {
