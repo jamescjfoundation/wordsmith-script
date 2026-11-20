@@ -128,3 +128,7 @@ on 2026-11-19) and are `#[ignore]`d until we decide how to supply it:
 
 - Numbering shots, characters or dialogue is not built; scenes only
   (decision 0025).
+- Page locking: relock from the cursor, adjusting a locked page's start,
+  editing a page number by hand, locking a new page at the cursor and
+  unlocking one page are not built (decision 0026). Lock Pages again adds a
+  level instead.

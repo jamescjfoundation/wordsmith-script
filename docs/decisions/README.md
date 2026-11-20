@@ -31,3 +31,4 @@ what would make us revisit it.
 | [0023](0023-notes.md) | Notes |
 | [0024](0024-revisions.md) | Revisions |
 | [0025](0025-scene-numbers.md) | Scene numbers |
+| [0026](0026-page-locking.md) | Page locking and the page-label scheme |

@@ -151,7 +151,7 @@ fn field(instr: &str) -> InlineObject {
 }
 
 /// Append `text` to `p`, its fields filled in or made live (page, scene).
-fn push_slot(p: &mut Paragraph, text: &str, doc: &Document, date: &str) {
+fn push_slot(p: &mut Paragraph, text: &str, doc: &Document, date: &str, label: Option<&str>) {
     let scene_style = Elements::of_doc(doc).id_of(ElementKind::SceneHeading).to_string();
     let revision = doc.app_data.get(REVISIONS_KEY).and_then(|v| v.get("current")).and_then(Value::as_str).unwrap_or("").to_string();
     let mut rest = text;
@@ -167,9 +167,15 @@ fn push_slot(p: &mut Paragraph, text: &str, doc: &Document, date: &str) {
         let name = &rest[open + 1..close];
         let at = p.len();
         match name {
-            "page" => {
-                let _ = p.insert_object(at, field("PAGE"), &CharProps::default());
-            }
+            // A locked script's page has its label (12A); otherwise the live page number.
+            "page" => match label {
+                Some(l) => {
+                    let _ = p.insert_text(at, l, &CharProps::default());
+                }
+                None => {
+                    let _ = p.insert_object(at, field("PAGE"), &CharProps::default());
+                }
+            },
             "scene" => {
                 let _ = p.insert_object(at, field(&format!("STYLEREF \"{scene_style}\"")), &CharProps::default());
             }
@@ -192,7 +198,7 @@ fn push_slot(p: &mut Paragraph, text: &str, doc: &Document, date: &str) {
 
 /// The line for `band`: one slot alone is aligned where it belongs; more use tab stops at the
 /// center and the right margin.
-fn band_line(band: &Band, doc: &Document, date: &str) -> Paragraph {
+fn band_line(band: &Band, doc: &Document, date: &str, label: Option<&str>) -> Paragraph {
     let mut p = Paragraph::new();
     p.props.style = Some(BAND_STYLE.into());
     let used: Vec<(&str, Align)> = [(&band.left, Align::Left), (&band.center, Align::Center), (&band.right, Align::Right)]
@@ -202,7 +208,7 @@ fn band_line(band: &Band, doc: &Document, date: &str) -> Paragraph {
         .collect();
     if let [(text, align)] = used.as_slice() {
         p.props.align = Some(*align);
-        push_slot(&mut p, text, doc, date);
+        push_slot(&mut p, text, doc, date, label);
         return p;
     }
     let page = &doc.last_section;
@@ -211,17 +217,19 @@ fn band_line(band: &Band, doc: &Document, date: &str) -> Paragraph {
         TabStop { pos: width / 2.0, align: TabAlign::Center, leader: TabLeader::None },
         TabStop { pos: width, align: TabAlign::Right, leader: TabLeader::None },
     ]);
-    push_slot(&mut p, &band.left, doc, date);
+    push_slot(&mut p, &band.left, doc, date, label);
     for slot in [&band.center, &band.right] {
         let at = p.len();
         let _ = p.insert_text(at, "\t", &CharProps::default());
-        push_slot(&mut p, slot, doc, date);
+        push_slot(&mut p, slot, doc, date, label);
     }
     p
 }
 
-/// Give the output script `doc` its header and footer, as its settings say.
-pub fn apply(doc: &mut Document) {
+/// Give the output script `doc` its header and footer, as its settings say. With `labels` (a
+/// locked script: one per page), each page is a section of its own whose header and footer show
+/// its label for `{page}`; pages start where a paragraph has `page_break_before`.
+pub fn apply(doc: &mut Document, labels: Option<&[String]>) {
     let h = HeaderFooter::of_doc(doc);
     let date = if h.date.trim().is_empty() { today() } else { h.date.clone() };
     let sheet = Arc::make_mut(&mut doc.styles);
@@ -229,27 +237,71 @@ pub fn apply(doc: &mut Document) {
     style.quick = false;
     style.para.space_before = Some(0.0);
     sheet.upsert(style);
-    let header = (!h.header.is_empty()).then(|| band_line(&h.header, doc, &date));
-    let footer = (!h.footer.is_empty()).then(|| band_line(&h.footer, doc, &date));
     let blank = || {
         let mut p = Paragraph::new();
         p.props.style = Some(BAND_STYLE.into());
         p
     };
-    let header = header.map(|p| doc.add_part(PartKind::Header, vec![para_block(p)]));
-    let footer = footer.map(|p| doc.add_part(PartKind::Footer, vec![para_block(p)]));
-    let first_header = (!h.first_page).then(|| doc.add_part(PartKind::Header, vec![para_block(blank())]));
-    let first_footer = (!h.first_page).then(|| doc.add_part(PartKind::Footer, vec![para_block(blank())]));
-    let s = &mut doc.last_section;
-    s.headers.default = header;
-    s.footers.default = footer;
-    s.headers.even = None;
-    s.footers.even = None;
-    s.title_page = !h.first_page;
-    s.headers.first = if h.first_page { header } else { first_header };
-    s.footers.first = if h.first_page { footer } else { first_footer };
-    s.header = 0.5 * template::INCH;
-    s.footer = 0.5 * template::INCH;
+    let Some(labels) = labels else {
+        let header = (!h.header.is_empty()).then(|| band_line(&h.header, doc, &date, None));
+        let footer = (!h.footer.is_empty()).then(|| band_line(&h.footer, doc, &date, None));
+        let header = header.map(|p| doc.add_part(PartKind::Header, vec![para_block(p)]));
+        let footer = footer.map(|p| doc.add_part(PartKind::Footer, vec![para_block(p)]));
+        let first_header = (!h.first_page).then(|| doc.add_part(PartKind::Header, vec![para_block(blank())]));
+        let first_footer = (!h.first_page).then(|| doc.add_part(PartKind::Footer, vec![para_block(blank())]));
+        let s = &mut doc.last_section;
+        s.headers.default = header;
+        s.footers.default = footer;
+        s.headers.even = None;
+        s.footers.even = None;
+        s.title_page = !h.first_page;
+        s.headers.first = if h.first_page { header } else { first_header };
+        s.footers.first = if h.first_page { footer } else { first_footer };
+        s.header = 0.5 * template::INCH;
+        s.footer = 0.5 * template::INCH;
+        return;
+    };
+    // One section per page: the last paragraph of each page but the last ends one.
+    let starts: Vec<usize> = doc
+        .body
+        .iter()
+        .enumerate()
+        .filter(|(i, b)| *i == 0 || b.as_para().is_some_and(|p| p.props.page_break_before == Some(true)))
+        .map(|(i, _)| i)
+        .collect();
+    let mut base = doc.last_section.clone();
+    base.headers = Default::default();
+    base.footers = Default::default();
+    base.title_page = false;
+    base.header = 0.5 * template::INCH;
+    base.footer = 0.5 * template::INCH;
+    let mut sections = Vec::with_capacity(starts.len());
+    for (page, label) in starts.iter().zip(labels.iter().map(String::as_str).chain(std::iter::repeat(""))).map(|(_, l)| l).enumerate() {
+        let mut sect = base.clone();
+        // Page 1 shows the bands only when asked.
+        let show = page > 0 || h.first_page;
+        sect.headers.default = Some(if show && !h.header.is_empty() {
+            let line = band_line(&h.header, doc, &date, Some(label));
+            doc.add_part(PartKind::Header, vec![para_block(line)])
+        } else {
+            doc.add_part(PartKind::Header, vec![para_block(blank())])
+        });
+        sect.footers.default = Some(if show && !h.footer.is_empty() {
+            let line = band_line(&h.footer, doc, &date, Some(label));
+            doc.add_part(PartKind::Footer, vec![para_block(line)])
+        } else {
+            doc.add_part(PartKind::Footer, vec![para_block(blank())])
+        });
+        sections.push(sect);
+    }
+    let Some(last) = sections.pop() else { return };
+    for (i, sect) in sections.into_iter().enumerate() {
+        let end = starts.get(i + 1).map_or(0, |n| n.saturating_sub(1));
+        if let Some(wordsmith_doc::Block::Para(p)) = doc.body.get_mut(end).map(Arc::make_mut) {
+            p.section = Some(Box::new(sect));
+        }
+    }
+    doc.last_section = last;
 }
 
 #[cfg(test)]
@@ -290,10 +342,10 @@ mod tests {
         let mut doc = new_script();
         doc.core.title = "THE TEST".into();
         doc.app_data.insert(REVISIONS_KEY.into(), Arc::new(json!({"current": "Blue"})));
-        let p = band_line(&Band { left: "{title} {revision} {date} {nope}".into(), ..Band::default() }, &doc, "1 May");
+        let p = band_line(&Band { left: "{title} {revision} {date} {nope}".into(), ..Band::default() }, &doc, "1 May", None);
         assert_eq!(p.text, "THE TEST Blue 1 May {nope}");
         assert_eq!(p.props.align, Some(Align::Left));
-        let p = band_line(&Band { left: "A".into(), center: "{scene}".into(), right: "{page}.".into() }, &doc, "");
+        let p = band_line(&Band { left: "A".into(), center: "{scene}".into(), right: "{page}.".into() }, &doc, "", None);
         assert_eq!(p.text.matches('\t').count(), 2);
         assert_eq!(p.objects.len(), 2, "scene and page are live fields");
     }

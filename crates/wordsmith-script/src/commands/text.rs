@@ -22,7 +22,9 @@ pub(crate) fn delete_selection(s: &mut Session) -> Result<Pos, CmdError> {
         return Ok(s.sel.focus.clone());
     }
     let (a, b) = s.sel.ordered();
+    let locks = crate::locks::marks_in(&s.doc, &a, &b);
     let at = s.doc.delete_range(&a, &b)?;
+    crate::locks::keep_marks(&mut s.doc, &locks, &at);
     crate::revisions::touch(&mut s.doc, &at);
     s.sel = Selection::caret(at.clone());
     Ok(at)
@@ -55,7 +57,21 @@ fn insert_line(s: &mut Session, text: &str) -> Result<(), CmdError> {
     let elements = Elements::of_doc(&s.doc);
     let casing = element_of_para_at(&s.doc, &elements, &at).casing;
     let props = typing_props(s, &at);
+    // Typing at the start of a locked page goes on that page: the page's mark moves to the
+    // typed text's first character.
+    let lock = s
+        .doc
+        .para_at(&at)
+        .and_then(|p| p.text.get(at.off..).and_then(|t| t.chars().next()).map(|c| p.props_at(at.off + c.len_utf8()).page_lock))
+        .flatten();
     let end = s.doc.insert_text(&at, &casing.apply(text), &props)?;
+    if let Some(id) = lock
+        && let Some(first) = s.doc.para_at(&at).and_then(|p| p.text.get(at.off..)).and_then(|t| t.chars().next()).map(char::len_utf8)
+    {
+        let after = s.doc.para_at(&end).and_then(|p| p.text.get(end.off..)).and_then(|t| t.chars().next()).map_or(0, char::len_utf8);
+        s.doc.format_range(&end, &Pos { off: end.off + after, ..end.clone() }, &|c| c.page_lock = None)?;
+        s.doc.format_range(&at, &Pos { off: at.off + first, ..at.clone() }, &|c| c.page_lock = Some(id))?;
+    }
     s.sel = Selection::caret(end);
     Ok(())
 }
@@ -205,7 +221,9 @@ pub fn backspace(s: &mut Session, _: &Value) -> CmdResult {
     let Some(para) = s.doc.para_at(&at) else { return sel_result(s) };
     if at.off > 0 {
         let from = Pos { off: para.backspace_from(at.off), ..at.clone() };
+        let locks = crate::locks::marks_in(&s.doc, &from, &at);
         let end = s.doc.delete_range(&from, &at)?;
+        crate::locks::keep_marks(&mut s.doc, &locks, &end);
         crate::revisions::touch(&mut s.doc, &end);
         s.sel = Selection::caret(end);
     } else if let Some(prev) = s.doc.prev_para(at.story, &at.path) {
@@ -229,7 +247,9 @@ pub fn delete(s: &mut Session, _: &Value) -> CmdResult {
     let Some(para) = s.doc.para_at(&at) else { return sel_result(s) };
     if at.off < para.len() {
         let to = Pos { off: para.next_boundary(at.off), ..at.clone() };
+        let locks = crate::locks::marks_in(&s.doc, &at, &to);
         let end = s.doc.delete_range(&at, &to)?;
+        crate::locks::keep_marks(&mut s.doc, &locks, &end);
         crate::revisions::touch(&mut s.doc, &end);
         s.sel = Selection::caret(end);
     } else if let Some(next) = s.doc.next_para(at.story, &at.path) {

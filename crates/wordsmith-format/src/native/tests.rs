@@ -171,3 +171,22 @@ fn revisions_round_trip_and_version_2_files_read() {
     let old = read(v2).unwrap();
     assert_eq!(old.body[0].as_para().map(|p| p.text.as_str()), Some("A note and {braces}"));
 }
+
+#[test]
+fn locked_pages_and_scene_numbers_round_trip() {
+    let mut doc = new_script();
+    let mut body = vec![para_block(paragraph("SceneHeading", "INT. A - DAY"))];
+    body.extend((0..70).map(|i| para_block(paragraph("Action", &format!("Line {i}.")))));
+    doc.body = body;
+    let mut s = wordsmith_script::session_for(doc);
+    s.run("scene.lockNumbers", &json!({"lock": true})).unwrap();
+    s.run("lock.pages", &json!({})).unwrap();
+    s.run("scene.omit", &json!({"scene": 0})).unwrap();
+    let text = write(&s.doc);
+    assert!(text.contains("@SceneHeading #1 omitted=1\n"), "{}", &text[text.find("=== script").unwrap_or(0)..][..200.min(text.len())]);
+    let back = read(&text).unwrap();
+    assert_eq!(back.body, s.doc.body);
+    assert_eq!(write(&back), text);
+    let pages = |d: &Document| wordsmith_script::paginate::paginate(d).labels;
+    assert_eq!(pages(&back), pages(&s.doc));
+}
