@@ -28,11 +28,16 @@ pub(crate) fn delete_selection(s: &mut Session) -> Result<Pos, CmdError> {
 }
 
 /// The formatting new text takes at `at`: what is waiting at the caret, else the text before it.
+/// A note's mark goes on only inside the note, so typing at its edge does not extend it.
 fn typing_props(s: &Session, at: &Pos) -> CharProps {
     if let Some(p) = &s.pending {
-        return p.clone();
+        return CharProps { note: None, ..p.clone() };
     }
-    s.doc.para_at(at).map(|p| p.props_at(at.off).clone()).unwrap_or_default()
+    let mut props = s.doc.para_at(at).map(|p| p.props_at(at.off).clone()).unwrap_or_default();
+    if props.note.is_some() && crate::notes::note_at_char(&s.doc, at) != props.note {
+        props.note = None;
+    }
+    props
 }
 
 /// Insert `text` at the caret in the caret paragraph's casing (no line breaks).

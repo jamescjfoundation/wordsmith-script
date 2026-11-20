@@ -43,7 +43,7 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 item(ed, ui, "file.recoverPrompt");
             });
             ui.menu_button("Edit", |ui| {
-                for id in ["edit.undo", "edit.redo", "edit.cut", "edit.copy", "select.all", "view.find"] {
+                for id in ["edit.undo", "edit.redo", "edit.cut", "edit.copy", "select.all", "view.find", "view.note"] {
                     item(ed, ui, id);
                 }
             });

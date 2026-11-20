@@ -118,3 +118,8 @@ on 2026-11-19) and are `#[ignore]`d until we decide how to supply it:
   through the commands), not with a real mouse drag in a running window.
 - The Tables panel has fixed tables (scenes, characters, notes); adding,
   renaming, reordering and filtering tabs is not built in v0.1.
+
+## Notes (M5, decision 0023)
+
+- Fountain import leaves notes inside text out (Fountain export writes them);
+  notes are not printed; threaded replies are not built.

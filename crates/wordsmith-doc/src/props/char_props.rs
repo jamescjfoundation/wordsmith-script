@@ -1,3 +1,4 @@
+// Modified by the Wordsmith Script contributors.
 use super::color::{Rgb, TextColor};
 use super::para_props::Border;
 use super::{Deserialize, Serialize};
@@ -350,6 +351,10 @@ pub struct CharProps {
     /// Hyperlink target: a URL, or `#bookmark` for an internal link.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub link: Option<String>,
+    /// The note (by id) this text is anchored to. Like a link it is a mark, not formatting: it
+    /// moves with the text through every edit.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<u32>,
     /// Tracked insertion: index into `Document::revisions`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ins: Option<u32>,
@@ -513,7 +518,7 @@ impl CharProps {
     }
 
     fn minus_document_marks(&mut self, base: &CharProps) {
-        drop_same_fields!(self, base; link, ins, del, ligatures);
+        drop_same_fields!(self, base; link, note, ins, del, ligatures);
     }
 
     /// Apply every `Some` field of `patch` on top of `self`.
@@ -544,7 +549,7 @@ impl CharProps {
     }
 
     fn overlay_document_marks(&mut self, patch: &CharProps) {
-        overlay_fields!(self, patch; link, ins, del, fmt_change, ligatures);
+        overlay_fields!(self, patch; link, note, ins, del, fmt_change, ligatures);
     }
     pub fn overlaid(mut self, patch: &CharProps) -> CharProps {
         self.overlay(patch);
@@ -569,6 +574,7 @@ impl CharProps {
     pub fn cleared(&self) -> CharProps {
         CharProps {
             link: self.link.clone(),
+            note: self.note,
             ins: self.ins,
             del: self.del,
             fmt_change: self.fmt_change.clone(),
@@ -579,6 +585,6 @@ impl CharProps {
     }
     /// Just the formatting: without the link, revision marks and tracked formatting change.
     pub fn formatting(&self) -> CharProps {
-        CharProps { link: None, ins: None, del: None, fmt_change: None, ..self.clone() }
+        CharProps { link: None, note: None, ins: None, del: None, fmt_change: None, ..self.clone() }
     }
 }
