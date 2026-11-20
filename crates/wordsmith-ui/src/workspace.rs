@@ -575,57 +575,66 @@ fn templates_window(ed: &mut Editor, ctx: &Context) {
 
 /// The keys window: every command, its key, and the writer's own.
 fn keys_window(ed: &mut Editor, ctx: &Context) {
-    let Some((mut filter, mut capturing)) = ed.tools.keys.take() else { return };
+    if ed.tools.keys.is_none() || ed.chrome.backstage == Some(crate::backstage::Page::Keys) {
+        return;
+    }
     let mut open = true;
+    egui::Window::new("Keys").open(&mut open).default_size([560.0, 480.0]).show(ctx, |ui| keys_body(ed, ui));
+    if !open {
+        ed.tools.keys = None;
+    }
+}
+
+/// Every command with its key and the writer's own, in a window or on the File page.
+pub fn keys_body(ed: &mut Editor, ui: &mut Ui) {
+    let (mut filter, mut capturing) = ed.tools.keys.take().unwrap_or_default();
     let mut set: Option<(String, String)> = None;
     let mut clear: Option<String> = None;
     let specs: Vec<(&'static str, &'static str, &'static str, &'static str)> =
         ed.session.registry.all().iter().filter(|s| s.params == "{}").map(|s| (s.id, s.label, s.location, s.shortcut)).collect();
-    egui::Window::new("Keys").open(&mut open).default_size([560.0, 480.0]).show(ctx, |ui| {
-        ui.horizontal(|ui| {
-            ui.label("Find");
-            ui.text_edit_singleline(&mut filter);
+    ui.horizontal(|ui| {
+        ui.label("Find");
+        ui.text_edit_singleline(&mut filter);
+    });
+    if let Some(id) = &capturing {
+        ui.colored_label(Color32::from_rgb(200, 120, 30), format!("Press the new key for {id} (Escape to cancel)"));
+        let pressed = ui.input(|i| {
+            i.events.iter().find_map(|e| match e {
+                egui::Event::Key { key, pressed: true, modifiers, .. } => Some((*key, *modifiers)),
+                _ => None,
+            })
         });
-        if let Some(id) = &capturing {
-            ui.colored_label(Color32::from_rgb(200, 120, 30), format!("Press the new key for {id} (Escape to cancel)"));
-            let pressed = ui.input(|i| {
-                i.events.iter().find_map(|e| match e {
-                    egui::Event::Key { key, pressed: true, modifiers, .. } => Some((*key, *modifiers)),
-                    _ => None,
-                })
-            });
-            if let Some((key, m)) = pressed {
-                if key == egui::Key::Escape {
-                    capturing = None;
-                } else if let Some(sc) = crate::keys::shortcut(key, m, ed.mac) {
-                    set = Some((sc, id.clone()));
-                    capturing = None;
-                }
+        if let Some((key, m)) = pressed {
+            if key == egui::Key::Escape {
+                capturing = None;
+            } else if let Some(sc) = crate::keys::shortcut(key, m, ed.mac) {
+                set = Some((sc, id.clone()));
+                capturing = None;
             }
         }
-        ui.separator();
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            egui::Grid::new("keys").striped(true).num_columns(4).show(ui, |ui| {
-                let f = filter.to_lowercase();
-                for (id, label, loc, default) in &specs {
-                    if !f.is_empty() && !format!("{id} {label} {loc}").to_lowercase().contains(&f) {
-                        continue;
-                    }
-                    ui.label(*label).on_hover_text(*id);
-                    ui.label(RichText::new(*default).weak());
-                    let mine: Vec<String> = ed.keys.iter().filter(|(_, c)| c.as_str() == *id).map(|(k, _)| k.clone()).collect();
-                    ui.label(mine.join(", "));
-                    ui.horizontal(|ui| {
-                        if ui.small_button("Set…").clicked() {
-                            capturing = Some((*id).to_string());
-                        }
-                        if !mine.is_empty() && ui.small_button("Reset").clicked() {
-                            clear = Some((*id).to_string());
-                        }
-                    });
-                    ui.end_row();
+    }
+    ui.separator();
+    egui::ScrollArea::vertical().id_salt("keys-list").show(ui, |ui| {
+        egui::Grid::new("keys").striped(true).num_columns(4).show(ui, |ui| {
+            let f = filter.to_lowercase();
+            for (id, label, loc, default) in &specs {
+                if !f.is_empty() && !format!("{id} {label} {loc}").to_lowercase().contains(&f) {
+                    continue;
                 }
-            });
+                ui.label(*label).on_hover_text(*id);
+                ui.label(RichText::new(*default).weak());
+                let mine: Vec<String> = ed.keys.iter().filter(|(_, c)| c.as_str() == *id).map(|(k, _)| k.clone()).collect();
+                ui.label(mine.join(", "));
+                ui.horizontal(|ui| {
+                    if ui.small_button("Set…").clicked() {
+                        capturing = Some((*id).to_string());
+                    }
+                    if !mine.is_empty() && ui.small_button("Reset").clicked() {
+                        clear = Some((*id).to_string());
+                    }
+                });
+                ui.end_row();
+            }
         });
     });
     if let Some((sc, id)) = set {
@@ -634,9 +643,7 @@ fn keys_window(ed: &mut Editor, ctx: &Context) {
     if let Some(id) = clear {
         ed.keys.retain(|_, c| *c != id);
     }
-    if open {
-        ed.tools.keys = Some((filter, capturing));
-    }
+    ed.tools.keys = Some((filter, capturing));
 }
 
 pub fn show(ed: &mut Editor, ctx: &Context) {

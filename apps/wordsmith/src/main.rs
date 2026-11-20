@@ -74,7 +74,8 @@ impl App {
             }
             editor.switch_tab(0);
         } else if editor.tools.show_start_on_launch {
-            editor.tools.start = true;
+            // The File page's New page: recent scripts, templates, first steps.
+            editor.chrome.backstage = Some(wordsmith_ui::backstage::Page::New);
         }
         App { editor, offered_recovery: false, prefs, dictionary, settings, stats_saved: Instant::now() }
     }

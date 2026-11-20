@@ -55,3 +55,4 @@ One line per merge to `main`, newest last.
 | 2026-11-20 | m15/frame | Tokens, icons, ribbon with every tab and key tips, quick-access row, status bar redone, menu bar optional; decision 0037 |
 | 2026-11-20 | m16/panels | Navigator and Inspector rails with thirteen panels; four windows become panels; typing kept within budget |
 | 2026-11-20 | m17/ribbon | Reports gallery, revision set menu, every menu command on the ribbon or File page (tested) |
+| 2026-11-20 | m18/backstage | The File page: new with template cards, open, save, export, print, compare, preferences, keys, about |

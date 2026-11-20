@@ -87,6 +87,9 @@ fn run(out: &Path) -> Result<(), String> {
     ed.chrome.right = Some(wordsmith_ui::ribbon::Panel::Element);
     ed.chrome.left = Some(wordsmith_ui::ribbon::Panel::Characters);
     shot(&mut ed, out, "ribbon-review")?;
+    ed.chrome.backstage = Some(wordsmith_ui::backstage::Page::New);
+    shot(&mut ed, out, "file-page")?;
+    ed.chrome.backstage = None;
     ed.chrome.tab = wordsmith_ui::ribbon::Tab::Write;
     ed.chrome.right = None;
     ed.chrome.left = Some(wordsmith_ui::ribbon::Panel::Scenes);

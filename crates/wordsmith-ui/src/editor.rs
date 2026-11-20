@@ -764,7 +764,7 @@ impl Editor {
                     let current = Elements::of_doc(&self.session.doc).of_para_at(&self.session).to_string();
                     self.settings = Some(SettingsDialog::new(&mut self.session, &current));
                 }
-                Some("about") => self.show_about = true,
+                Some("about") => self.chrome.backstage = Some(crate::backstage::Page::About),
                 Some("recover") => self.recovery = Some(RecoveryPrompt),
                 Some("exportPdf") => self.ask_export_path(),
                 Some("open" | "import" | "saveAs" | "export" | "macrosFrom" | "compare") => {
@@ -779,7 +779,7 @@ impl Editor {
                     let guess = req.get("guess").and_then(Value::as_bool).unwrap_or(true);
                     self.import_question = Some(ImportQuestion { path, guess });
                 }
-                Some("preferences") => self.show_prefs = true,
+                Some("preferences") => self.chrome.backstage = Some(crate::backstage::Page::Preferences),
                 Some("revisions") => self.show_revisions = true,
                 Some("titlePage") => self.title_page = self.session.run("titlePage.get", &json!({})).ok(),
                 Some("headerFooter") => self.header_footer = self.session.run("headerFooter.get", &json!({})).ok(),
