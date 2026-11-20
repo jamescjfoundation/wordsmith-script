@@ -236,6 +236,8 @@ pub struct Editor {
     pub backups: Backups,
     /// The preferences window is open.
     pub show_prefs: bool,
+    /// The title page fields being edited, while the title page window is open.
+    pub title_page: Option<Value>,
     /// The revision auto-save last saw, to notice changes.
     seen_rev: u64,
 }
@@ -280,6 +282,7 @@ impl Editor {
             autosave: AutoSave::default(),
             backups: Backups::default(),
             show_prefs: false,
+            title_page: None,
             seen_rev: 0,
         }
     }
@@ -501,6 +504,7 @@ impl Editor {
                     self.import_question = Some(ImportQuestion { path, guess });
                 }
                 Some("preferences") => self.show_prefs = true,
+                Some("titlePage") => self.title_page = self.session.run("titlePage.get", &json!({})).ok(),
                 Some("view.page") => self.set_view(View::Page),
                 Some("view.normal") => self.set_view(View::Normal),
                 Some("view.speed") => self.set_view(View::Speed),

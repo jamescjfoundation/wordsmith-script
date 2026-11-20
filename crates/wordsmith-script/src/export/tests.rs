@@ -151,3 +151,28 @@ fn print_jobs_are_bounded_and_go_to_lp() {
     assert!(s.run("file.print", &json!({"copies": 0})).is_err());
     assert!(s.run("file.print", &json!({"copies": 1000})).is_err());
 }
+
+#[test]
+fn the_title_page_comes_first_and_the_script_is_numbered_after_it() {
+    let mut doc = speech_script();
+    let mut t = crate::title_page::TitlePage::default();
+    t.set("title", "THE KITCHEN");
+    t.set("credit", "Written by");
+    t.set("authors", "Anna Writer");
+    t.set("contact", "anna@example.com");
+    t.set("draftDate", "First Draft");
+    t.store(&mut doc);
+    let pag = paginate(&doc);
+    let pages = extract_text(&super::pdf(&doc).unwrap());
+    assert_eq!(pages.len(), pag.pages.len() + 1, "one title page");
+    // In reading order (this extractor does not split these lines, so compare without spaces).
+    let title: String = pages[0].chars().filter(|c| !c.is_whitespace()).collect();
+    assert!(title.starts_with("THEKITCHENWrittenbyAnnaWriter"), "{title}");
+    assert!(title.ends_with("anna@example.comFirstDraft"), "{title}");
+    assert!(!title.contains("1."), "no page number on the title page: {title}");
+    let one = squash(&pages[1]);
+    assert!(one.starts_with("INT. KITCHEN - NIGHT"), "the script's page 1 has no number: {one}");
+    assert!(squash(&pages[2]).starts_with("2."), "{}", squash(&pages[2]));
+    // Without title page fields the PDF is the script alone.
+    assert_eq!(extract_text(&super::pdf(&speech_script()).unwrap()).len(), pag.pages.len());
+}

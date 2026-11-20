@@ -380,8 +380,47 @@ fn prefs_window(ed: &mut Editor, ctx: &Context) {
     ed.show_prefs = open;
 }
 
+/// The title page fields, edited as text; Apply sets them (one undo step).
+fn title_page_window(ed: &mut Editor, ctx: &Context) {
+    let Some(mut form) = ed.title_page.take() else { return };
+    let mut open = true;
+    let mut apply = false;
+    egui::Window::new("Title Page").open(&mut open).collapsible(false).show(ctx, |ui| {
+        egui::Grid::new("title_page").num_columns(2).show(ui, |ui| {
+            for (key, label, rows) in [
+                ("title", "Title", 2),
+                ("credit", "Credit", 1),
+                ("authors", "Authors", 2),
+                ("source", "Source", 2),
+                ("notes", "Notes", 2),
+                ("contact", "Contact", 4),
+                ("draftDate", "Draft date", 1),
+                ("copyright", "Copyright", 1),
+            ] {
+                ui.label(label);
+                let mut text = form.get(key).and_then(Value::as_str).unwrap_or("").to_string();
+                if ui.add(egui::TextEdit::multiline(&mut text).desired_rows(rows).desired_width(360.0)).changed() {
+                    form[key] = json!(text);
+                }
+                ui.end_row();
+            }
+        });
+        ui.label("Printed before the script when any field has text. The script's pages are numbered from 1 after it.");
+        if ui.button("Apply").clicked() {
+            apply = true;
+        }
+    });
+    if apply {
+        ed.run("titlePage.set", form.clone());
+    }
+    if open {
+        ed.title_page = Some(form);
+    }
+}
+
 /// Show whichever dialogs are open.
 pub fn show(ed: &mut Editor, ctx: &Context) {
+    title_page_window(ed, ctx);
     palette_window(ed, ctx);
     settings_window(ed, ctx);
     recovery_window(ed, ctx);

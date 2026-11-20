@@ -26,3 +26,4 @@ One line per merge to `main`, newest last.
 | 2026-11-19 | m4/import | Plain text, RTF and text-PDF import with the is-it-a-script choice and a guess; PDFs this app prints come back as the same elements; 1661 tests pass |
 | 2026-11-19 | m4/export | Plain text, RTF and HTML export from the element styles, no mores or continueds; golden scripts come back from text and RTF; 1667 tests pass |
 | 2026-11-19 | m4/save | Open, import, save, save as, exports in the editor; unsaved-changes prompt; auto-save (15 min, 10 s idle); timestamped backups; preferences file; all writes atomic; M4 complete; 1681 tests pass |
+| 2026-11-19 | m5/title-page | Title page fields, window and printed page before the script (numbered from 1 after it); Fountain and PDF import read it; `wordsmith-cli convert`; 1687 tests pass |

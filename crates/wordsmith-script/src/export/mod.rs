@@ -23,9 +23,21 @@ pub fn pdf_of(pag: &Paginated) -> Result<Vec<u8>, String> {
     wordsmith_pdf::export_layout(&pag.doc, &pag.layout, &PdfOptions::default()).map_err(|e| e.to_string())
 }
 
-/// The PDF of `doc`.
+/// The PDF of `doc`: its title page, when it has one, then the paginated script.
 pub fn pdf(doc: &Document) -> Result<Vec<u8>, String> {
-    pdf_of(&paginate(doc))
+    printed(doc, &paginate(doc))
+}
+
+/// The printed PDF of `doc`, already paginated as `pag`: the title page (if any) first, as a
+/// section of its own, then the script numbered from page 1.
+pub fn printed(doc: &Document, pag: &Paginated) -> Result<Vec<u8>, String> {
+    let title = crate::title_page::TitlePage::of_doc(doc);
+    if title.is_empty() {
+        return pdf_of(pag);
+    }
+    let with = crate::title_page::with_title_page(&pag.doc, &title);
+    let layout = crate::paginate::measure::print_layout(&with, &mut wordsmith_layout::LayoutCache::new());
+    wordsmith_pdf::export_layout(&with, &layout, &PdfOptions::default()).map_err(|e| e.to_string())
 }
 
 /// Write `bytes` to `path`, replacing it only once the new file is complete (craft-atomic: the
@@ -50,7 +62,7 @@ fn export_pdf(s: &mut Session, v: &Value) -> CmdResult {
         return Err(CmdError::Params("`path` must end in .pdf".into()));
     }
     let pag = paginate(&s.doc);
-    let bytes = pdf_of(&pag).map_err(CmdError::Failed)?;
+    let bytes = printed(&s.doc, &pag).map_err(CmdError::Failed)?;
     write_file(&path, &bytes).map_err(CmdError::Failed)?;
     Ok(json!({"path": path, "pages": pag.pages.len(), "bytes": bytes.len()}))
 }
@@ -117,7 +129,7 @@ fn print(s: &mut Session, v: &Value) -> CmdResult {
     }
     let printer = p::str(v, "printer");
     let pag = paginate(&s.doc);
-    let bytes = pdf_of(&pag).map_err(CmdError::Failed)?;
+    let bytes = printed(&s.doc, &pag).map_err(CmdError::Failed)?;
     let title = if s.doc.core.title.is_empty() { "Script".to_string() } else { s.doc.core.title.clone() };
     let job = send_to_printer(&bytes, printer, copies as u32, &title).map_err(CmdError::Failed)?;
     Ok(json!({"job": job, "pages": pag.pages.len()}))

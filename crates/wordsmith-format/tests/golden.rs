@@ -220,6 +220,15 @@ fn golden_scripts_come_back_from_their_pdfs() {
         let doc = fountain::read(&text).expect("reads").doc;
         let bytes = wordsmith_script::export::pdf(&doc).expect("pdf");
         let back = wordsmith_format::import::pdf(&bytes).expect("imports");
+        // The title page comes back as the title page, not as script.
+        use wordsmith_script::title_page::TitlePage;
+        let (want_page, got_page) = (TitlePage::of_doc(&doc), TitlePage::of_doc(&back));
+        assert!(!want_page.is_empty(), "{name}: the golden script has a title page");
+        // A page cannot tell a credit that names the authors ("By …") from the authors, and a
+        // long line wraps: compare the credit and authors together, as words.
+        let words = |t: &TitlePage| format!("{} {}", t.credit, t.authors).split_whitespace().collect::<Vec<_>>().join(" ");
+        assert_eq!(got_page.title, want_page.title, "{name}");
+        assert_eq!(words(&got_page), words(&want_page), "{name}");
         let (want, got) = (flat(&doc), flat(&back));
         if let Some(d) = std::env::var_os("DUMP_IMPORT") {
             let dump = |v: &Vec<(String, String)>| v.iter().map(|(e, t)| format!("{e}\t{t}\n")).collect::<String>();
