@@ -6,9 +6,8 @@
 
 - Help ▸ Check for Updates, an Updates section on the About page, and a check
   at start (a preference, on by default). A newer release is offered in a
-  Software Update window; where this copy can replace itself it installs the
-  update, verified against its SHA-256, and restarts. Otherwise it opens the
-  release page.
+  Software Update window. On Linux it installs the update, verified against
+  its SHA-256, and restarts; on macOS and Windows it opens the release page.
 - Release files are named `wordsmith-script-<version>-<os>-<arch>`; macOS ships
   a disk image.
 - The release workflow drafts a GitHub release with `SHA256SUMS.txt` and

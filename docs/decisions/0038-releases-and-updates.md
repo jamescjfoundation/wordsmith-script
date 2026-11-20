@@ -83,7 +83,7 @@ ArtCraft apps do. We reviewed WordCraft (`storytold/wordcraft`), craft-libs'
 
 | Platform | Update in place? | Why |
 |---|---|---|
-| macOS | Yes | craft-update checks the bundle's signature only when the release names a developer team. But the first download from a browser still meets Gatekeeper ("unidentified developer"), because the app is not notarized |
+| macOS | No | craft-update (at our pin) accepts a new macOS app only when it carries the Developer ID of ArtCraft's own team (`install::macos::TEAM_ID`, `DJ6XS33FX8`). No copy of ours can pass that, signed or not, so the app offers the release page. Found in the first end-to-end test (v0.1.0, 2026-11-20): "the app isn't signed by its developer". The first download from a browser also meets Gatekeeper ("unidentified developer"), because the app is not notarized |
 | Windows | No | craft-update refuses an unsigned copy, so the writer gets the release page |
 | Linux tar.gz | Only when the folder can be written | Otherwise, the release page |
 
@@ -95,11 +95,15 @@ ArtCraft apps do. We reviewed WordCraft (`storytold/wordcraft`), craft-libs'
 - A universal macOS binary (we ship one DMG per architecture, which the update
   also reads).
 - The ArtCraft nightly dry run of the release build.
-- The update has not been run end to end against a real published release.
-  That needs the first release on GitHub.
+- In-place updates on macOS. They need craft-update to take the developer
+  team from the app (an `App` field, offered upstream) or our own swap of the
+  bundle, and our own Developer ID either way.
+- An in-place install has not been run end to end. The check and the offer
+  were tested against the published v0.1.0; on macOS the install was refused
+  as described above.
 
 ## Revisit when
 
 - egui moves to 0.37: craft-update's own dialogs could replace ours.
-- Signing accounts exist: add the identities to the workflow and pass the
-  developer team, so the macOS update checks the signature.
+- Signing accounts exist: add the identities to the workflow, and turn on the
+  macOS install once craft-update can check our team instead of ArtCraft's.

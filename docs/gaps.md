@@ -71,9 +71,10 @@ they are answered, the values v0.1 built stay (decision 0030).
 
 ## Release and tooling (decisions 0029 and 0038)
 
-- Updates replace the app in place only on macOS and Linux (tar.gz in a
-  writable folder); unsigned Windows copies are sent to the release page. The
-  update has not been tried end to end: there is no published release yet.
+- Updates replace the app in place only on Linux (tar.gz in a writable
+  folder). macOS and unsigned Windows copies are sent to the release page:
+  craft-update accepts a macOS app only when ArtCraft's own team signed it
+  (decision 0038).
 - No AppImage, deb, rpm or MSI; `SHA256SUMS.txt` is not GPG-signed; one DMG per
   macOS architecture, not a universal one.
 - Bundles, not installers (a disk image on macOS). The macOS app is signed ad

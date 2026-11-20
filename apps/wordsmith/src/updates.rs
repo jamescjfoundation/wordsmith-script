@@ -23,6 +23,12 @@ pub const APP: App = App {
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// Whether this platform can install an update in place. Not macOS: craft-update (at our pin)
+/// accepts a new macOS app only when it carries the Developer ID of ArtCraft's own team
+/// (`install::macos::TEAM_ID`), which no copy of ours ever will, signed or not. The writer gets
+/// the release page there instead (decision 0038).
+const INSTALLS_IN_PLACE: bool = !cfg!(target_os = "macos");
+
 enum Message {
     Checked { found: Result<Option<Release>, String>, asked: bool },
     Phase(String),
@@ -128,7 +134,7 @@ impl Updater {
     fn checked(&mut self, ui: &mut Updates, found: Result<Option<Release>, String>, asked: bool) {
         match found {
             Ok(Some(release)) => {
-                let installs = self_update::is_self_updating(&APP) && self_update::release_installs(&APP, &release);
+                let installs = INSTALLS_IN_PLACE && self_update::is_self_updating(&APP) && self_update::release_installs(&APP, &release);
                 let page = if release.html_url.starts_with("https://github.com/") { release.html_url.clone() } else { APP.releases_url() };
                 ui.status = Status::Available(Offer { version: release.version_label(), page, installs });
                 self.offered = Some(release);
@@ -152,7 +158,8 @@ impl Updater {
             ui.status = Status::Failed("there is no update to install; check again".into());
             return;
         };
-        let Some(installed) = self_update::current(&APP) else {
+        let installed = if INSTALLS_IN_PLACE { self_update::current(&APP) } else { None };
+        let Some(installed) = installed else {
             ui.status = Status::Failed("this copy can't replace itself; download the new version from the release page".into());
             return;
         };
@@ -214,6 +221,22 @@ mod tests {
         assert_eq!(APP.bundle_id(), "org.wordsmith-script.app");
         assert_eq!(APP.stems().collect::<Vec<_>>(), ["wordsmith-script"]);
         assert!(!APP.developer.contains("ArtCraft"));
+    }
+
+    #[test]
+    fn macos_is_sent_to_the_release_page() {
+        let mut u = Updater::new();
+        let mut ui = Updates::default();
+        let release = Release { tag: "v99.0.0".into(), version: craft_update::parse_version("99.0.0"), ..Default::default() };
+        u.checked(&mut ui, Ok(Some(release)), true);
+        let Status::Available(offer) = ui.status.clone() else { panic!("{:?}", ui.status) };
+        assert_eq!(offer.version, "99.0.0");
+        if cfg!(target_os = "macos") {
+            assert!(!offer.installs);
+            u.install(&mut ui, &egui::Context::default());
+            assert!(matches!(ui.status, Status::Failed(_)));
+        }
+        assert!(offer.page.starts_with("https://github.com/jamescjfoundation/wordsmith-script/releases"));
     }
 
     #[test]
