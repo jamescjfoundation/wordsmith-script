@@ -253,10 +253,13 @@ pub fn read(text: &str) -> Result<FountainScript, String> {
             && let Some((heading, number)) = scene_heading(t)
         {
             let n = body.len();
-            body.push(paragraph(&id(ElementKind::SceneHeading), &plain(&heading).to_uppercase()));
+            let mut p = paragraph(&id(ElementKind::SceneHeading), &plain(&heading).to_uppercase());
             if let Some(num) = number {
+                // A numbered scene keeps its number (decision 0025).
+                p.props.scene_number = Some(num.to_uppercase());
                 scene_numbers.insert(n, num);
             }
+            body.push(p);
             i += 1;
             continue;
         }
@@ -325,6 +328,10 @@ pub fn read(text: &str) -> Result<FountainScript, String> {
     }
     if !body.is_empty() {
         doc.body = with_page_breaks(body).into_iter().map(para_block).collect();
+    }
+    // Numbers in the file: they are the script's locked numbers, shown.
+    if !scene_numbers.is_empty() {
+        wordsmith_script::scene_numbers::SceneNumbers { show: true, locked: true }.store(&mut doc);
     }
     if let Some(title) = title_page.get("title") {
         doc.core.title = plain(title).replace('\n', " ");
@@ -478,6 +485,12 @@ pub fn write(doc: &Document) -> String {
     // Notes are written as `[[ ]]` where their text ends (the reader leaves such notes out).
     let notes = wordsmith_script::notes::Notes::of_doc(doc);
     let anchors = wordsmith_script::notes::anchors(doc);
+    let numbering = wordsmith_script::scene_numbers::SceneNumbers::of_doc(doc);
+    let numbers_by_block: std::collections::HashMap<usize, String> = if numbering.show {
+        wordsmith_script::scenes(doc).iter().map(|sc| sc.start).zip(wordsmith_script::scene_numbers::numbers(doc)).collect()
+    } else {
+        Default::default()
+    };
     let para_blocks: Vec<usize> = doc.body.iter().enumerate().filter(|(_, b)| b.as_para().is_some()).map(|(i, _)| i).collect();
     let mut in_speech = false;
     for (n, p) in paras.iter().enumerate() {
@@ -512,7 +525,12 @@ pub fn write(doc: &Document) -> String {
             ElementKind::SceneHeading => {
                 let t = one_line(&text);
                 let plain_ok = scene_heading(&t).is_some_and(|(h, num)| h == t && num.is_none()) && !t.starts_with('.');
-                blocks.push(if plain_ok { t } else { format!(".{t}") });
+                let line = if plain_ok { t } else { format!(".{t}") };
+                // Shown scene numbers are written as `#12A#`.
+                blocks.push(match numbers_by_block.get(&block) {
+                    Some(n) => format!("{line} #{n}#"),
+                    None => line,
+                });
             }
             ElementKind::Character => {
                 let t = one_line(&text);

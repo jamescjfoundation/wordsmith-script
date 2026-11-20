@@ -123,3 +123,8 @@ on 2026-11-19) and are `#[ignore]`d until we decide how to supply it:
 
 - Fountain import leaves notes inside text out (Fountain export writes them);
   notes are not printed; threaded replies are not built.
+
+## Production (M6)
+
+- Numbering shots, characters or dialogue is not built; scenes only
+  (decision 0025).

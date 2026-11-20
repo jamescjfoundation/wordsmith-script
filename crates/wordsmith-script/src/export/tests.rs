@@ -331,3 +331,23 @@ fn sample_revised_page() {
     s.run("text.insert", &json!({"text": "REVISED "})).unwrap();
     std::fs::write(path, super::pdf(&s.doc).unwrap()).unwrap();
 }
+
+#[test]
+fn scene_numbers_print_either_side_of_their_headings() {
+    let mut doc = new_script();
+    doc.body = vec![
+        para_block(paragraph("SceneHeading", "INT. KITCHEN - NIGHT")),
+        para_block(paragraph("Action", "Rain.")),
+        para_block(paragraph("SceneHeading", "EXT. YARD - DAY")),
+        para_block(paragraph("Action", "Sun.")),
+    ];
+    let mut s = crate::session_for(doc);
+    let rows = |s: &wordsmith_engine::Session| page_rows(&pdf_of(&paginate(&s.doc)).unwrap())[0].clone();
+    assert_eq!(rows(&s)[0], "INT. KITCHEN - NIGHT", "hidden by default");
+    s.run("scene.lockNumbers", &json!({"lock": true})).unwrap();
+    s.doc.body.insert(2, para_block(paragraph("SceneHeading", "INT. HALL - NIGHT")));
+    let r = rows(&s);
+    assert_eq!(r[0], "1 INT. KITCHEN - NIGHT 1");
+    assert!(r.contains(&"1A INT. HALL - NIGHT 1A".to_string()), "{r:#?}");
+    assert!(r.contains(&"2 EXT. YARD - DAY 2".to_string()), "{r:#?}");
+}

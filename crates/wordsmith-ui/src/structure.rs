@@ -76,7 +76,14 @@ pub fn cards(ed: &mut Editor, ui: &mut Ui) {
                         egui::Frame::group(ui.style()).fill(ui.visuals().extreme_bg_color).show(ui, |ui| {
                             ui.set_min_size(CARD - vec2(12.0, 12.0));
                             ui.set_max_width(CARD.x - 12.0);
-                            ui.label(RichText::new(format!("{}  {}", i + 1, text_of(sc, "heading"))).strong());
+                            ui.label(
+                                RichText::new(format!(
+                                    "{}  {}",
+                                    sc["number"].as_str().map_or_else(|| (i + 1).to_string(), str::to_string),
+                                    text_of(sc, "heading")
+                                ))
+                                .strong(),
+                            );
                             let summary = text_of(sc, "summary");
                             if summary.is_empty() {
                                 ui.label(RichText::new(text_of(sc, "firstAction")).weak());

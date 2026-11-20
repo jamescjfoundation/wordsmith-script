@@ -5,7 +5,7 @@ Date: 2026-11-19
 - **Settings** (`app_data` key `wordsmith.revisions`): the sets made so far
   (name, `#RRGGBB` color, bold, underline, strikethrough), the current set's
   name, revision mode, the margin mark (one character, `*` by default), its
-  position (7.8 in from the page's left edge by default) and whether PDF and
+  position (8.0 in from the page's left edge by default, clear of scene numbers) and whether PDF and
   printed pages are colored. Up to 100 sets.
 - **The cycle.** The original draft is White and carries no marks. Next
   Revision adds the next set in the industry cycle (Blue, Pink, Yellow, Green,

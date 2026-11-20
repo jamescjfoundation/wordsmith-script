@@ -75,6 +75,10 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 }
                 ui.separator();
                 item(ed, ui, "view.revisions");
+                ui.separator();
+                for id in ["scene.showNumbers", "scene.lockNumbers", "scene.renumber", "scene.omit", "scene.recall"] {
+                    item(ed, ui, id);
+                }
             });
             ui.menu_button("View", |ui| {
                 for id in ["view.normal", "view.page", "view.speed", "view.cards", "view.scenes", "view.tables"] {

@@ -190,10 +190,11 @@ pub fn scenes_csv(doc: &Document) -> String {
     let pag = crate::paginate::paginate(doc);
     let page_of = |block: usize| pag.map.iter().position(|m| m.is_some_and(|m| m.block == block)).and_then(|out| page_of_output(&pag, out));
     let mut rows = vec![vec!["Scene".to_string(), "Heading".into(), "Page".into(), "Characters".into(), "Summary".into()]];
+    let numbers = crate::scene_numbers::numbers(doc);
     for sc in scenes(doc) {
         let v = super::scene::scene_json(doc, &elements, &sc);
         rows.push(vec![
-            (sc.index + 1).to_string(),
+            numbers.get(sc.index).cloned().unwrap_or_else(|| (sc.index + 1).to_string()),
             sc.heading.clone(),
             page_of(sc.start).map(|p| p.to_string()).unwrap_or_default(),
             super::scene::speakers(doc, &elements, &sc).join(", "),
