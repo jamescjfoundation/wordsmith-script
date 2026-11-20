@@ -67,16 +67,18 @@ pub fn scene_json(doc: &Document, elements: &Elements, scene: &Scene) -> Value {
 fn list(s: &mut Session, _: &Value) -> CmdResult {
     let elements = Elements::of_doc(&s.doc);
     let numbers = crate::scene_numbers::numbers(&s.doc);
+    // Every scene's own data, read once.
+    let all_data = crate::scene_data::all(&s.doc);
     Ok(json!(
         scenes(&s.doc)
             .iter()
             .map(|sc| {
                 let mut v = scene_json(&s.doc, &elements, sc);
                 v["number"] = json!(numbers.get(sc.index));
-                let data = crate::scene_data::of_scene(&s.doc, sc);
+                let data = crate::scene_data::of_scene_in(&all_data, &s.doc, sc);
                 v["title"] = json!(data.title);
                 v["color"] = json!(data.color);
-                v["cast"] = json!(crate::scene_data::cast(&s.doc, &elements, sc).1);
+                v["cast"] = json!(crate::scene_data::cast_with(&data, &s.doc, &elements, sc).1);
                 v
             })
             .collect::<Vec<_>>()

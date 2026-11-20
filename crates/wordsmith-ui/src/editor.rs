@@ -289,6 +289,11 @@ pub struct Editor {
     pub reopen_last: bool,
     /// The ribbon, side panels and File page.
     pub chrome: crate::ribbon::Chrome,
+    /// What the side panels keep while text is typed in them.
+    pub panels: crate::sidebar::PanelState,
+    lengths_cache: Option<(u64, Arc<Vec<u32>>)>,
+    panel_cache: Option<(u64, Instant, Arc<Vec<Value>>, Arc<Vec<u32>>)>,
+    ribbon_cache: Option<((u64, wordsmith_doc::Pos), Arc<crate::ribbon::tabs::RibbonData>)>,
 }
 
 impl Editor {
@@ -355,6 +360,10 @@ impl Editor {
             applied_theme: None,
             reopen_last: false,
             chrome: Default::default(),
+            panels: Default::default(),
+            lengths_cache: None,
+            panel_cache: None,
+            ribbon_cache: None,
         }
     }
 
@@ -379,6 +388,50 @@ impl Editor {
     /// The caret's rectangle on screen in the last frame drawn.
     pub fn caret_rect(&self) -> Option<Rect> {
         self.caret_screen
+    }
+
+    /// The scene list and lengths for the side panels: refreshed when the script changes, but no
+    /// more than every 300 ms while typing goes on, so a long script types as fast with the
+    /// Navigator open. Clicks go by the script as it is now, never by these.
+    pub fn panel_scenes(&mut self) -> (Arc<Vec<Value>>, Arc<Vec<u32>>) {
+        let rev = self.session.rev();
+        let fresh = |at: &Instant| at.elapsed() < Duration::from_millis(300);
+        if let Some((r, at, list, lens)) = &self.panel_cache
+            && (*r == rev || fresh(at))
+        {
+            return (list.clone(), lens.clone());
+        }
+        let list = self.scene_list();
+        let lens = self.scene_lengths();
+        self.panel_cache = Some((rev, Instant::now(), list.clone(), lens.clone()));
+        (list, lens)
+    }
+
+    /// Each scene's length in eighths, kept for one revision.
+    pub fn scene_lengths(&mut self) -> Arc<Vec<u32>> {
+        let rev = self.session.rev();
+        if let Some((r, v)) = &self.lengths_cache
+            && *r == rev
+        {
+            return v.clone();
+        }
+        let pag = self.paginated();
+        let v = Arc::new(wordsmith_script::reports::scene_eighths(&self.session.doc, &pag));
+        self.lengths_cache = Some((rev, v.clone()));
+        v
+    }
+
+    /// What the ribbon shows that depends on the script, kept for one revision.
+    pub fn ribbon_data(&mut self) -> Arc<crate::ribbon::tabs::RibbonData> {
+        let key = (self.session.rev(), self.session.sel.focus.clone());
+        if let Some((k, v)) = &self.ribbon_cache
+            && *k == key
+        {
+            return v.clone();
+        }
+        let v = Arc::new(crate::ribbon::tabs::RibbonData::of(self));
+        self.ribbon_cache = Some((key, v.clone()));
+        v
     }
 
     /// The script's scenes as `scene.list` gives them, kept for one revision.
@@ -1437,6 +1490,9 @@ impl Editor {
             crate::ribbon::show(self, ui);
             crate::chrome::find_bar(self, ui);
             crate::chrome::status_bar(self, ui);
+            if self.chrome.backstage.is_none() {
+                crate::sidebar::show(self, ui);
+            }
             crate::workspace::tab_bar(self, ui);
             crate::tables::panel(self, ui);
             crate::strip::panel(self, ui);

@@ -76,7 +76,9 @@ fn run(out: &Path) -> Result<(), String> {
     std::fs::create_dir_all(out).map_err(|e| format!("{}: {e}", out.display()))?;
     let mut ed = sample()?;
     ed.set_view(View::Page);
+    ed.chrome.right = Some(wordsmith_ui::ribbon::Panel::Scene);
     shot(&mut ed, out, "page-view")?;
+    ed.chrome.right = None;
     ed.structure = Some(Structure::Cards);
     shot(&mut ed, out, "index-cards")?;
     ed.structure = Some(Structure::Board);

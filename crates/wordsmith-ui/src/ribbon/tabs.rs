@@ -23,6 +23,46 @@ pub fn draw(ed: &mut Editor, ui: &mut Ui) {
     }
 }
 
+/// What the ribbon shows that depends on the script and the caret, worked out once a revision
+/// (reading settings from the script's data on every frame would cost typing time).
+pub struct RibbonData {
+    pub here: ElementKind,
+    pub flows: Vec<(ElementKind, String)>,
+    pub keys: Vec<(String, String)>,
+    pub styles: Vec<String>,
+    pub typing: wordsmith_script::typing::Typing,
+    pub macros: wordsmith_script::macros::Macros,
+}
+
+impl RibbonData {
+    pub fn of(ed: &mut Editor) -> Self {
+        let kinds = [
+            ElementKind::SceneHeading,
+            ElementKind::Action,
+            ElementKind::Character,
+            ElementKind::Parenthetical,
+            ElementKind::Dialogue,
+            ElementKind::Transition,
+            ElementKind::Shot,
+        ];
+        RibbonData {
+            here: current_kind(ed),
+            flows: kinds.iter().map(|k| (*k, flow(ed, *k))).collect(),
+            keys: ed
+                .session
+                .registry
+                .all()
+                .iter()
+                .filter(|s| s.id.starts_with("element."))
+                .map(|s| (s.id.to_string(), s.shortcut.to_string()))
+                .collect(),
+            styles: styles_on(ed),
+            typing: wordsmith_script::typing::Typing::of_doc(&ed.session.doc),
+            macros: wordsmith_script::macros::Macros::of_doc(&ed.session.doc),
+        }
+    }
+}
+
 /// What Return and Tab make from element `kind`, by name.
 fn flow(ed: &Editor, kind: ElementKind) -> String {
     let elements = Elements::of_doc(&ed.session.doc);
@@ -57,7 +97,8 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
             small(ui, ed, cmd("select.all"), "select", "Select All", "", false);
         });
     });
-    let here = current_kind(ed);
+    let data = ed.ribbon_data();
+    let here = data.here;
     group(ui, ed, "Elements", |ui, ed| {
         let main = [
             ("element.sceneHeading", ElementKind::SceneHeading, "Scene Heading"),
@@ -70,8 +111,8 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
         ];
         egui::Grid::new("element-gallery").spacing([3.0, 3.0]).show(ui, |ui| {
             for (i, (id, kind, name)) in main.iter().enumerate() {
-                let key = ed.session.registry.get(id).map_or("", |s| s.shortcut).to_string();
-                let about = flow(ed, *kind);
+                let key = data.keys.iter().find(|(k, _)| k == id).map_or(String::new(), |(_, v)| v.clone());
+                let about = data.flows.iter().find(|(k, _)| k == kind).map_or(String::new(), |(_, v)| v.clone());
                 tile(ui, ed, cmd(id), "", (name, &key), &about, here == *kind);
                 if i % 4 == 3 {
                     ui.end_row();
@@ -104,7 +145,7 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
             });
         });
     });
-    let on = styles_on(ed);
+    let on = data.styles.clone();
     let is = |s: &str| on.iter().any(|x| x == s);
     group(ui, ed, "Text", |ui, ed| {
         stack(ui, |ui| {
@@ -154,7 +195,7 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
             small(ui, ed, cmd("format.plain"), "", "Plain Text", "Remove every style set by hand.", false);
         });
     });
-    let typing = wordsmith_script::typing::Typing::of_doc(&ed.session.doc);
+    let typing = data.typing.clone();
     group(ui, ed, "Typing", |ui, ed| {
         stack(ui, |ui| {
             small(ui, ed, cmd("typing.smartQuotes"), "", "Smart Quotes", "Curly quotes as you type.", typing.smart_quotes);
@@ -181,7 +222,7 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
         });
     });
     group(ui, ed, "Macros", |ui, ed| {
-        let all = wordsmith_script::macros::Macros::of_doc(&ed.session.doc);
+        let all = data.macros.clone();
         stack(ui, |ui| {
             for (i, m) in all.slots.iter().enumerate().filter(|(_, m)| !m.is_empty()).take(2) {
                 small(

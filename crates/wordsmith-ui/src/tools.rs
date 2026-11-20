@@ -60,18 +60,17 @@ pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
         "tool.macros" => ed.tools.macros = Some((0, macro_form(ed, 0))),
         "tool.reports" => ed.tools.reports = Some(Default::default()),
         "tool.sceneProperties" => {
-            let scene = req["scene"].as_u64().map(|i| i as usize).or_else(|| {
-                let all = wordsmith_script::scenes(&ed.session.doc);
-                wordsmith_script::scenes::scene_at(&all, ed.session.sel.focus.path.last()).map(|s| s.index)
-            });
-            match scene {
-                Some(i) => ed.tools.scene_props = Some((i, String::new(), Default::default())),
-                None => ed.message = "Put the caret in a scene first.".into(),
+            // The Inspector's Scene panel shows the caret's scene; go to the one asked for.
+            if let Some(i) = req["scene"].as_u64() {
+                ed.run("scene.goto", json!({"scene": i}));
             }
+            ed.chrome.right = Some(crate::ribbon::Panel::Scene);
         }
         "tool.character" => {
-            let name = req["name"].as_str().map(str::to_string).unwrap_or_default();
-            ed.tools.character = Some((name, Default::default()));
+            if let Some(name) = req["name"].as_str() {
+                ed.panels.open.push(name.to_string());
+            }
+            ed.chrome.left = Some(crate::ribbon::Panel::Characters);
         }
         "tool.highlights" => ed.show_highlights = !ed.show_highlights,
         "tool.strip" => ed.tools.strip = !ed.tools.strip,
@@ -112,12 +111,9 @@ pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
                 Some((req["slot"].as_u64().unwrap_or(0), req["start"].as_u64().unwrap_or(0), req["name"].as_str().unwrap_or("").to_string()))
         }
         "tool.goto" => ed.tools.goto = Some(Default::default()),
-        "tool.bookmarks" => ed.tools.bookmarks = !ed.tools.bookmarks,
-        "tool.checker" => {
-            let mut c = Checker::default();
-            rescan(ed, &mut c);
-            ed.tools.checker = Some(c);
-        }
+        // These open as side panels (v0.3).
+        "tool.bookmarks" => ed.chrome.left = Some(crate::ribbon::Panel::Bookmarks),
+        "tool.checker" => ed.chrome.right = Some(crate::ribbon::Panel::Checker),
         "tool.reformat" => {
             ed.tools.reformat = true;
             ed.run("paragraph.next", json!({}));
