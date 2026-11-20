@@ -104,6 +104,8 @@ pub struct Chrome {
     pub tour: Option<usize>,
     /// The ribbon's groups are being drawn (only their controls take key tips).
     pub in_ribbon: bool,
+    /// The File page's print choices.
+    pub print: crate::production::PrintChoices,
 }
 
 impl Default for Chrome {
@@ -125,6 +127,7 @@ impl Default for Chrome {
             keytip_next: 0,
             tour: None,
             in_ribbon: false,
+            print: Default::default(),
         }
     }
 }

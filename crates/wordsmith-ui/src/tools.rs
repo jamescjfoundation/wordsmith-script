@@ -74,9 +74,9 @@ pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
         }
         "tool.highlights" => ed.show_highlights = !ed.show_highlights,
         "tool.strip" => ed.tools.strip = !ed.tools.strip,
-        "tool.start" => ed.tools.start = true,
-        "tool.templates" => ed.tools.templates = true,
-        "tool.keys" => ed.tools.keys = Some(Default::default()),
+        // These are pages of the File page (v0.3).
+        "tool.start" | "tool.templates" => ed.chrome.backstage = Some(crate::backstage::Page::New),
+        "tool.keys" => ed.chrome.backstage = Some(crate::backstage::Page::Keys),
         "tool.stats" => ed.stats.window = Some(("words", "week")),
         "tool.sprint" => crate::workspace::toggle_sprint(ed),
         "tool.extraDark" => {
@@ -103,7 +103,7 @@ pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
             };
         }
         w if w.starts_with("tool.split.") => crate::workspace::set_split(ed, w.trim_start_matches("tool.split.")),
-        "tool.print" => ed.tools.print = Some(ed.tools.print.take().unwrap_or_default()),
+        "tool.print" => ed.chrome.backstage = Some(crate::backstage::Page::Print),
         "tool.watermark" => ed.tools.watermark = ed.session.run("watermark.get", &json!({})).ok(),
         "tool.sceneNumbers" => ed.tools.scene_numbers = Some(String::new()),
         "tool.macroConfirm" => {

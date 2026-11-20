@@ -380,63 +380,66 @@ fn import_window(ed: &mut Editor, ctx: &Context) {
 /// Preferences: auto-save and backups (the view settings are kept as they are left).
 fn prefs_window(ed: &mut Editor, ctx: &Context) {
     let mut open = ed.show_prefs;
-    egui::Window::new("Preferences").open(&mut open).collapsible(false).resizable(false).show(ctx, |ui| {
-        ui.heading("Auto-save");
-        ui.checkbox(&mut ed.autosave.enabled, "Save scripts automatically");
-        let mut minutes = ed.autosave.every.as_secs() / 60;
-        ui.horizontal(|ui| {
-            ui.label("Every");
-            if ui.add(egui::DragValue::new(&mut minutes).range(1..=u64::from(crate::prefs::MAX_AUTOSAVE_MINUTES))).changed() {
-                ed.autosave.every = std::time::Duration::from_secs(minutes * 60);
-            }
-            ui.label("minutes, once typing pauses for");
-            let mut idle = ed.autosave.idle.as_secs();
-            if ui.add(egui::DragValue::new(&mut idle).range(1..=u64::from(crate::prefs::MAX_IDLE_SECONDS))).changed() {
-                ed.autosave.idle = std::time::Duration::from_secs(idle);
-            }
-            ui.label("seconds");
-        });
-        ui.label("Only scripts saved to a file are saved automatically; crash recovery keeps the others.");
-        ui.separator();
-        ui.heading("Backups");
-        ui.checkbox(&mut ed.backups.enabled, "Keep a backup copy of every save");
-        ui.horizontal(|ui| {
-            ui.label("Keep up to");
-            let mut keep = ed.backups.keep;
-            if ui.add(egui::DragValue::new(&mut keep).range(1..=crate::prefs::MAX_BACKUPS as usize)).changed() {
-                ed.backups.keep = keep;
-            }
-            ui.label("copies of each script; the oldest are removed");
-        });
-        if let Some(dir) = &ed.backups.dir {
-            ui.label(format!("Backups folder: {}", dir.display()));
+    egui::Window::new("Preferences").open(&mut open).collapsible(false).resizable(false).show(ctx, |ui| prefs_body(ed, ui));
+    ed.show_prefs = open;
+}
+
+/// The preferences, in a window or on the File page.
+pub fn prefs_body(ed: &mut Editor, ui: &mut egui::Ui) {
+    ui.heading("Auto-save");
+    ui.checkbox(&mut ed.autosave.enabled, "Save scripts automatically");
+    let mut minutes = ed.autosave.every.as_secs() / 60;
+    ui.horizontal(|ui| {
+        ui.label("Every");
+        if ui.add(egui::DragValue::new(&mut minutes).range(1..=u64::from(crate::prefs::MAX_AUTOSAVE_MINUTES))).changed() {
+            ed.autosave.every = std::time::Duration::from_secs(minutes * 60);
         }
-        ui.separator();
-        ui.heading("Starting");
-        ui.checkbox(&mut ed.reopen_last, "Open the scripts that were open when the app last closed");
-        ui.checkbox(&mut ed.tools.show_start_on_launch, "Show the Welcome window when no script opens");
-        ui.separator();
-        ui.heading("Writer");
-        ui.horizontal(|ui| {
-            ui.label("Your name (notes and tracked changes)");
-            ui.text_edit_singleline(&mut ed.session.author);
-        });
-        ui.separator();
-        ui.heading("Writing statistics");
-        if ui.checkbox(&mut ed.stats.data.enabled, "Keep writing statistics").changed() {
+        ui.label("minutes, once typing pauses for");
+        let mut idle = ed.autosave.idle.as_secs();
+        if ui.add(egui::DragValue::new(&mut idle).range(1..=u64::from(crate::prefs::MAX_IDLE_SECONDS))).changed() {
+            ed.autosave.idle = std::time::Duration::from_secs(idle);
+        }
+        ui.label("seconds");
+    });
+    ui.label("Only scripts saved to a file are saved automatically; crash recovery keeps the others.");
+    ui.separator();
+    ui.heading("Backups");
+    ui.checkbox(&mut ed.backups.enabled, "Keep a backup copy of every save");
+    ui.horizontal(|ui| {
+        ui.label("Keep up to");
+        let mut keep = ed.backups.keep;
+        if ui.add(egui::DragValue::new(&mut keep).range(1..=crate::prefs::MAX_BACKUPS as usize)).changed() {
+            ed.backups.keep = keep;
+        }
+        ui.label("copies of each script; the oldest are removed");
+    });
+    if let Some(dir) = &ed.backups.dir {
+        ui.label(format!("Backups folder: {}", dir.display()));
+    }
+    ui.separator();
+    ui.heading("Starting");
+    ui.checkbox(&mut ed.reopen_last, "Open the scripts that were open when the app last closed");
+    ui.checkbox(&mut ed.tools.show_start_on_launch, "Show the Welcome window when no script opens");
+    ui.separator();
+    ui.heading("Writer");
+    ui.horizontal(|ui| {
+        ui.label("Your name (notes and tracked changes)");
+        ui.text_edit_singleline(&mut ed.session.author);
+    });
+    ui.separator();
+    ui.heading("Writing statistics");
+    if ui.checkbox(&mut ed.stats.data.enabled, "Keep writing statistics").changed() {
+        ed.stats.dirty = true;
+    }
+    ui.horizontal(|ui| {
+        ui.label("Sprints last");
+        if ui.add(egui::DragValue::new(&mut ed.stats.data.sprint_minutes).range(1..=240).suffix(" minutes")).changed() {
             ed.stats.dirty = true;
         }
-        ui.horizontal(|ui| {
-            ui.label("Sprints last");
-            if ui.add(egui::DragValue::new(&mut ed.stats.data.sprint_minutes).range(1..=240).suffix(" minutes")).changed() {
-                ed.stats.dirty = true;
-            }
-        });
-        if ui.button("Keys…").clicked() {
-            ed.tools.keys = Some(Default::default());
-        }
     });
-    ed.show_prefs = open;
+    if ui.button("Keys…").clicked() {
+        ed.tools.keys = Some(Default::default());
+    }
 }
 
 /// The title page fields, edited as text; Apply sets them (one undo step).

@@ -108,7 +108,7 @@ fn dialogs_open_through_commands_and_take_the_keyboard() {
     ed.run("view.elementSettings", json!({}));
     assert_eq!(ed.settings.as_ref().map(|d| d.element.as_str()), Some("SceneHeading"));
     ed.run("help.about", json!({}));
-    assert!(ed.show_about);
+    assert_eq!(ed.chrome.backstage, Some(crate::backstage::Page::About), "About is a page of the File page");
     frame(&ctx, &mut ed, vec![]);
 }
 
@@ -1012,13 +1012,16 @@ fn production_windows_dual_dialogue_and_tracking() {
     ed.run("track.toggle", json!({"on": true}));
     frame(&ctx, &mut ed, vec![text(" Now.")]);
     assert_eq!(wordsmith_script::tracking::changes(&ed.session.doc).len(), 1);
-    // The print, watermark and scene number windows open.
-    for id in ["view.print", "view.watermark", "view.sceneNumbers"] {
+    // Print is a page of the File page; the watermark and scene number windows open.
+    for id in ["view.watermark", "view.sceneNumbers"] {
         ed.run(id, json!({}));
     }
     frame(&ctx, &mut ed, vec![]);
-    assert!(ed.tools.print.is_some() && ed.tools.watermark.is_some() && ed.tools.scene_numbers.is_some());
-    let p = ed.tools.print.clone().unwrap_or_default();
+    assert!(ed.tools.watermark.is_some() && ed.tools.scene_numbers.is_some());
+    ed.run("view.print", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.chrome.backstage, Some(crate::backstage::Page::Print));
+    let p = ed.chrome.print.clone();
     let params = crate::production::PrintChoices { range: "scenes", from: "1".into(), to: "2".into(), which: "revised", ..p }.params();
     assert_eq!((params["scenes"].clone(), params["revisedOnly"].clone()), (json!([0, 1]), json!(true)));
 }
@@ -1192,4 +1195,27 @@ fn every_menu_command_is_on_the_ribbon_or_the_file_page() {
     for id in crate::backstage::BACKSTAGE_COMMANDS {
         assert!(reg.get(id).is_some(), "{id}");
     }
+}
+
+#[test]
+fn every_file_page_draws_and_its_buttons_run_commands() {
+    use crate::backstage::Page;
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    for page in [Page::New, Page::Open, Page::Save, Page::Export, Page::Print, Page::Compare, Page::Preferences, Page::Keys, Page::About] {
+        ed.chrome.backstage = Some(page);
+        frame(&ctx, &mut ed, vec![]);
+        assert_eq!(ed.chrome.backstage, Some(page));
+    }
+    // Escape goes back to the script.
+    frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE)]);
+    assert_eq!(ed.chrome.backstage, None);
+    // A template from the New page (as its card does).
+    ed.chrome.backstage = Some(Page::New);
+    ed.run("file.newFromTemplate", json!({"template": "stage"}));
+    assert_eq!(crate::editor::script_name(&ed.session), "Stage play");
+    // The File tab opens the New page.
+    ed.run("view.start", json!({}));
+    assert_eq!(ed.chrome.backstage, Some(Page::New));
 }
