@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-11-19)
 
-The first release. Everything is new; in brief:
+The first tagged version: a starting point, not a finished app. Everything is
+new; in brief:
 
 - **Writing:** the screenplay elements with Return and Tab, element settings
   and custom elements, scene-heading separators, autocomplete over six lists,
