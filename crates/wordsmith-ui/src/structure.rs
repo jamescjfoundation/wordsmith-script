@@ -24,6 +24,25 @@ pub enum Structure {
     Outline,
 }
 
+/// A card's text: the first few lines' worth, cut at a word.
+fn preview(text: &str) -> String {
+    const MAX: usize = 110;
+    if text.chars().count() <= MAX {
+        return text.to_string();
+    }
+    let cut: String = text.chars().take(MAX).collect();
+    let at = cut.rfind(' ').unwrap_or(cut.len());
+    format!("{}…", cut[..at].trim_end())
+}
+
+/// A card's heading: two lines' worth at most.
+fn heading_preview(text: &str) -> String {
+    if text.chars().count() <= 52 {
+        return text.to_string();
+    }
+    format!("{}…", text.chars().take(50).collect::<String>().trim_end())
+}
+
 /// A card's size, points.
 pub const CARD: egui::Vec2 = vec2(230.0, 150.0);
 
@@ -74,25 +93,27 @@ pub fn cards(ed: &mut Editor, ui: &mut Ui) {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = vec2(12.0, 12.0);
             for (i, sc) in scenes.iter().enumerate() {
-                ui.vertical(|ui| {
+                // A fixed allocation per card, so the row knows when to wrap.
+                ui.allocate_ui_with_layout(vec2(CARD.x, CARD.y + 32.0), egui::Layout::top_down(egui::Align::Min), |ui| {
                     ui.set_width(CARD.x);
                     let drag = ui.dnd_drag_source(Id::new(("scene-card", i)), i, |ui| {
                         egui::Frame::group(ui.style()).fill(ui.visuals().extreme_bg_color).show(ui, |ui| {
+                            // Every card the same size: a long heading or summary is cut short.
                             ui.set_min_size(CARD - vec2(12.0, 12.0));
-                            ui.set_max_width(CARD.x - 12.0);
+                            ui.set_max_size(CARD - vec2(12.0, 12.0));
                             ui.label(
                                 RichText::new(format!(
                                     "{}  {}",
                                     sc["number"].as_str().map_or_else(|| (i + 1).to_string(), str::to_string),
-                                    text_of(sc, "heading")
+                                    heading_preview(&text_of(sc, "heading"))
                                 ))
                                 .strong(),
                             );
                             let summary = text_of(sc, "summary");
                             if summary.is_empty() {
-                                ui.label(RichText::new(text_of(sc, "firstAction")).weak());
+                                ui.label(RichText::new(preview(&text_of(sc, "firstAction"))).weak());
                             } else {
-                                ui.label(summary);
+                                ui.label(preview(&summary));
                             }
                             let who: Vec<&str> = sc
                                 .get("characters")

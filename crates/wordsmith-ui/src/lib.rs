@@ -19,6 +19,7 @@ pub mod fonts;
 pub mod keys;
 pub mod outline;
 pub mod prefs;
+pub mod snapshot;
 pub mod structure;
 pub mod tables;
 
