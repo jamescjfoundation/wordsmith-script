@@ -1,0 +1,2282 @@
+Wordsmith Script 4
+=== settings ===
+{
+  "appData": {
+    "wordsmith.elements": {
+      "elements": [
+        {
+          "casing": "asTyped",
+          "id": "General",
+          "kind": "general",
+          "name": "General",
+          "shortcut": "Mod+0"
+        },
+        {
+          "casing": "upper",
+          "id": "SceneHeading",
+          "kind": "sceneHeading",
+          "name": "Scene Heading",
+          "shortcut": "Mod+1",
+          "tab": "Action"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Action",
+          "kind": "action",
+          "name": "Action",
+          "shortcut": "Mod+2",
+          "tab": "Character"
+        },
+        {
+          "casing": "upper",
+          "id": "Character",
+          "kind": "character",
+          "name": "Character",
+          "shortcut": "Mod+3",
+          "tab": "Transition",
+          "tabOnlyWhenBlank": true
+        },
+        {
+          "casing": "asTyped",
+          "id": "Parenthetical",
+          "kind": "parenthetical",
+          "name": "Parenthetical",
+          "shortcut": "Mod+4",
+          "tab": "Dialogue"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Dialogue",
+          "kind": "dialogue",
+          "name": "Dialogue",
+          "shortcut": "Mod+5",
+          "tab": "Parenthetical"
+        },
+        {
+          "casing": "upper",
+          "id": "Transition",
+          "kind": "transition",
+          "name": "Transition",
+          "shortcut": "Mod+6",
+          "tab": "SceneHeading"
+        },
+        {
+          "casing": "upper",
+          "id": "Shot",
+          "kind": "shot",
+          "name": "Shot",
+          "shortcut": "Mod+7"
+        },
+        {
+          "casing": "asTyped",
+          "id": "CastList",
+          "kind": "castList",
+          "name": "Cast List",
+          "shortcut": "Mod+8"
+        },
+        {
+          "casing": "upper",
+          "id": "NewAct",
+          "kind": "newAct",
+          "name": "New Act",
+          "shortcut": "Mod+9"
+        },
+        {
+          "casing": "upper",
+          "id": "EndOfAct",
+          "kind": "endOfAct",
+          "name": "End of Act"
+        },
+        {
+          "casing": "upper",
+          "id": "Sequence",
+          "kind": "sequence",
+          "name": "Sequence",
+          "tab": "SceneHeading"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Outline1",
+          "kind": "outline1",
+          "name": "Outline 1",
+          "tab": "Outline2"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Outline2",
+          "kind": "outline2",
+          "name": "Outline 2",
+          "tab": "Outline3"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Outline3",
+          "kind": "outline3",
+          "name": "Outline 3",
+          "tab": "Note"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Note",
+          "kind": "note",
+          "name": "Note",
+          "tab": "Note"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Summary",
+          "kind": "summary",
+          "name": "Summary"
+        }
+      ],
+      "version": 1
+    },
+    "wordsmith.sceneHeading": {
+      "introSeparator": ". ",
+      "intros": [
+        "INT",
+        "EXT",
+        "I/E"
+      ],
+      "timeSeparator": " - "
+    },
+    "wordsmith.sceneNumbers": {
+      "font": "",
+      "locked": true,
+      "prefix": false,
+      "restartEvery": 0,
+      "show": true,
+      "sides": "both",
+      "start": 1
+    },
+    "wordsmith.titlePage": {
+      "authors": "",
+      "contact": "",
+      "copyright": "",
+      "credit": "Adapted by A. Van Buren Powell from O. Henry's \"Brickdust Row\"",
+      "draftDate": "",
+      "notes": "",
+      "source": "Esenwein and Leeds, Writing the Photoplay (1919), Project Gutenberg #17903",
+      "title": "Everybody's Girl"
+    }
+  },
+  "core": {
+    "category": "",
+    "created": "",
+    "creator": "",
+    "description": "",
+    "keywords": "",
+    "lastModifiedBy": "",
+    "modified": "",
+    "revision": 0,
+    "subject": "",
+    "title": "Everybody's Girl"
+  },
+  "page": {
+    "chapterSep": null,
+    "chapterStyle": null,
+    "columns": {
+      "count": 1,
+      "separator": false,
+      "space": 36.0,
+      "widths": []
+    },
+    "docGrid": null,
+    "footer": 36.0,
+    "footers": {
+      "default": null,
+      "even": null,
+      "first": null
+    },
+    "footnoteColumns": null,
+    "gutter": 0.0,
+    "header": 36.0,
+    "headers": {
+      "default": null,
+      "even": null,
+      "first": null
+    },
+    "landscape": false,
+    "lineNumbers": null,
+    "marginBottom": 72.0,
+    "marginLeft": 108.0,
+    "marginRight": 72.0,
+    "marginTop": 72.0,
+    "noEndnote": null,
+    "pageBorders": null,
+    "pageH": 792.0,
+    "pageNumFormat": "decimal",
+    "pageNumStart": null,
+    "pageW": 612.0,
+    "paperSrcFirst": null,
+    "paperSrcOther": null,
+    "rtl": false,
+    "start": "nextPage",
+    "titlePage": false,
+    "valign": "top"
+  },
+  "styles": {
+    "defaultChr": {
+      "font": "Courier Prime",
+      "size": 12.0
+    },
+    "defaultPara": {
+      "lineSpacing": {
+        "rule": "exactly",
+        "value": 12.0
+      },
+      "spaceAfter": 0.0
+    },
+    "defaultParaPresent": true,
+    "styles": [
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "General",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "General",
+        "next": "General",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "SceneHeading",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Scene Heading",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Action",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Action",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Character",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Character",
+        "next": "Dialogue",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 158.39999389648438,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Parenthetical",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Parenthetical",
+        "next": "Dialogue",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 115.19999694824219,
+          "indentRight": 136.80001831054688,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Dialogue",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Dialogue",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 72.0,
+          "indentRight": 108.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Transition",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Transition",
+        "next": "SceneHeading",
+        "para": {
+          "align": "right",
+          "indentFirst": 0.0,
+          "indentLeft": 288.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Shot",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Shot",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "CastList",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Cast List",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0,
+          "underline": "single"
+        },
+        "hidden": false,
+        "id": "NewAct",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "New Act",
+        "next": "SceneHeading",
+        "para": {
+          "align": "center",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": true,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0,
+          "underline": "single"
+        },
+        "hidden": false,
+        "id": "EndOfAct",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "End of Act",
+        "next": "NewAct",
+        "para": {
+          "align": "center",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 24.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": true,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0,
+          "underline": "single"
+        },
+        "hidden": false,
+        "id": "Sequence",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Sequence",
+        "next": "SceneHeading",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": -18.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 24.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": true,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Outline1",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Outline 1",
+        "next": "Outline1",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": true,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Outline2",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Outline 2",
+        "next": "Outline2",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 18.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Outline3",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Outline 3",
+        "next": "Outline3",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 36.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": true,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Note",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Note",
+        "next": "Note",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 36.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Summary",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Summary",
+        "next": "Summary",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      }
+    ]
+  }
+}
+=== script ===
+@Action
+TITLE: THUS DOES FLORENCE COAX A FEW RELUCTANT DOLLARS INTO HER WEEKLY PURSE.
+
+@SceneHeading #1
+INT. SMALL HAT-TRIMMING SHOP
+
+@Action
+The diaphragm opens to show Florence trimming a hat. She is a pathetic figure as she looks down at the hat and realizes that such finery is beyond her owning. She looks up and smiles gratefully as the owner of the place comes from paying others in view, and drops an envelope on table before her.
+
+@Action
+TITLE: THE SHOP GIRL'S CONSTANT PROBLEM--MAKING ENDS MEET--HELPS FLORENCE WEAR OUT MANY A PENCIL.
+
+@SceneHeading #2
+BOARDING HOUSE STEPS
+
+@Action
+Florence is discovered sitting on step, figuring out her accounts with a stubby pencil on back of an old envelope. She looks disconsolately at her figures. Then as she glances up her eyes brighten and she waves a hand.
+
+@Action
+TITLE: FRIEND ELLA, OF THE SHOE-STORE CASHIER'S CAGE.
+
+@SceneHeading #3
+STREET NEAR BOARDING HOUSE
+
+@Action
+Ella, whose face is piquant with recognition, waves in a snappy, "Oh! Hello, Kid" manner, and goes toward boarding house.
+
+@SceneHeading #4
+BOARDING HOUSE STEPS, AS IN 2. CLOSE-UP OF TWO GIRLS
+
+@Action
+Ella comes on and greets Florence in breezy way; Florence is pleased, but her manner of salutation is more quiet, though equally sincere. Ella drops on step, looks at figures, and grins. Florence indicates her depression, due to the figures that will not balance with her meager income. Ella makes a proposition, saying:
+
+@Character
+ELLA
+
+@Dialogue
+WHY NOT SHARE A ROOM WITH ME? WE MIGHT EACH SAVE ENOUGH TO ADD A DILL PICKLE TO OUR LUNCH.
+
+@Action
+Florence is impressed, and Ella bids her come along and see the place.
+
+@SceneHeading #5
+WIDER VIEW OF STEPS
+
+@Action
+As Florence rises, she hesitates, and seems to be averse to putting her friend to inconvenience. Ella grins gayly, and says:
+
+@Character
+ELLA
+
+@Dialogue
+WHEN YOU SEE 'BRICKDUST ROW'--WHERE I LIVE--YOU WON'T THINK I'M DOING YOU ANY FAVOR.
+
+@Action
+She urges Florence to come along. Two girls leave scene.
+
+@SceneHeading #6
+A STREET CORNER
+
+@Action
+A blind man is selling pencils. Ella and Florence come on. Florence pauses, fishes coin from her purse and buys a pencil. Then, as Ella keeps right on, turning corner, Florence smiles gently and pauses again.
+
+@SceneHeading #7
+STREET CORNER--CLOSE-UP OF HANDS
+
+@Action
+Florence gently slips the purchased pencil back into hand of blind man, allowing her hand to rest commiseratingly on his arm an instant.
+
+@SceneHeading #8
+WIDER VIEW OF STREET CORNER
+
+@Action
+Ella turns to see what is keeping Florence, who is hurrying away to avoid the man's "Bless you, and the Saints protect you!"
+
+@Action
+TITLE: "BRICKDUST ROW," WITH ITS DREARY MONOTONY AND CRUMBLING DECAY, IS A PLACE TO SIGH OVER--NOT TO LIVE IN.
+
+@SceneHeading #9
+LONG VIEW OF STREET WITH TYPICAL TENEMENTS
+
+@Action
+Showing the dreary atmosphere of the place as Florence and Ella come along street and pause at a doorway.
+
+@SceneHeading #10
+CLOSER VIEW DOORWAY
+
+@Action
+Emphasis of atmosphere. Ella unlatching door as Florence touches side-rail of low stoop and looks downcast, shuddering a bit. They go in.
+
+@SceneHeading #11
+LOWER HALL OF TENEMENT
+
+@Action
+A worn whisk-broom hangs on wall. There is a comedy touch as Ella and Florence come in, and the latter notices the whisk-broom.
+
+@SceneHeading #12
+BUST VIEW. WALL
+
+@Action
+Showing whisk-broom.
+
+@SceneHeading #13
+WIDER VIEW OF HALL
+
+@Action
+Ella laughs, and says:
+
+@Character
+ELLA
+
+@Dialogue
+THE FIRST TIME YOU START OUT FROM THIS DUST-FACTORY YOU'LL KNOW WHY THAT'S THERE!
+
+@Action
+Florence is dubious about liking the place, but follows Ella up the rickety, dust-laden stairway.
+
+@SceneHeading #14
+ELLA'S TINY BUT NEAT ROOM--WINDOW ON FIRE-ESCAPE
+
+@Action
+Ella brings Florence in. Ella throws out hands in gesture of "Here it is--not much, I'll admit." Florence exclaims in reassuring affectation of delight and says she will take Ella's offer.
+
+@Action
+Diaphragm out.
+
+@Action
+TITLE: WE NOTE ONE BLINKER--ALEXANDER BLINKER--OWNING TENEMENTS GALORE, AND LEADING A GENERALLY USELESS LIFE BECAUSE HE HAS BEEN BROUGHT UP THAT WAY.
+
+@SceneHeading #15
+OLDPORT'S LEGAL OFFICE. CLOSE-UP AT DOOR
+
+@Action
+Diaphragm in to a close view of Blinker, introducing him in a very unpleasing humor, evidently sour about something.
+
+@SceneHeading #16
+OLDPORT'S OFFICE--WIDER VIEW
+
+@Action
+Showing Oldport looking quizzically at the fuming Blinker as the latter advances, saying:
+
+@Character
+BLINKER
+
+@Dialogue
+IF I MUST SIGN THOSE DISGUSTING LEASES, LET US GET IT OVER. I HAVE A GOLF TOURNAMENT ON--
+
+@Action
+He advances and slumps pettishly into a chair by desk.
+
+@SceneHeading #17
+CLOSE-UP OF OLDPORT
+
+@Action
+Oldport looks around at Blinker, with an expression showing more pity than annoyance.
+
+@SceneHeading #18
+CLOSE-UP OF BLINKER
+
+@Action
+Blinker makes a gesture of impatience and shifts in his chair.
+
+@SceneHeading #19
+ELLA'S ROOM. A FEW TOUCHES INDICATING THE REFINING INFLUENCE OF FLORENCE
+
+@Action
+Ella is getting ready to go out. Florence questions. Ella says, "I got an afternoon date." Then she vents her annoyance at the owner of the buildings by saying:
+
+@Character
+ELLA
+
+@Dialogue
+THE DUB THAT OWNS THIS DUST-BIN IS SO MEAN THAT HE RENTS THE PARLORS--SO US GIRLS HAS GOT TO MEET OUR GENTLEMEN FRIENDS SOMEWHERE OUTSIDE--WE CAN'T ENTERTAIN IN OUR ROOMS, CAN WE?
+
+@Action
+Florence shakes her head, and refuses an invitation to accompany Ella, who goes out.
+
+@SceneHeading #20
+OLDPORT'S OFFICE
+
+@Action
+Blinker signing papers. Finishing, he rises. Oldport lays a restraining hand on his arm, taking another paper. Blinker shudders in distaste, as Oldport turns and says:
+
+@Character
+OLDPORT
+
+@Dialogue
+THERE IS A MATTER CONCERNING THE RENTING OF THE PARLORS IN ONE OF YOUR BUILDINGS--YOUR FATHER HAD INTENDED TO REMODEL THEM, SO--
+
+@Action
+Blinker shrugs, and rises, protesting, imploring Oldport to let him get away. Oldport rises, and follows him to door, where he stops him.
+
+@SceneHeading #21
+CLOSE-UP DOOR OF OLDPORT OFFICE
+
+@Action
+Oldport is serious, almost pleading, as Blinker wheels. Oldport says:
+
+@Character
+OLDPORT
+
+@Dialogue
+BECAUSE THE PARLORS ARE RENTED AS ROOMS, THE GIRLS, MOSTLY SHOP WORKERS, MUST DO THEIR ENTERTAINING OF MEN--ELSEWHERE--
+
+@Action
+Blinker turns deprecatingly, and says:
+
+@Character
+BLINKER
+
+@Dialogue
+DEAR OLD MAN--ANOTHER TIME, PLEASE!
+
+@Action
+He hurries out. Oldport frowns with annoyance, then shrugs.
+
+@Action
+Diaphragm out.
+
+@Action
+Diaphragm in:
+
+@SceneHeading #22
+FRONT OF HAT-SHOP WHERE FLORENCE IS EMPLOYED
+
+@Action
+Frank, a typical street-flirt, is lounging, watching some girls pass; they laugh and nudge each other; then Florence comes out of shop and Frank, lifting cap, falls into step beside her. Depict innocence on Florence's part--she does not "get his drift."
+
+@SceneHeading #23
+EXT. GOLF CLUB
+
+@Action
+Blinker arrives in haste, to find friends and players waiting. Emphasize his egotism and self-centeredness as they start off for the golf links.
+
+@SceneHeading #24
+STREET IN TENEMENT DISTRICT
+
+@Action
+Frank is keeping up with Florence as she comes on. He takes her arm. She stops dead still. Sudden fear shows in her face. Tearing herself free, she fairly runs from the scene, Frank staring in surprise, and indicating "Holy Mackerel--stuck up little skirt!"
+
+@SceneHeading #25
+DOOR IN BRICKDUST ROW
+
+@Action
+Florence comes hurrying on, looks over her shoulder to be sure she is not followed, and rushes into house.
+
+@SceneHeading #26
+GOLF COURSE
+
+@Action
+Blinker tees up and drives. He shows satisfaction as he watches the flight of the ball, then sets off, smiling at his caddie's muttered "Some drive!"
+
+@SceneHeading #27
+ELLA'S ROOM
+
+@Action
+Florence is coming in. She is panting. Still shaking with fright and mortification, she flings herself across the bed.
+
+@SceneHeading #28
+A STREET CORNER
+
+@Action
+Ella is parting from a "gentleman friend" and thanks him for a "swell time," then starts for home as he turns, hat lifted, and goes.
+
+@SceneHeading #29
+GOLF COURSE
+
+@Action
+Show Blinker's egotism as he wins match amid plaudits of his friends.
+
+@SceneHeading #30
+ELLA'S ROOM
+
+@Action
+Florence still on bed as Ella comes in. "What's up, Kid?" Florence explains. Ella laughs, and tells her the lad meant no harm, then rising in denunciation of their environment, she exclaims:
+
+@Character
+ELLA
+
+@Dialogue
+LORD, KID! A GIRL CAN'T STICK IN THE HOUSE AND BE A DRIED PRUNE WITHOUT NO FRIENDS. IF SHE CAN'T BRING 'EM HOME--SHE HAS TO MEET 'EM WHEREVER SHE FINDS 'EM.
+
+@Action
+This is a new idea to Florence, and it impresses her, though she is dubious about it. Finally, reconciling herself, she agrees, saying:
+
+@Action
+TITLE: YES, A GIRL HAS GOT TO HAVE SOME FUN. I GUESS IT'S NO HARM TO LET NICE FELLOWS SPEAK, AND TAKE YOU OUT SOMETIMES.
+
+@Action
+Ella assures her that it is no harm. Florence is less dubious.
+
+@Action
+TITLE: DUN, DREARY MONOTONY DRIVES FLORENCE TO THE ONLY ENTERTAINMENT HER ENVIRONMENT PERMITS.
+
+@SceneHeading #31
+A PARK ENTRANCE
+
+@Action
+Florence allows a neat chap who has been flirting to take her arm, and they go off together.
+
+@Action
+TITLE: SOMETIMES THE MOVIES--
+
+@SceneHeading #32
+OUTSIDE MOVING PICTURE HOUSE. NIGHT
+
+@Action
+Florence is laughing as she comes on with ANOTHER nice-looking chap who takes her in to see the show.
+
+@Action
+TITLE: SOMETIMES MOONY SPOONING--
+
+@SceneHeading #33
+PARK SEAT NEAR LAKE. MOON ON WATER FOR PRETTY VIEW
+
+@Action
+Florence is allowing a different fellow to sit close and hold her hand. (No inclination to get "fresh.")
+
+@Action
+TITLE: BUT ALWAYS THE SAME TACTICS, AND EACH TIME WITH A DIFFERENT CAVALIER.
+
+@SceneHeading #34
+FRONT DOOR, BRICKDUST ROW. EVENING
+
+@Action
+Florence comes on, with an impatient swain, but she gives absolutely no indication that this is where she lives, and they pass off.
+
+@SceneHeading #35
+STREET CORNER
+
+@Action
+Florence and companion come on. She says "good night" and refuses to let him go further. When he is gone around the corner she retraces her steps toward home.
+
+@Action
+Diaphragm slowly out.
+
+@Action
+TITLE: AH, THE TRIBULATIONS OF BLINKER!
+
+@SceneHeading #36
+OLDPORT'S OFFICE
+
+@Action
+Blinker comes in, disgusted. Oldport laughs at him somewhat sardonically as Blinker says:
+
+@Character
+BLINKER
+
+@Dialogue
+WILL THOSE PAPERS NEVER BE DONE WITH? WELL--HURRY. I'M PACKED TO START FOR THE NORTH WOODS TONIGHT.
+
+@Action
+Oldport grins cheerfully, saying:
+
+@Character
+OLDPORT
+
+@Dialogue
+THE WORST HAS NOT BEEN TOLD YOU. THE PAPERS WILL NOT BE READY TILL MONDAY--SO YOU WILL HAVE TO AMUSE YOURSELF FOR A DAY AND A HALF--
+
+@Action
+Blinker flings out, disgusted.
+
+@SceneHeading #37
+ELLA'S ROOM
+
+@Action
+Florence comes in, in her work-day clothes, and prepares to get out a quite new summer frock.
+
+@SceneHeading #38
+BLINKER'S APARTMENT
+
+@Action
+Blinker in, and man taking off coat, etc. Summer garb. Blinker disgusted with life. Reads paper. Man obsequious--comedy touch with proffer of numbers of varieties of cigarettes.
+
+@SceneHeading #39
+ELLA'S ROOM
+
+@Action
+Florence dressed in summer frock. Wonders what to do with herself--plans, counts money--decides and goes out.
+
+@SceneHeading #40
+APARTMENT
+
+@Action
+Blinker reads "ad." in paper and suddenly says to his man:
+
+@Character
+BLINKER
+
+@Dialogue
+SIMONDS, I'M GOING TO CONEY ISLAND.
+
+@Action
+Man bows as if he had said he was going to drown himself. Blinker bids man fetch some cool outing flannels--he acts as if he were preparing to go to be shot, but must face it. Ennui driving him.
+
+@Action
+TITLE: FOR ONCE HOI-POLLOI JOSTLES, BUSTLES AND HARASSES THE ARISTOCRATIC BLINKER.
+
+@SceneHeading #41
+DOCK, GANGPLANK
+
+@Action
+Comedy with Blinker in a mob of "kidders" on the way to a Coney Island boat.
+
+@SceneHeading #42
+DECK CHAIR OR CAMP STOOL, ON CONEY ISLAND BOAT
+
+@Action
+Florence is staring out over water. Turns. Sees something.
+
+@SceneHeading #43
+DECK LOCATION
+
+@Action
+Blinker coming out of mob--catching hat, effect of tipping it.
+
+@SceneHeading #44
+DECK, WIDER VIEW
+
+@Action
+Florence affects to be freezing. Blinker notices her, and is abashed.
+
+@SceneHeading #45
+CLOSE-UP OF FLORENCE
+
+@Action
+Florence freezing, says:
+
+@Character
+FLORENCE
+
+@Dialogue
+HOW DARE YOU LIFT YOUR HAT TO ME, SIR?
+
+@Action
+Haughty.
+
+@SceneHeading #46
+CLOSE-UP OF BLINKER
+
+@Action
+Blinker stammers:
+
+@Action
+TITLE: I DIDN'T--
+
+@Action
+Then starts, admiring.
+
+@SceneHeading #47
+CLOSE-UP OF FLORENCE
+
+@Action
+Florence freezing, yet eyes twinkle.
+
+@SceneHeading #48
+WIDER-ANGLE VIEW
+
+@Action
+Blinker quickly corrects himself by adding:
+
+@Action
+TITLE: I DIDN'T SEE HOW I COULD HELP IT--AFTER I SAW YOU.
+
+@Action
+She appears mollified. He sits.
+
+@SceneHeading #49
+CLOSER VIEW, TOWARD WATER
+
+@Action
+Florence says:
+
+@Character
+FLORENCE
+
+@Dialogue
+I DON'T ALLOW GENTLEMEN TO SIT BESIDE ME TO WHOM I HAVE NOT BEEN INTRODUCED.
+
+@Action
+Comedy as Blinker rises, then sits as he sees she is joking. They begin to "get together."
+
+@SceneHeading #50
+SAME SCENE, DIFFERENT ANGLE
+
+@Action
+He asks Florence:
+
+@Action
+TITLE: ARE YOU GOING TO CONEY ISLAND?
+
+@Action
+She comes back at him:
+
+@Action
+TITLE: CAN'T YOU SEE I'M RIDING A BICYCLE UP THE WOOLWORTH TOWER?
+
+@Action
+He is abashed, then gets her idea, and says quite attentively:
+
+@Action
+TITLE: I'VE NEVER BEEN TO CONEY. MAYN'T WE SEE IT TOGETHER?
+
+@Action
+She is surprised, then appraises him and temporizes.
+
+@Action
+TITLE: IN DUE COURSE ONE IS DASHED INTO THE WALKS AND AVENUES OF FAIRYLAND GONE INTO VAUDEVILLE.
+
+@SceneHeading #51
+STEEPLECHASE AMUSEMENT PARK
+
+@Action
+A long view to show the "atmosphere." Florence and Blinker in the crowd.
+
+@SceneHeading #52
+CLOSER VIEW
+
+@Action
+Blinker and Florence. "Tough" with girl. "Tough" blows cigar smoke in Blinker's face. Florence tactfully prevents a "scrap." She can't afford to have cavalier "pinched." Off they go.
+
+@SceneHeading #53
+SOME OPEN-AIR AMUSEMENT, AS "THE WHIP."
+
+@Action
+Blinker and Florence on--he is disgusted. She is aflame with excitement. He looks disgustedly at the amusement, and she, divining--dejectedly--goes off with him.
+
+@Action
+TITLE: FLORENCE IS DIVINELY HAPPY--FOR IS SHE NOT WITH HER MAN--KEEPER OF THE KEYS OF FAIRYLAND?
+
+@SceneHeading #54
+FRONT OF A SHOW
+
+@Action
+Florence in ecstasy. Overcomes chagrin. Goes in with disgusted but subdued Blinker--subdued by a battle royal with the mob around ticket wicket.
+
+@SceneHeading #55
+INSIDE THE SHOW
+
+@Action
+As Blinker helps Florence into a seat, an Italian woman with bunch of candy-sticky kids comes along. In they pile, candying Blinker, who disgustedly hops out, with Florence, somewhat discomfited and provoked at him, following. He backs away, and she after him.
+
+@SceneHeading #56
+CLOSER VIEW OF THE TWO
+
+@Action
+Florence sizing up Blinker--delivers her opinion:
+
+@Action
+TITLE: IF YOU EXPECT TO HAVE ANY FUN, YOU'VE GOT TO JUMP IN AND ACT AS NUTTY AS THE REST OF THEM.
+
+@Action
+Blinker is subdued, but hard to convince. Then he looks at the wistfulness of Florence's eyes, and somehow he decides he will try to enter into the spirit of the thing. She sees, is starry-eyed--drags him off, ecstasy in her face.
+
+@SceneHeading #57
+THE FLYING HORSES
+
+@Action
+Blinker about to get on, with Florence pulling him. They get on. "They're off!"
+
+@Action
+TITLE: BY THE MAGIC OF FLORENCE'S ENTHUSIASM BLINKER SUDDENLY SEES CONEY ISLAND IN ITS TRUE GUISE.
+
+@SceneHeading #58
+FLASH ON HORSE
+
+@Action
+Florence all ecstasy.
+
+@SceneHeading #59
+ANOTHER HORSE--PARALLEL
+
+@Action
+Blinker watching Florence--sudden change to delight.
+
+@SceneHeading #60
+HORSES ON TRACK IN STEEPLECHASE, RUNNING PARALLEL
+
+@Action
+The two horses are going away from the camera, and as Blinker turns to smile at Florence, she smiles at him, and--
+
+@Action
+The scene interposes into--
+
+@SceneHeading #61
+A ROLLING OPEN FIELD
+
+@Action
+Taking the place of the Steeplechase horses, we see Florence and Blinker riding at a gallop on real horses, typifying their imagined visualization. The scene interposes back into--
+
+@SceneHeading #62
+STEEPLECHASE HORSES
+
+@Action
+Blinker laughs merrily at Florence, and both "work" as hard as they can to send the horses faster.
+
+@Action
+TITLE: NO LONGER DOES BLINKER SEE A RABBLE. HE IS AMONG HIS BROTHERS, ALL SEEKING AN IDEAL.
+
+@SceneHeading #63
+FRONT OF TAWDRY AMUSEMENT PLACE
+
+@Action
+Blinker is with Florence. As they come up and listen to the "ballyhoo" man--
+
+@Action
+The scene interposes into--
+
+@SceneHeading #64
+FRONT OF FAIRY CASTLE
+
+@Action
+Florence and Blinker as Prince and Princess.
+
+@Action
+The scene interposes back into--
+
+@SceneHeading #65
+FRONT OF AMUSEMENT PLACE
+
+@Action
+Blinker and Florence rush in with crowd, all gay and hilarious.
+
+@Action
+TITLE: SO BLINKER ROLLS UP THE SHIRTSLEEVES OF HIS MIND, AND BECOMES AN IDEALIST TOO.
+
+@SceneHeading #66
+A SHOW (SLIDE)
+
+@Action
+Good comedy to get some people coming down a slide, with Blinker and Florence among them.
+
+@SceneHeading #67
+BOTTOM OF SLIDE
+
+@Action
+Blinker and Florence get out, gay as can be--and as they stroll off, there is a touch of sentiment.
+
+@Action
+TITLE: THE PARTING.
+
+@SceneHeading #68
+PARK ENTRANCE. NIGHT
+
+@Action
+Blinker and Florence. She stops him. He wants to go on with her, but she says:
+
+@Action
+TITLE: I MUST LEAVE YOU HERE. I DON'T WANT TO SPOIL THE FAIRYLAND BY SHOWING YOU--'BRICKDUST ROW.'
+
+@Action
+He tries to persuade her. She is firm. Another "date" for tomorrow. Off she goes. He the other way.
+
+@SceneHeading #69
+ROOM
+
+@Action
+Florence in--lights up. Sits to dream of happy day.
+
+@SceneHeading #70
+BLINKER'S APARTMENT. LIT UP
+
+@Action
+Blinker in to find Simonds waiting. Dismisses man, who might interrupt dream of happy day by proffer of something--comedy chase out, then Blinker back to smoke and smile.
+
+@SceneHeading #71
+FLORENCE'S ROOM. GAS-LIT
+
+@Action
+Florence rises to remove dress, pauses to look at herself in mirror--girlish vanity.
+
+@Action
+TITLE: WHEN GANG-LEADER MEETS GANG-LEADER--
+
+@SceneHeading #72
+FRONT OF "BRICKDUST ROW." NIGHT
+
+@Action
+Bill sauntering. Pauses to light cigarette. A rival gang-leader comes on. Flash--pistols--bang--other man fires first. Bill wings him and turns.
+
+@SceneHeading #73
+CORNER. NIGHT
+
+@Action
+"Cop" hears shooting. Listens to locate it.
+
+@SceneHeading #74
+FRONT OF "ROW." NIGHT
+
+@Action
+Bill hides gun in coat. Dodges into door.
+
+@SceneHeading #75
+CORNER. NIGHT
+
+@Action
+"Cop" looking around--sees--
+
+@SceneHeading #76
+FRONT OF "ROW." NIGHT
+
+@Action
+Man lying still.
+
+@SceneHeading #77
+CORNER. NIGHT
+
+@Action
+"Cop" blows whistle and runs off.
+
+@SceneHeading #78
+HALL. GAS-LIT
+
+@Action
+Bill listening. Up the stairs! He may get away!
+
+@SceneHeading #79
+FRONT ROW. NIGHT
+
+@Action
+"Cop" and others gather about man. Several "cops" on at a run.
+
+@SceneHeading #80
+ELLA'S ROOM. GAS-LIT
+
+@Action
+Bill looks in doorway. Florence at mirror, about to loosen dress. Turns. Bill comes in. He says:
+
+@Action
+TITLE: LISTEN, SIS--A GUY CROAKED ANOTHER FELLOW--A COP THINKS I DONE IT--I DIDN'T--SO HELP ME GOD!
+
+@Action
+He is so pathetic in his fright that she is torn with sympathy.
+
+@SceneHeading #81
+COPS BEFORE "BRICKDUST ROW." NIGHT
+
+@Action
+"Cops" decide to look in house--go in.
+
+@SceneHeading #82
+ELLA'S ROOM. GAS-LIT
+
+@Action
+Florence moves close to Bill and finds gun. He nods--says:
+
+@Action
+TITLE: THAT'S WHY I'M SCARED--IF THEY FIND IT THEY'LL PINCH ME--
+
+@Action
+She nods. Both start, as at a sound.
+
+@SceneHeading #83
+HALL. GAS-LIT
+
+@Action
+"Cop" bounding up the stairs.
+
+@SceneHeading #84
+ELLA'S ROOM. GAS-LIT
+
+@Action
+Bill in terror. Florence sees the abject fear in his eyes, and the tenderness and protective sympathy of her nature are instantly roused. Dropping the gun in a table drawer, and sitting down, she motions Bill to sit opposite, and command himself. She picks up needlework, and proceeds to chat with Bill as unconcernedly as if he were a constant visitor at the place.
+
+@SceneHeading #85
+OUTSIDE THE DOOR OF ELLA'S ROOM. GAS LIGHT IN ROOM; DIMMER LIGHT IN HALL
+
+@Action
+The "cop" comes softly to door, listens, and then pushes door quietly inward.
+
+@SceneHeading #86
+ELLA'S ROOM. GAS-LIT
+
+@Action
+As the police officer opens the door and looks in, Florence is quietly sewing, and Bill is leaning back, at his ease, though it is an effort for him to be unconcerned. He is smoking. The officer hesitates. Hold suspense of situation.
+
+@SceneHeading #87
+FRONT OF "ROW." NIGHT
+
+@Action
+Ambulance attendants busy over man. Street crowd being driven away by several policemen.
+
+@SceneHeading #88
+ELLA'S ROOM. GAS-LIT
+
+@Action
+The officer moves forward, his eyes on Bill. Florence does not betray the slightest sign of dismay. She looks at the intruder as much in reproof as in surprise. Her steady look disconcerts the policeman; he shuffles, clears his throat, and explains his search, glancing toward Bill. Florence says:
+
+@Character
+FLORENCE
+
+@Dialogue
+LIVING IN THE BACK OF THE HOUSE WE DON'T HEAR MUCH--OR MY BROTHER WOULD HAVE GONE DOWN TO SEE WHAT WAS UP.
+
+@Action
+Bill takes up the lead she gives by pretending eagerness as to what happened, but the officer, after a hasty look out over the fire escape, turns and hurries from the room. Bill sighs relievedly, and looks at Florence with the same sort of light in his eyes that one sees in those of a faithful dog. This dog-like devotion is to be the developing keynote of Bill's character.
+
+@SceneHeading #89
+ROOF OF HOUSE. NIGHT
+
+@Action
+Policeman comes up on roof, looking around.
+
+@SceneHeading #90
+ELLA'S ROOM. GAS-LIT
+
+@Action
+Bill is thanking Florence. She tells him that she will go down and see whether the coast is clear, and he sits down with a grateful look as she goes quietly out.
+
+@SceneHeading #91
+FRONT OF "ROW." NIGHT. FROM THE TENEMENT DOORWAY
+
+@Action
+The injured man is being made to stand. Florence comes into the scene, pausing on stoop of the "Row" and watches as the injured party feigns great pain, and gasps:
+
+@Action
+TITLE: HONEST--HE NEAR CROAKED ME. I'M DYIN'--ALL SHOT TO PIECES. AN' THE WORST IS I DIDN'T GIT A CHANST TO SHOOT BACK AT HIM.
+
+@Action
+The ambulance men laugh and tell him to be on his way; he is more scared than hurt. Florence's face becomes tense. Her lips form the thought that flashes into her mind. "He lied--to me!" She turns and goes into house.
+
+@SceneHeading #92
+ELLA'S ROOM. GAS-LIT
+
+@Action
+Bill looks up eagerly as Florence comes in. Then he stares as she goes swiftly toward the table drawer. He is quick, but not swift enough, in his rush to forestall her as she gets his revolver and "breaks" it, so that the empty cartridge and five loaded ones drop into her hand.
+
+@SceneHeading #93
+BUST OF HAND HOLDING DISCHARGED CARTRIDGE
+
+@Action
+Register the fact that it has been fired.
+
+@SceneHeading #94
+BACK TO 92
+
+@Action
+Florence looks up slowly. Bill figures that she will give him up now, and gives a quick, hunted look around as Florence closes the weapon and lays it on the table, fully convinced that she has been lied to. She stands looking down at the weapon, her face brooding. Suspense. What will she do about it?
+
+@SceneHeading #95
+ROOF OF HOUSE. NIGHT
+
+@Action
+"Cop," with another. No use looking further. Separate, one going down into tenement again, other across roof toward another descent.
+
+@SceneHeading #96
+ELLA'S ROOM--LOOKING TOWARD DOOR. GAS-LIT
+
+@Action
+Bill in an agony of terror as he hears policeman tramping toward door. Florence looks up, and moves toward Bill, who cowers. The door starts to open. Florence pities Bill now.
+
+@SceneHeading #97
+ELLA'S ROOM--FROM HALL, THROUGH OPENING DOOR. GAS-LIT
+
+@Action
+The policeman is going to be crafty; he opens door, very softly, and as he peers in, he sees--Florence slipping her arms about Bill's neck, giving him a sisterly kiss as she says:
+
+@Character
+BILL
+
+@Dialogue
+GOODNIGHT, BUDDY. GIVE THE KIDDIES A KISS FROM ME.
+
+@Action
+Convinced, the officer draws away and goes from scene. Bill can be seen touching cheek Florence kissed, looking at finger as if expecting it to show the mark of contact.
+
+@SceneHeading #98
+CLOSE-UP IN ROOM, FROM ANOTHER ANGLE, TO GET FLORENCE IN PROFILE
+
+@Action
+Bill slowly and reverently takes Florence's hand, and with devotion in every line, says fervently:
+
+@Character
+FLORENCE
+
+@Dialogue
+KID--YOU'RE CERTAINLY WHITE! AND YOU ARE 'LITTLE SIS' TO ME FROM NOW ON!
+
+@Action
+Saying nothing more, but looking at her with devoted eyes, as she stands smiling her gentle smile, he goes to fire escape, and as he descends--Fade slowly out.
+
+@Action
+TITLE: BILL BECOMES THE FAITHFUL WATCHDOG, ASKING ONLY A PAT, AND IS ETERNALLY VIGILANT LEST HARM COME TO THE OBJECT OF HIS DEVOTION.
+
+@Action
+Diaphragm in:
+
+@SceneHeading #99
+PARK ENTRANCE
+
+@Action
+Florence waiting. Bill is coming down path. He sees her and advances--but she meets Blinker, who is gay and delighted. They go.
+
+@SceneHeading #100
+CLOSE-UP OF BILL
+
+@Action
+No jealousy--but suspicion. Bill thinks such a man can mean no good. He starts off.
+
+@SceneHeading #101
+WIDER VIEW
+
+@Action
+Bill seen to be shadowing Blinker and Florence.
+
+@Action
+TITLE: CONVINCED THAT "A GUY" OF BLINKER'S APPARENT AFFLUENCE CAN MEAN NO GOOD TO A "SKIRT LIKE SIS," THE WATCHDOG INVADES FAIRYLAND.
+
+@SceneHeading #102
+STEEPLECHASE PIER
+
+@Action
+Crowd coming off boat. Florence and Blinker. After them, shadowing, comes Bill.
+
+@Action
+TITLE: THIS TIME, THERE IS NO TIME LOST BY THE INFATUATED BLINKER, IN GETTING INTO THE SPIRIT OF THE REVELRY.
+
+@SceneHeading #103
+ANY DIFFERENT AMUSEMENT DEVICE
+
+@Action
+Blinker with Florence--having a grand time. Show Bill aloof but watchful, evading discovery carefully.
+
+@Action
+TITLE: THE WALKING BEAM OF A CONEY ISLAND BOAT MAKES JUST ENOUGH NOISE TO ENABLE TWO TO CONVERSE COZILY ALOOF FROM THEIR NEIGHBORS.
+
+@SceneHeading #104
+BY WALKING BEAM
+
+@Action
+Wide enough to show several couples--Florence and Blinker among them; narrows down to those two, after Bill is established in background, watchful but not interfering.
+
+@SceneHeading #105
+CLOSE-UP OF BLINKER
+
+@Action
+Blinker, in spell of love, says:
+
+@Character
+BLINKER
+
+@Dialogue
+FLORENCE--I--LOVE YOU!
+
+@Action
+Waits, breathless.
+
+@SceneHeading #106
+CLOSE-UP OF FLORENCE
+
+@Action
+She laughs a little tremulously but recklessly and says:
+
+@Action
+TITLE: THAT'S WHAT THEY ALL SAY.
+
+@Action
+She begins to hum.
+
+@SceneHeading #107
+CLOSE-UP OF BLINKER
+
+@Action
+He is a little impatient, and says:
+
+@Action
+TITLE: I AM RICH. I CAN GIVE YOU MANY THINGS--
+
+@Action
+He is interrupted.
+
+@SceneHeading #108
+CLOSE-UP OF FLORENCE
+
+@Action
+She laughs a little, and says:
+
+@Action
+TITLE: THAT'S WHAT THEY ALL SAY.
+
+@Action
+She is playing with him, and yet telling truth.
+
+@SceneHeading #109
+CLOSE-UP OF BLINKER
+
+@Action
+He is impatient at this repetition. Says:
+
+@Action
+TITLE: I DON'T LIKE YOU TO KEEP SAYING THAT!
+
+@Action
+He is annoyed. She is not taking him seriously.
+
+@SceneHeading #110
+CLOSE-UP OF FLORENCE
+
+@Action
+She looks at him--wonders--says:
+
+@Action
+TITLE: WHY SHOULDN'T I SAY IT? THEY DO!
+
+@Action
+He is puzzled.
+
+@SceneHeading #111
+CLOSE-UP OF BLINKER
+
+@Action
+Surprised--puzzled--angered--says:
+
+@Action
+TITLE: WHO ARE--'THEY'?
+
+@Action
+Jealous and anxious.
+
+@SceneHeading #112
+CLOSE-UP OF FLORENCE
+
+@Action
+Surprised--innocent. Says:
+
+@Action
+TITLE: WHY, THE MEN I MEET.
+
+@Action
+What is he driving at?
+
+@SceneHeading #113
+BOTH--IN WIDER VIEW
+
+@Action
+Florence wondering. He changes expression. Growing tension. Asks her:
+
+@Action
+TITLE: WHERE DO YOU MEET--THESE MEN?
+
+@Action
+She looks wide-eyed--surprised--answers:
+
+@Action
+TITLE: I MEET THEM--AS I DID YOU--
+
+@Action
+Blinker aghast. Asks:
+
+@Action
+TITLE: DO YOU KNOW SO MANY?
+
+@Action
+She allows herself a laugh--says:
+
+@Action
+TITLE: WELL I'M NOT EXACTLY A WALL FLOWER.
+
+@Action
+He turns away.
+
+@SceneHeading #114
+CLOSE-UP OF BLINKER
+
+@Action
+Growing tension--it is sinking in, and finally his expression grows harder.
+
+@SceneHeading #115
+CLOSE-UP OF FLORENCE
+
+@Action
+She wonders--finally asks:
+
+@Action
+TITLE: WHAT'S WRONG?
+
+@Action
+Her lips part in amazed terror.
+
+@SceneHeading #116
+NEW ANGLE. CLOSE-UP OF BLINKER
+
+@Action
+Swings upon her and cries:
+
+@Action
+TITLE: EVERYTHING'S WRONG! WHY DON'T YOU SEE THESE--THESE MEN--AT YOUR HOME? IS IT NECESSARY TO MEET EVERY TOM, DICK AND HARRY--OUTSIDE?
+
+@Action
+He is growing furious. So that is the sort she is!
+
+@SceneHeading #117
+PROFILE CLOSE-UP OF FLORENCE
+
+@Action
+She laughs. Her voice is brassy-hard, saying:
+
+@Action
+TITLE: IF YOU COULD SEE 'BRICKDUST ROW' YOU WOULDN'T ASK THAT. THE FELLOW WHO OWNS IT DOESN'T GIVE US ANY PLACE TO RECEIVE--AND WE CAN'T TAKE FELLOWS TO OUR ROOM--SO--
+
+@Action
+Shrugs.
+
+@SceneHeading #118
+WIDER-ANGLE VIEW, WITH BLINKER NEAREST CAMERA
+
+@Action
+Tension. Big scene as he gets over his horror and disgust and she realizes it, and rising, disillusioned--exactly as he feels that he is disillusioned about her--Sudden pause--
+
+@SceneHeading #119
+DECK, AD LIB
+
+@Action
+Fire! Excitement. "Where?"--"What'll we do?"
+
+@SceneHeading #120
+DECK, ANOTHER PART
+
+@Action
+Panic. Woman screams.
+
+@SceneHeading #121
+WALKING BEAM
+
+@Action
+Excited scattering of crowd. Florence turning away--Bill coming forward--Blinker listening. He grabs Florence by arm. She draws away. He compels her to go.
+
+@SceneHeading #122
+DECK
+
+@Action
+Tension. Wild scene.
+
+@SceneHeading #123
+WALKING BEAM
+
+@Action
+Bill follows, crowd intervening, as Blinker takes Florence off. Bill gets after them.
+
+@SceneHeading #124
+BOAT DAVITS
+
+@Action
+Wild scene. Officer. Sailors. Fire and smoke. Blinker with Florence. Takes her away--another boat!
+
+@SceneHeading #125
+ANOTHER BOAT
+
+@Action
+Crowd more orderly. Women being helped into boat. Blinker on with Florence. Takes her to boat.
+
+@SceneHeading #126
+BOAT DAVITS
+
+@Action
+Sailors shot at by officer. Surge away and off.
+
+@SceneHeading #127
+FIRE BLAZING. SAILORS LOSE HEADS--DASH BACK FROM FIRE AND TOWARD--
+
+@SceneHeading #128
+OTHER BOAT
+
+@Action
+Fire coming. Florence by boat. Sailors rush on and fight. Get officer's gun. Surround Florence and Blinker.
+
+@SceneHeading #129
+DIFFERENT ANGLE
+
+@Action
+Blinker fighting to save Florence.
+
+@SceneHeading #130
+DIFFERENT VIEW
+
+@Action
+Fire coming on. Bill fighting way toward Blinker and Florence.
+
+@SceneHeading #131
+OTHER BOAT
+
+@Action
+Blinker fighting. Florence separated from him. Bill fights way to his side. They notice one another as men with same idea--join back to back. Florence forced away. They try to get to her. Surge of sailors over-runs them.
+
+@SceneHeading #132
+DECK RAIL
+
+@Action
+Florence staggers on. Flames coming. Great God! What shall she do? Off she races.
+
+@SceneHeading #133
+BOAT DAVITS
+
+@Action
+Flames leaping. Florence just in time to see boat lowered away. Too late. Driven back.
+
+@SceneHeading #134
+OTHER BOAT
+
+@Action
+Bill and Blinker together. Several sailors done for, others lower boat and go. Men peer about, but smoke too thick for them to see.
+
+@SceneHeading #135
+RAIL
+
+@Action
+Florence in terror. Sudden blast of flame. On rail. Leaps.
+
+@Action
+Diaphragm out.
+
+@Action
+Diaphragm in:
+
+@SceneHeading #136
+BLINKER'S APARTMENT
+
+@Action
+Man caring for Blinker, somewhat burned. Sad and downcast. Man admits Oldport. Lawyer listens to story.
+
+@SceneHeading #137
+HOSPITAL ENTRY
+
+@Action
+Bill comes out, discharged--head bandaged. He takes a card out of pocket--looks and puts back. He does not know what to do, then decides, and goes off.
+
+@SceneHeading #138
+ELLA'S ROOM
+
+@Action
+Florence in bed. Ella attending. Bill knocks, is admitted.
+
+@SceneHeading #139
+BLINKER'S APARTMENT
+
+@Action
+Oldport sees Blinker is able to talk business. He assumes quizzical air, says:
+
+@Action
+TITLE: MAYBE I CAN KEEP YOU HERE LONG ENOUGH TO TAKE UP THAT DEFERRED MATTER--
+
+@Action
+Blinker wearily assents. Oldport begins:
+
+@Action
+TITLE: YOUR FATHER INTENDED THAT THE PARLORS OF CERTAIN BUILDINGS SHOULD BE USED BY THE GIRL-TENANTS AS PLACES WHEREIN TO ENTERTAIN THEIR MALE CALLERS.
+
+@Action
+Blinker gives start of surprise--query--agony--cries out:
+
+@Character
+BLINKER
+
+@Dialogue
+'BRICKDUST ROW,' FOR A MILLION!
+
+@Action
+Oldport smiles:
+
+@Action
+TITLE: I BELIEVE THE GIRLS HAVE SOME SUCH NICKNAME FOR IT. WHAT SHALL I DO?
+
+@Action
+Horrible! Blinker in spasm of anguish:
+
+@Action
+TITLE: BURN IT! RAZE IT! DO WHAT YOU LIKE--BUT I TELL YOU--IT'S TOO LATE, MAN--IT'S TOO LATE!--
+
+@Action
+He flings away.
+
+@SceneHeading #140
+ELLA'S ROOM
+
+@Action
+Bill chatting with Ella. Seems to have good feeling for her--devouring hot-cake she has made as he talks with Florence, who is sitting up. He takes out card, says:
+
+@Action
+TITLE: THAT GUY YOU WAS WID--IS HE ON THE SQUARE?--HE AST ME TO CALL ON HIM--
+
+@Action
+Florence suddenly recalls all that has happened. She turns her face away, unable to control tears of despondency.
+
+@SceneHeading #141
+BLINKER'S APARTMENT
+
+@Action
+Oldport goes. Blinker "chases" his man, sits in bad mood, sour and lovelorn by turns.
+
+@SceneHeading #142
+ELLA'S ROOM
+
+@Action
+Bill dismayed--demands what he has said. Florence sits up--controls herself. Says, gently:
+
+@Action
+TITLE: HE--HE ISN'T GOING TO--SEE ME ANY MORE--I GUESS.
+
+@Action
+Bill is all anger--"Why?" She tells him:
+
+@Character
+BILL
+
+@Dialogue
+I DON'T THINK--OUR--WAYS OF LIVING--
+
+@Action
+She breaks down.
+
+@SceneHeading #143
+CLOSE-UP OF BILL
+
+@Action
+"The son of a brat!"--so he has chucked "Little Sis" has he, the rich piker? Well, Bill can see about that! Of course he thinks the worst of Blinker.
+
+@SceneHeading #144
+WIDER-ANGLE VIEW
+
+@Action
+Bill rises and tiptoes out. Florence weeping softly with Ella comforting--rough yet tender.
+
+@SceneHeading #145
+BLINKER'S APARTMENT
+
+@Action
+Man admits Bill and is dismissed. Blinker hearty--then sees Bill's anger. Rises. Big scene where Bill denounces him, saying:
+
+@Character
+BILL
+
+@Dialogue
+YOU GOT TO BE SQUARE WITH THAT KID!
+
+@Action
+Blinker misunderstands. Bill comes near to throttling him, before Blinker can gasp:
+
+@Action
+TITLE: YOU DON'T UNDERSTAND--IT WAS ONLY A DIFFERENCE OF--OPINION--
+
+@Action
+Bill waits to find out. Blinker hesitates, then, seeing threat, begins to explain.
+
+@SceneHeading #146
+ELLA'S ROOM
+
+@Action
+Florence seems to be asleep, and Ella sneaks off for some milk or something. Florence gets up, sad and despondent. Slowly begins to dress.
+
+@SceneHeading #147
+BLINKER'S APARTMENT
+
+@Action
+Bill amazed at Blinker, who ends up:
+
+@Action
+TITLE: IT'S A QUESTION OF ETHICS--
+
+@Action
+Bill glowers and snaps:
+
+@Action
+TITLE: ETHICS BE DAMNED! IT'S A QUESTION OF--ARE YOU GOIN' TUH BLAME HER FOR THE VERY THING YOU MADE HER DO?
+
+@Action
+Blinker begins to consider.
+
+@SceneHeading #148
+ELLA'S ROOM
+
+@Action
+Florence dressing (suspense: Does she recall that revolver and want to add her tragedy to the dreary ones of "Brickdust Row?")
+
+@SceneHeading #149
+BLINKER'S APARTMENT
+
+@Action
+Big realization--"All my fault." Blinker goes off with Bill.
+
+@SceneHeading #150
+ELLA'S ROOM
+
+@Action
+Ella soothing Florence. Latter does not wish to live. All life is black before her.
+
+@SceneHeading #151
+HALL OUTSIDE DOOR
+
+@Action
+Comedy relief as Bill and Blinker come on and latter draws back in a natural suspense as to his reception and Bill tells him to "beat it on in!" Blinker knocks, and goes in. Bill pauses.
+
+@SceneHeading #152
+ELLA'S ROOM
+
+@Action
+Florence looks up. Ella surprised. Blinker pauses. Ella seems to be attracted by something.
+
+@SceneHeading #153
+CRACK OF OPEN DOOR
+
+@Action
+Bill is making violent gestures to get Ella out.
+
+@SceneHeading #154
+ELLA'S ROOM
+
+@Action
+Ella catches Bill's idea, and moves unostentatiously out. Then Blinker strides to Florence. He says:
+
+@Action
+TITLE: IT'S ALL WRONG. I'VE COME TO SQUARE IT.
+
+@Action
+Florence is reserved, chilly, as she says:
+
+@Character
+FLORENCE
+
+@Dialogue
+YOU MEAN--ABOUT THE PARLORS?
+
+@Action
+Blinker is beside her, and catching her hands he cries:
+
+@Character
+BLINKER
+
+@Dialogue
+I MEAN--ABOUT YOU!--AND ME!
+
+@Action
+In spite of herself, Florence is forced to lift her eyes, and as she reads the look in his own she is compelled to realize that the air is cleared at last and that the happiness that seemed dead is again alive--palpitant happiness that draws her into his ready arms.
+
+@SceneHeading #155
+HALL OUTSIDE ELLA'S ROOM
+
+@Action
+Bill "fixes it up" with Ella to "travel double." She wants to rush in and tell her chum, but Bill stays her: "Nix--let 'em do some clinchin' first!"
+
+@SceneHeading #156
+ELLA'S ROOM
+
+@Action
+Florence and Blinker embracing.
+
+@Action
+Circle diaphragm closes to blackness.
+

@@ -10,10 +10,10 @@
 //! The "before printing" choice (off, ask, scan) is kept in `app_data` under [`CHECKER_KEY`];
 //! the window acts on it.
 
+use jcj_doc::{Document, Path, StoryRef};
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result, params as p};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use wordsmith_doc::{Document, Path, StoryRef};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result, p};
 
 use crate::data::body_pos;
 use crate::element::{ElementKind, Elements};
@@ -223,7 +223,7 @@ mod tests {
     use super::*;
     use crate::commands::new_session;
     use crate::template::paragraph;
-    use wordsmith_doc::para_block;
+    use jcj_doc::para_block;
 
     fn doc(lines: &[(&str, &str)]) -> Session {
         let mut s = new_session();

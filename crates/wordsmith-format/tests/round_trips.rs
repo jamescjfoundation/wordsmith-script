@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Property tests: generated scripts survive the native format and Fountain.
 
+use jcj_doc::props::{CharProps, Underline};
+use jcj_doc::{Document, Paragraph, para_block};
 use proptest::prelude::*;
-use wordsmith_doc::props::{CharProps, Underline};
-use wordsmith_doc::{Document, Paragraph, para_block};
 use wordsmith_format::{fountain, native};
+use wordsmith_script::keys::ScriptPara;
 use wordsmith_script::{ElementKind, Elements};
 
 fn config() -> ProptestConfig {
@@ -78,9 +79,9 @@ fn build(paras: &[GenPara]) -> Document {
                 let _ = p.insert_text(p.len(), text, &c);
             }
             p.props.page_break_before = g.page_break.then_some(true);
-            p.props.scene_number = g.scene_number.clone();
-            p.props.bookmark = g.bookmark;
-            p.props.dual = g.dual.then_some(true);
+            p.props.set_scene_number(g.scene_number.clone());
+            p.props.set_bookmark(g.bookmark);
+            p.props.set_dual(g.dual.then_some(true));
             para_block(p)
         })
         .collect();
@@ -105,7 +106,15 @@ fn shape(doc: &Document) -> Vec<Shape> {
                     (c.bold == Some(true), c.italic == Some(true), c.underline.is_some_and(|u| u != Underline::None))
                 })
                 .collect();
-            (e.of_para(p).id.clone(), p.text.clone(), styles, p.props.page_break_before, p.props.scene_number.clone(), p.props.bookmark, p.props.dual)
+            (
+                e.of_para(p).id.clone(),
+                p.text.clone(),
+                styles,
+                p.props.page_break_before,
+                p.props.scene_number().clone(),
+                p.props.bookmark(),
+                p.props.dual(),
+            )
         })
         .collect()
 }

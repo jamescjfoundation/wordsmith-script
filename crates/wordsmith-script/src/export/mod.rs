@@ -6,10 +6,12 @@
 //! Printing sends that PDF to the system: CUPS (`lp`) on macOS and Linux; on Windows the PDF
 //! opens in the system's PDF viewer to print from there (`docs/decisions/0013-printing.md`).
 
+use crate::keys::ScriptPara;
+use crate::keys::ScriptRun;
+use jcj_doc::Document;
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session, file_access, params as p};
+use jcj_output::PdfSettings;
 use serde_json::{Value, json};
-use wordsmith_doc::Document;
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session, file_access, p};
-use wordsmith_pdf::PdfOptions;
 
 use crate::paginate::{Paginated, paginate};
 
@@ -18,7 +20,7 @@ pub const MAX_COPIES: u32 = 999;
 
 /// The PDF of an already paginated script.
 pub fn pdf_of(pag: &Paginated) -> Result<Vec<u8>, String> {
-    wordsmith_pdf::export_layout(&pag.doc, &pag.layout, &PdfOptions::default()).map_err(|e| e.to_string())
+    jcj_output::export_pdf(&pag.doc, &pag.layout, &PdfSettings::default()).map_err(|e| e.to_string())
 }
 
 /// The PDF of `doc`: its title page, when it has one, then the paginated script.
@@ -34,8 +36,8 @@ pub fn printed(doc: &Document, pag: &Paginated) -> Result<Vec<u8>, String> {
         return pdf_of(pag);
     }
     let with = crate::title_page::with_title_page(&pag.doc, &title);
-    let layout = crate::paginate::measure::print_layout(&with, &mut wordsmith_layout::LayoutCache::new());
-    wordsmith_pdf::export_layout(&with, &layout, &PdfOptions::default()).map_err(|e| e.to_string())
+    let layout = crate::paginate::measure::print_layout(&with, &mut jcj_layout::LayoutCache::new());
+    jcj_output::export_pdf(&with, &layout, &PdfSettings::default()).map_err(|e| e.to_string())
 }
 
 /// Write `bytes` to `path`, replacing it only once the new file is complete (craft-atomic: the
@@ -45,7 +47,7 @@ pub fn write_file(path: &str, bytes: &[u8]) -> Result<(), String> {
     file_access::check_write(path)?;
     #[cfg(not(target_arch = "wasm32"))]
     {
-        craft_atomic::atomic_write(std::path::Path::new(path), bytes).map_err(|e| format!("{path}: {e}"))
+        jcj_project::files::write_atomic(std::path::Path::new(path), bytes).map_err(|e| format!("{path}: {e}"))
     }
     #[cfg(target_arch = "wasm32")]
     {
@@ -142,9 +144,9 @@ pub fn sides_of(doc: &Document, who: &str) -> Document {
             if let Some(b) = doc.body.get(i) {
                 let mut b = b.clone();
                 if i == sc.start
-                    && let wordsmith_doc::Block::Para(p) = std::sync::Arc::make_mut(&mut b)
+                    && let jcj_doc::Block::Para(p) = std::sync::Arc::make_mut(&mut b)
                 {
-                    p.props.scene_number = numbers.get(sc.index).cloned();
+                    p.props.set_scene_number(numbers.get(sc.index).cloned());
                 }
                 keep.push(b);
             }
@@ -165,7 +167,7 @@ pub fn pdf_with(doc: &Document, opts: PrintOptions) -> Result<(Vec<u8>, usize), 
         let copy = doc.to_mut();
         let mut r = crate::revisions::Revisions::of_doc(copy);
         r.show_marks = false;
-        r.store(copy);
+        let _ = r.store(copy);
     }
     if let Some(who) = &opts.sides {
         let reduced = sides_of(&doc, who);
@@ -175,7 +177,7 @@ pub fn pdf_with(doc: &Document, opts: PrintOptions) -> Result<(Vec<u8>, usize), 
         let copy = doc.to_mut();
         let mut w = crate::watermark::Watermark::of_doc(copy);
         w.page_name = name.to_uppercase();
-        w.store(copy);
+        let _ = w.store(copy);
     }
     let pag = paginate(&doc);
     if opts.whole() {
@@ -199,7 +201,7 @@ pub fn pdf_with(doc: &Document, opts: PrintOptions) -> Result<(Vec<u8>, usize), 
             .filter(|(_, pg)| {
                 pg.iter().any(|pc| match pc {
                     crate::paginate::Piece::Para { block, start, end, .. } => doc.body.get(*block).and_then(|b| b.as_para()).is_some_and(|p| {
-                        p.mark.revised == Some(set) || p.run_ranges().any(|(r, c)| c.revised == Some(set) && r.end > *start && r.start < *end)
+                        p.mark.revised() == Some(set) || p.run_ranges().any(|(r, c)| c.revised() == Some(set) && r.end > *start && r.start < *end)
                     }),
                     _ => false,
                 })
@@ -225,8 +227,8 @@ pub fn pdf_with(doc: &Document, opts: PrintOptions) -> Result<(Vec<u8>, usize), 
         return Err(if opts.revised_only { "no page has revised text".into() } else { "no page matches what was asked to print".into() });
     }
     let n = pages.len();
-    let bytes = wordsmith_pdf::export_layout(&pag.doc, &pag.layout, &PdfOptions { pages: Some(pages), ..PdfOptions::default() })
-        .map_err(|e| e.to_string())?;
+    let bytes =
+        jcj_output::export_pdf(&pag.doc, &pag.layout, &PdfSettings { pages: Some(pages), ..PdfSettings::default() }).map_err(|e| e.to_string())?;
     Ok((bytes, n))
 }
 
@@ -366,7 +368,7 @@ fn print(s: &mut Session, v: &Value) -> CmdResult {
 fn print_preview(s: &mut Session, v: &Value) -> CmdResult {
     refuse_when_confined("the print preview")?;
     let (bytes, pages) = pdf_with(&s.doc, PrintOptions::of(v)).map_err(CmdError::Failed)?;
-    let path = write_temp(&format!("Wordsmith Script preview {}", s.now), &bytes).map_err(CmdError::Failed)?;
+    let path = write_temp(&format!("Wordsmith Script preview {}", crate::clock::now()), &bytes).map_err(CmdError::Failed)?;
     open_with_system(&path).map_err(CmdError::Failed)?;
     Ok(json!({"path": path, "pages": pages}))
 }

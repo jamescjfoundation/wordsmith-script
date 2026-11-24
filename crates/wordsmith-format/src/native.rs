@@ -3,9 +3,9 @@
 //! The format is documented in `docs/format.md`; decision 0017 explains the choices.
 //!
 //! ```text
-//! Wordsmith Script 4
+//! Wordsmith Script 5
 //! === settings ===
-//! { ...sorted, pretty-printed JSON: page, styles, core, appData... }
+//! { ...sorted, pretty-printed JSON: page, styles, core, ext... }
 //! === script ===
 //! @SceneHeading
 //! INT. KITCHEN - NIGHT
@@ -21,14 +21,15 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+use jcj_doc::{CoreProps, Document, SectionProps, StyleSheet, para_block};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use wordsmith_doc::{CoreProps, Document, SectionProps, StyleSheet, para_block};
+use wordsmith_script::keys::{ScriptPara, ScriptRun};
 use wordsmith_script::template::new_script;
 use wordsmith_script::{ElementKind, Elements, scene_numbers};
 
 /// The format version this build writes.
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 /// Most tracked-change records a file may hold: as many as tracking makes. A script with more
 /// is refused when saving rather than written without some of them.
 pub const MAX_REVISIONS: usize = wordsmith_script::tracking::MAX_RECORDS;
@@ -57,11 +58,17 @@ struct Settings {
     styles: Option<StyleSheet>,
     /// Title and the other document properties.
     core: Option<CoreProps>,
-    /// The script's own data: elements, autocomplete, settings of every feature, by key.
-    app_data: BTreeMap<String, Value>,
+    /// The document's extension data, by key (format 5; `appData` before): Script's own data
+    /// (`wordsmith.` keys: elements, autocomplete, scene numbers...) and the shared features'
+    /// (`core.` keys: notes, revisions, page locks, bookmarks, watermark, header and footer,
+    /// the script's own correct words).
+    ext: BTreeMap<String, Value>,
+    /// Changes are tracked (format 5; before, `appData` `wordsmith.tracking`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    track_changes: bool,
     /// Tracked changes' authors and dates (format 4; marked in the text as `{sI3}`, `{sX3}`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    revisions: Vec<wordsmith_doc::Revision>,
+    revisions: Vec<jcj_doc::Revision>,
 }
 
 /// Why a file could not be read.
@@ -123,14 +130,15 @@ pub fn write(doc: &Document) -> Result<String, WriteError> {
     }
     let mut page = doc.last_section.clone();
     // Headers and footers belong to the output, not the script: their fields are kept in
-    // app_data (decision 0021).
+    // the extension data (decision 0021).
     page.headers = Default::default();
     page.footers = Default::default();
     let settings = Settings {
         page: Some(page),
         styles: Some((*doc.styles).clone()),
         core: Some(doc.core.clone()),
-        app_data: doc.app_data.iter().map(|(k, v)| (k.clone(), (**v).clone())).collect(),
+        ext: doc.ext.iter().map(|(k, v)| (k.to_string(), v.clone())).collect(),
+        track_changes: doc.settings.track_changes,
         revisions: doc.revisions.clone(),
     };
     let json = sorted(serde_json::to_value(&settings).map_err(|e| WriteError::Settings(e.to_string()))?);
@@ -147,29 +155,29 @@ pub fn write(doc: &Document) -> Result<String, WriteError> {
             out.push_str(" page-break");
         }
         // Only a number the reader keeps is written: one rule for both (`scene_numbers::clean`).
-        if let Some(n) = p.props.scene_number.as_deref().and_then(scene_numbers::clean) {
+        if let Some(n) = p.props.scene_number().as_deref().and_then(scene_numbers::clean) {
             out.push_str(&format!(" #{n}"));
         }
-        if let Some(id) = p.props.omitted {
+        if let Some(id) = p.props.omitted() {
             out.push_str(&format!(" omitted={id}"));
         }
-        if let Some(id) = p.props.beat {
+        if let Some(id) = p.props.beat() {
             out.push_str(&format!(" beat={id}"));
         }
-        if let Some(id) = p.props.bookmark {
+        if let Some(id) = p.props.bookmark() {
             out.push_str(&format!(" bookmark={id}"));
         }
-        if p.props.dual == Some(true) {
+        if p.props.dual() == Some(true) {
             out.push_str(" dual");
         }
-        if let Some(id) = p.props.scene_id {
+        if let Some(id) = p.props.scene_id() {
             out.push_str(&format!(" scene={id}"));
         }
-        if let Some(set) = p.mark.revised {
+        if let Some(set) = p.mark.revised() {
             out.push_str(&format!(" revised={set}"));
         }
         // A newer version's attributes, as they were read.
-        for a in p.props.extra_attrs.iter().filter(|a| extra_attr_ok(a)) {
+        for a in p.props.extra_attrs().iter().filter(|a| extra_attr_ok(a)) {
             out.push(' ');
             out.push_str(a);
         }
@@ -233,10 +241,48 @@ fn migrate(
         2 => migrate(3, settings, paragraphs),
         // 3 → 4: more character styles (`{sD,K}…{/s}`) join the marks; `{` was already escaped.
         3 => migrate(4, settings, paragraphs),
+        // 4 → 5: the script's data becomes the document's extension data (`ext`); the shared
+        // features' groups move to the core's keys, and change tracking to its own setting.
+        4 => migrate(5, to_ext(settings), paragraphs),
         VERSION => Ok((settings, paragraphs)),
         v if v > VERSION => Err(ReadError::NewerVersion(v)),
         v => Err(ReadError::Damaged(format!("unknown format {v}"))),
     }
+}
+
+/// Script's `appData` keys whose data the shared features now keep under the core's keys
+/// (format 5). The values keep their shape.
+pub const MOVED_KEYS: [(&str, &str); 8] = [
+    ("wordsmith.notes", "core.notes"),
+    ("wordsmith.noteTypes", "core.note_types"),
+    ("wordsmith.revisions", "core.revisions"),
+    ("wordsmith.locks", "core.page_locks"),
+    ("wordsmith.bookmarks", "core.bookmarks"),
+    ("wordsmith.watermark", "core.watermark"),
+    ("wordsmith.headerFooter", "core.header_footer"),
+    ("wordsmith.spelling", "core.spelling"),
+];
+
+/// Format 4 settings as format 5: `appData` becomes `ext` with the moved keys renamed, and
+/// `wordsmith.tracking` becomes `trackChanges`.
+fn to_ext(settings: Value) -> Value {
+    let Value::Object(mut s) = settings else { return settings };
+    let mut ext = match s.remove("appData") {
+        Some(Value::Object(m)) => m,
+        _ => serde_json::Map::new(),
+    };
+    for (old, new) in MOVED_KEYS {
+        if let Some(v) = ext.remove(old) {
+            ext.insert(new.to_string(), v);
+        }
+    }
+    if let Some(t) = ext.remove("wordsmith.tracking")
+        && t.get("on").and_then(Value::as_bool) == Some(true)
+    {
+        s.insert("trackChanges".into(), Value::Bool(true));
+    }
+    s.insert("ext".into(), Value::Object(ext));
+    Value::Object(s)
 }
 
 /// Read a native file.
@@ -311,12 +357,17 @@ pub fn read(text: &str) -> Result<Document, ReadError> {
     if let Some(core) = settings.core {
         doc.core = core;
     }
-    doc.app_data = settings.app_data.into_iter().map(|(k, v)| (k, Arc::new(v))).collect();
+    doc.ext = jcj_doc::Ext::new();
+    for (k, v) in settings.ext {
+        // A key that is not `namespace.name` cannot be kept; it is left out.
+        let _ = doc.ext.set(&k, v);
+    }
+    doc.settings.track_changes = settings.track_changes;
     if settings.revisions.len() > MAX_REVISIONS {
         return Err(ReadError::Damaged(format!("more than {MAX_REVISIONS} tracked-change records")));
     }
     doc.revisions = settings.revisions;
-    if !doc.app_data.contains_key(wordsmith_script::element::ELEMENTS_KEY) {
+    if !doc.ext.contains(wordsmith_script::element::ELEMENTS_KEY) {
         Elements::defaults().store(&mut doc);
     }
     repair_styles(&mut doc);
@@ -329,19 +380,19 @@ pub fn read(text: &str) -> Result<Document, ReadError> {
             let style = if elements.get(&id).is_some() { id } else { general.clone() };
             let mut p = crate::emphasis::decode_with(&style, &text, false, true);
             // A locked scene number, and an omitted scene's placeholder.
-            p.props.scene_number = attrs.iter().find_map(|a| a.strip_prefix('#')).and_then(scene_numbers::clean);
-            p.props.omitted = attrs.iter().find_map(|a| a.strip_prefix("omitted=")).and_then(|n| n.parse().ok());
-            p.props.beat = attrs.iter().find_map(|a| a.strip_prefix("beat=")).and_then(|n| n.parse().ok());
-            p.props.bookmark = attrs.iter().find_map(|a| a.strip_prefix("bookmark=")).and_then(|n| n.parse().ok());
-            p.props.dual = attrs.iter().any(|a| a == "dual").then_some(true);
-            p.props.scene_id = attrs.iter().find_map(|a| a.strip_prefix("scene=")).and_then(|n| n.parse().ok());
+            p.props.set_scene_number(attrs.iter().find_map(|a| a.strip_prefix('#')).and_then(scene_numbers::clean));
+            p.props.set_omitted(attrs.iter().find_map(|a| a.strip_prefix("omitted=")).and_then(|n| n.parse().ok()));
+            p.props.set_beat(attrs.iter().find_map(|a| a.strip_prefix("beat=")).and_then(|n| n.parse().ok()));
+            p.props.set_bookmark(attrs.iter().find_map(|a| a.strip_prefix("bookmark=")).and_then(|n| n.parse().ok()));
+            p.props.set_dual(attrs.iter().any(|a| a == "dual").then_some(true));
+            p.props.set_scene_id(attrs.iter().find_map(|a| a.strip_prefix("scene=")).and_then(|n| n.parse().ok()));
             // A deletion in the paragraph, revised in a set.
-            p.mark.revised = attrs.iter().find_map(|a| a.strip_prefix("revised=")).and_then(|n| n.parse().ok());
+            p.mark.set_revised(attrs.iter().find_map(|a| a.strip_prefix("revised=")).and_then(|n| n.parse().ok()));
             if attrs.iter().any(|a| a == "page-break") {
                 p.props.page_break_before = Some(true);
             }
             // Attributes of a newer version are kept, in order, and written back on save.
-            p.props.extra_attrs = attrs.iter().filter(|a| extra_attr_ok(a)).take(MAX_EXTRA_ATTRS).cloned().collect();
+            p.props.set_extra_attrs(attrs.iter().filter(|a| extra_attr_ok(a)).take(MAX_EXTRA_ATTRS).cloned().collect());
             para_block(p)
         })
         .collect();

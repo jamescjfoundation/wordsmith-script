@@ -4,11 +4,12 @@
 //! header and footer ([`crate::header_footer`]; by default the page number top right, followed by
 //! a period, none on page 1).
 
+use crate::keys::ScriptRun;
 use std::sync::Arc;
 
-use wordsmith_doc::props::{Align, CharProps};
-use wordsmith_doc::{Document, Paragraph, StoryRef, para_block};
-use wordsmith_layout::{DocLayout, LayoutCache};
+use jcj_doc::props::{Align, CharProps};
+use jcj_doc::{Document, Paragraph, StoryRef, para_block};
+use jcj_layout::{DocLayout, LayoutCache};
 
 use super::measure::{MeasureCache, measure_cached, print_layout};
 use super::plan::{Piece, plan};
@@ -49,7 +50,7 @@ pub struct Paginated {
 
 impl Paginated {
     /// The output position showing source position `pos` (body story), if it is shown.
-    pub fn to_output(&self, pos: &wordsmith_doc::Pos) -> Option<wordsmith_doc::Pos> {
+    pub fn to_output(&self, pos: &jcj_doc::Pos) -> Option<jcj_doc::Pos> {
         let block = pos.path.last();
         let (out, src) = self
             .map
@@ -58,12 +59,12 @@ impl Paginated {
             .filter_map(|(i, s)| s.map(|s| (i, s)))
             .filter(|(_, s)| s.block == block && s.start <= pos.off)
             .max_by_key(|(_, s)| s.start)?;
-        let len = self.doc.para(StoryRef::Body, &wordsmith_doc::Path::top(out)).map_or(0, |p| p.len());
-        Some(wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(out), off: (pos.off - src.start).min(len) })
+        let len = self.doc.para(StoryRef::Body, &jcj_doc::Path::top(out)).map_or(0, |p| p.len());
+        Some(jcj_doc::Pos { story: StoryRef::Body, path: jcj_doc::Path::top(out), off: (pos.off - src.start).min(len) })
     }
 
     /// The source position an output position shows (a click on the page view).
-    pub fn to_source(&self, pos: &wordsmith_doc::Pos) -> Option<wordsmith_doc::Pos> {
+    pub fn to_source(&self, pos: &jcj_doc::Pos) -> Option<jcj_doc::Pos> {
         let i = pos.path.last();
         let mut j = i;
         // A line the paginator added maps to the next paragraph that has a source.
@@ -71,7 +72,7 @@ impl Paginated {
             match self.map.get(j)? {
                 Some(src) => {
                     let off = if j == i { pos.off } else { 0 };
-                    return Some(wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(src.block), off: src.start + off });
+                    return Some(jcj_doc::Pos { story: StoryRef::Body, path: jcj_doc::Path::top(src.block), off: src.start + off });
                 }
                 None => j += 1,
             }
@@ -79,7 +80,7 @@ impl Paginated {
     }
 }
 
-fn mark_style(id: &str, place: Placement, align: Align) -> wordsmith_doc::Style {
+fn mark_style(id: &str, place: Placement, align: Align) -> jcj_doc::Style {
     let f = Formatting { place, align, space_before_lines: 0.0, keep_with_next: false, ..default_formatting(ElementKind::General) };
     let mut st = element_style(id, id, &f, id);
     st.builtin = false;
@@ -153,14 +154,14 @@ fn part_of(src: &Paragraph, start: usize, end: usize) -> Paragraph {
 fn revised_lines(doc: &Document, sp: &Paragraph, start: usize, end: usize, para: &Paragraph, only: Option<u32>) -> (Vec<bool>, Option<u32>) {
     // With the current set alone showing, other sets' marks are left out.
     let counts = |x: Option<u32>| x.filter(|i| only.is_none_or(|o| o == *i));
-    let deleted = if start == 0 { counts(sp.mark.revised) } else { None };
-    let newest = para.run_ranges().filter_map(|(_, c)| counts(c.revised)).chain(deleted).max();
+    let deleted = if start == 0 { counts(sp.mark.revised()) } else { None };
+    let newest = para.run_ranges().filter_map(|(_, c)| counts(c.revised())).chain(deleted).max();
     if newest.is_none() {
         return (Vec::new(), None);
     }
     let (lines, _) = super::measure::measure_text(doc, sp, sp.text.get(start..end).unwrap_or(""));
     let mut flags: Vec<bool> =
-        lines.iter().map(|&(a, b)| para.run_ranges().any(|(r, c)| counts(c.revised).is_some() && r.start < b.max(a + 1) && r.end > a)).collect();
+        lines.iter().map(|&(a, b)| para.run_ranges().any(|(r, c)| counts(c.revised()).is_some() && r.start < b.max(a + 1) && r.end > a)).collect();
     if deleted.is_some()
         && let Some(f) = flags.first_mut()
     {
@@ -171,7 +172,7 @@ fn revised_lines(doc: &Document, sp: &Paragraph, start: usize, end: usize, para:
 
 /// The revision sets' text styles on revised runs.
 fn set_styles(para: &mut Paragraph, rev: &crate::revisions::Revisions) {
-    let ranges: Vec<(std::ops::Range<usize>, u32)> = para.run_ranges().filter_map(|(r, c)| c.revised.map(|i| (r, i))).collect();
+    let ranges: Vec<(std::ops::Range<usize>, u32)> = para.run_ranges().filter_map(|(r, c)| c.revised().map(|i| (r, i))).collect();
     for (r, i) in ranges {
         let Some(set) = rev.set(i) else { continue };
         if set.bold || set.underline || set.strike {
@@ -181,7 +182,7 @@ fn set_styles(para: &mut Paragraph, rev: &crate::revisions::Revisions) {
                     c.bold = Some(true);
                 }
                 if u {
-                    c.underline = Some(wordsmith_doc::props::Underline::Single);
+                    c.underline = Some(jcj_doc::props::Underline::Single);
                 }
                 if k {
                     c.strike = Some(true);
@@ -349,7 +350,7 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds, labe
         // With color pages on, a revised page is colored in its newest set's color.
         if rev.color_pages
             && let Some(color) = page_newest.and_then(|i| rev.set(i)).and_then(|set| crate::revisions::parse_color(&set.color))
-            && let Some(wordsmith_doc::Block::Para(p)) = body.get_mut(first).map(Arc::make_mut)
+            && let Some(jcj_doc::Block::Para(p)) = body.get_mut(first).map(Arc::make_mut)
         {
             let fill = super::margin::page_fill(&out, color);
             let at = p.len();
@@ -365,6 +366,22 @@ pub fn build(doc: &Document, pages: &[Vec<Piece>], marks: &MoresContinueds, labe
     out.body = body;
     crate::header_footer::apply(&mut out, labels);
     Built { doc: out, map, page_revisions }
+}
+
+/// The pages with placeholders for deleted locked pages put in, and every page's label (the
+/// core's page labels, `jcj_features::locks`); `None` when the script is not locked.
+pub fn label_pages(doc: &Document, pages: Vec<Vec<Piece>>) -> (Vec<Vec<Piece>>, Option<Vec<String>>) {
+    let Some(labels) = crate::locks::label_pages(doc, &super::core_pages(&pages)) else { return (pages, None) };
+    let mut out = Vec::with_capacity(pages.len() + labels.sequence.len());
+    let mut pages = pages.into_iter();
+    for entry in &labels.sequence {
+        match entry {
+            crate::locks::LabeledPage::Page { .. } => out.extend(pages.next()),
+            crate::locks::LabeledPage::Placeholder { .. } => out.push(vec![Piece::Blank]),
+        }
+    }
+    out.extend(pages);
+    (out, Some(labels.all()))
 }
 
 fn marks_hash(marks: &MoresContinueds) -> u64 {
@@ -399,6 +416,7 @@ pub fn paginate(doc: &Document) -> Paginated {
 }
 
 fn paginate_with(doc: &Document, measure: &mut MeasureCache, cache: &mut LayoutCache) -> Paginated {
+    crate::fonts::ensure();
     crate::work::count(|w| w.paginations += 1);
     let marks = MoresContinueds::of_doc(doc);
     // Dual dialogue: the first speech narrowed, the second left out and drawn beside it.
@@ -413,14 +431,14 @@ fn paginate_with(doc: &Document, measure: &mut MeasureCache, cache: &mut LayoutC
         m.retain(|p| !d.dropped.contains(&p.block));
     }
     let pages = plan(src, &m, &marks, Rules::default());
-    let (pages, labels) = crate::locks::label_pages(src, pages);
+    let (pages, labels) = label_pages(src, pages);
     let Built { doc: mut out, map, page_revisions } = build(src, &pages, &marks, labels.as_deref());
     if let Some(d) = dual {
         for (block, paras) in d.boxes {
             let Some(o) = map.iter().position(|m| m.is_some_and(|m| m.block == block && m.start == 0)) else { continue };
             let y = out.body.get(o).and_then(|b| b.as_para()).map_or(0.0, |p| out.styles.resolve_para(&p.props).space_before.max(0.0));
             let obj = super::dual::speech_box(&mut out, &paras, y);
-            if let Some(wordsmith_doc::Block::Para(p)) = out.body.get_mut(o).map(std::sync::Arc::make_mut) {
+            if let Some(jcj_doc::Block::Para(p)) = out.body.get_mut(o).map(std::sync::Arc::make_mut) {
                 // At the end, so the text's offsets (and the caret's mapping) stay as they are.
                 let at = p.len();
                 let _ = p.insert_object(at, obj, &CharProps::default());

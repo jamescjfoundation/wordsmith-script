@@ -60,13 +60,13 @@ fn a_beat_goes_to_the_script_as_outline_elements() {
 #[test]
 fn hostile_story_boards_read_safely() {
     let mut doc = crate::template::new_script();
-    doc.app_data.insert(
-        STORYBOARD_KEY.into(),
-        Arc::new(json!({
+    let _ = doc.ext.set(
+        STORYBOARD_KEY,
+        json!({
             "beats": [{"id": 1, "x": "NaN", "color": "nope", "lane": 9}, {"id": 1}, {"id": 2, "x": 1e30, "w": -5}],
             "links": [{"from": 1, "to": 1}, {"from": 1, "to": 3}, {"from": 1, "to": 2}],
             "grid": 0
-        })),
+        }),
     );
     let b = Storyboard::of_doc(&doc);
     assert_eq!(b.beats.len(), 2);
@@ -123,8 +123,7 @@ fn beats_line_up_in_a_column_row_cascade_or_on_the_grid() {
 #[test]
 fn old_boards_read_with_one_board_and_forward_links() {
     let mut doc = Document::new();
-    doc.app_data
-        .insert(STORYBOARD_KEY.into(), std::sync::Arc::new(json!({"beats": [{"id": 1}, {"id": 2, "board": 7}], "links": [{"from": 1, "to": 2}]})));
+    let _ = doc.ext.set(STORYBOARD_KEY, json!({"beats": [{"id": 1}, {"id": 2, "board": 7}], "links": [{"from": 1, "to": 2}]}));
     let b = Storyboard::of_doc(&doc);
     assert_eq!(b.boards, vec![BoardInfo::default()]);
     assert_eq!(b.beats[1].board, 0, "a beat on a missing board moves to the first");

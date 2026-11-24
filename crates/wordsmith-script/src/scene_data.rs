@@ -4,12 +4,13 @@
 //! under [`SCENE_DATA_KEY`] by id; the id is on the scene's heading paragraph
 //! (`ParaProps::scene_id`), so the data moves with the scene when scenes are reordered.
 
+use crate::keys::ScriptPara;
 use std::collections::BTreeMap;
 
+use jcj_doc::{Document, Path, StoryRef};
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session, params as p};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use wordsmith_doc::{Document, Path, StoryRef};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session, p};
 
 use crate::data::clean_line;
 use crate::element::Elements;
@@ -91,23 +92,23 @@ pub fn of_scene(doc: &Document, scene: &Scene) -> SceneData {
 
 /// The data of `scene` from `data` (every scene's, read once with [`all`]).
 pub fn of_scene_in(data: &BTreeMap<u32, SceneData>, doc: &Document, scene: &Scene) -> SceneData {
-    let id = doc.body.get(scene.start).and_then(|b| b.as_para()).and_then(|p| p.props.scene_id);
+    let id = doc.body.get(scene.start).and_then(|b| b.as_para()).and_then(|p| p.props.scene_id());
     id.and_then(|id| data.get(&id).cloned()).unwrap_or_default()
 }
 
 /// The id of `scene`'s data, given to its heading now if it has none.
 fn ensure_id(doc: &mut Document, scene: &Scene, data: &BTreeMap<u32, SceneData>) -> Result<u32, CmdError> {
-    if let Some(id) = doc.body.get(scene.start).and_then(|b| b.as_para()).and_then(|p| p.props.scene_id) {
+    if let Some(id) = doc.body.get(scene.start).and_then(|b| b.as_para()).and_then(|p| p.props.scene_id()) {
         // Two headings with one id (a copied heading): the second gets its own.
-        let shared = doc.body.iter().filter(|b| b.as_para().and_then(|p| p.props.scene_id) == Some(id)).count() > 1;
+        let shared = doc.body.iter().filter(|b| b.as_para().and_then(|p| p.props.scene_id()) == Some(id)).count() > 1;
         if !shared {
             return Ok(id);
         }
     }
-    let used: Vec<u32> = doc.body.iter().filter_map(|b| b.as_para().and_then(|p| p.props.scene_id)).collect();
+    let used: Vec<u32> = doc.body.iter().filter_map(|b| b.as_para().and_then(|p| p.props.scene_id())).collect();
     let id = data.keys().chain(used.iter()).max().map_or(1, |m| m.saturating_add(1));
     let para = doc.para_mut(StoryRef::Body, &Path::top(scene.start))?;
-    para.props.scene_id = Some(id);
+    para.props.set_scene_id(Some(id));
     Ok(id)
 }
 
@@ -259,7 +260,7 @@ mod tests {
     use super::*;
     use crate::commands::new_session;
     use crate::template::paragraph;
-    use wordsmith_doc::para_block;
+    use jcj_doc::para_block;
 
     fn session() -> Session {
         let mut s = new_session();

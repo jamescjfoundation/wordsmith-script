@@ -11,9 +11,9 @@ publish.workspace = true
 [dependencies]
 wordsmith-script.workspace = true
 wordsmith-format.workspace = true
-wordsmith-engine.workspace = true
-wordsmith-doc.workspace = true
-wordsmith-mcp.workspace = true
+jcj-engine.workspace = true
+jcj-doc.workspace = true
+jcj-agents.workspace = true
 
 [lints]
 workspace = true

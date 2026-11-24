@@ -1,59 +1,46 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! PDF export: the pages and their text are the paginated script's.
 
+use jcj_doc::{Document, para_block};
 use serde_json::json;
-use wordsmith_doc::{Document, para_block};
 
 use super::{lp_args, pdf_of};
 use crate::paginate::paginate;
 use crate::template::{new_script, paragraph};
 
-/// Text of every page, through hayro's interpreter (glyph to Unicode via ToUnicode). Adapted
-/// from WordCraft's `wordsmith-pdf` tests (MIT OR Apache-2.0).
+/// Every page's glyphs that are not stroked: (where they land, the baseline of their text line,
+/// text), through the core's PDF reader (`jcj_output::read`).
+fn glyphs(bytes: &[u8]) -> Vec<Vec<(f64, f64, f64, String)>> {
+    use jcj_output::read::{GlyphMode, ReadLimits, read_pages};
+    read_pages(bytes, &ReadLimits::default())
+        .expect("parse")
+        .into_iter()
+        .map(|p| {
+            p.glyphs
+                .into_iter()
+                .filter(|g| g.mode != GlyphMode::Stroke)
+                .map(|g| (g.y, g.x, g.line_y, g.text.unwrap_or_else(|| "\u{FFFD}".into())))
+                .collect()
+        })
+        .collect()
+}
+
+/// Text of every page in drawing order, a new line where the text line's baseline moves.
+/// Adapted from WordCraft's PDF tests (MIT OR Apache-2.0).
 pub(crate) fn extract_text(bytes: &[u8]) -> Vec<String> {
-    use hayro_interpret::font::Glyph;
-    use hayro_interpret::{
-        BlendMode, ClipPath, Context, Device, GlyphDrawMode, Image, InterpreterCache, InterpreterSettings, Paint, PathDrawMode, SoftMask,
-        interpret_page,
-    };
-    use hayro_syntax::Pdf;
-    struct Ex(String, Option<f64>);
-    impl Device<'_> for Ex {
-        fn set_soft_mask(&mut self, _: Option<SoftMask<'_>>) {}
-        fn set_blend_mode(&mut self, _: BlendMode) {}
-        fn draw_path(&mut self, _: &kurbo::BezPath, _: kurbo::Affine, _: &Paint<'_>, _: &PathDrawMode) {}
-        fn push_clip_path(&mut self, _: &ClipPath) {}
-        fn push_transparency_group(&mut self, _: f32, _: Option<SoftMask<'_>>, _: BlendMode) {}
-        fn draw_glyph(&mut self, g: &Glyph<'_>, t: kurbo::Affine, _: kurbo::Affine, _: &Paint<'_>, mode: &GlyphDrawMode) {
-            if matches!(mode, GlyphDrawMode::Stroke(_)) {
-                return;
-            }
-            // A new baseline starts a new line of text.
-            let y = t.translation().y;
-            if self.1.is_some_and(|last| (last - y).abs() > 1.0) {
-                self.0.push('\n');
-            }
-            self.1 = Some(y);
-            match g.as_unicode() {
-                Some(hayro_cmap::BfString::Char(c)) => self.0.push(c),
-                Some(hayro_cmap::BfString::String(s)) => self.0.push_str(&s),
-                None => self.0.push('\u{FFFD}'),
-            }
-        }
-        fn draw_image(&mut self, _: Image<'_, '_>, _: kurbo::Affine) {}
-        fn pop_clip_path(&mut self) {}
-        fn pop_transparency_group(&mut self) {}
-    }
-    let pdf = Pdf::new(bytes.to_vec()).expect("parse");
-    let cache = InterpreterCache::new();
-    pdf.pages()
-        .iter()
+    glyphs(bytes)
+        .into_iter()
         .map(|page| {
-            let mut ctx =
-                Context::new(kurbo::Affine::IDENTITY, kurbo::Rect::new(0.0, 0.0, 1.0, 1.0), &cache, pdf.xref(), InterpreterSettings::default());
-            let mut ex = Ex(String::new(), None);
-            interpret_page(page, &mut ctx, &mut ex);
-            ex.0
+            let mut out = String::new();
+            let mut last: Option<f64> = None;
+            for (_, _, line_y, s) in page {
+                if last.is_some_and(|l| (l - line_y).abs() > 1.0) {
+                    out.push('\n');
+                }
+                last = Some(line_y);
+                out.push_str(&s);
+            }
+            out
         })
         .collect()
 }
@@ -61,44 +48,10 @@ pub(crate) fn extract_text(bytes: &[u8]) -> Vec<String> {
 /// Each page's text as lines: glyphs grouped by where they land (baseline), left to right, top
 /// to bottom, a wide gap read as a space.
 pub(crate) fn page_rows(bytes: &[u8]) -> Vec<Vec<String>> {
-    use hayro_interpret::font::Glyph;
-    use hayro_interpret::{
-        BlendMode, ClipPath, Context, Device, GlyphDrawMode, Image, InterpreterCache, InterpreterSettings, Paint, PathDrawMode, SoftMask,
-        interpret_page,
-    };
-    struct Ex(Vec<(f64, f64, String)>);
-    impl Device<'_> for Ex {
-        fn set_soft_mask(&mut self, _: Option<SoftMask<'_>>) {}
-        fn set_blend_mode(&mut self, _: BlendMode) {}
-        fn draw_path(&mut self, _: &kurbo::BezPath, _: kurbo::Affine, _: &Paint<'_>, _: &PathDrawMode) {}
-        fn push_clip_path(&mut self, _: &ClipPath) {}
-        fn push_transparency_group(&mut self, _: f32, _: Option<SoftMask<'_>>, _: BlendMode) {}
-        fn draw_glyph(&mut self, g: &Glyph<'_>, t: kurbo::Affine, glyph: kurbo::Affine, _: &Paint<'_>, mode: &GlyphDrawMode) {
-            if matches!(mode, GlyphDrawMode::Stroke(_)) {
-                return;
-            }
-            let s = match g.as_unicode() {
-                Some(hayro_cmap::BfString::Char(c)) => c.to_string(),
-                Some(hayro_cmap::BfString::String(s)) => s.to_string(),
-                None => "\u{FFFD}".into(),
-            };
-            let at = (t * glyph).translation();
-            self.0.push((at.y, at.x, s));
-        }
-        fn draw_image(&mut self, _: Image<'_, '_>, _: kurbo::Affine) {}
-        fn pop_clip_path(&mut self) {}
-        fn pop_transparency_group(&mut self) {}
-    }
-    let pdf = hayro_syntax::Pdf::new(bytes.to_vec()).expect("parse");
-    let cache = InterpreterCache::new();
-    pdf.pages()
-        .iter()
+    glyphs(bytes)
+        .into_iter()
         .map(|page| {
-            let mut ctx =
-                Context::new(kurbo::Affine::IDENTITY, kurbo::Rect::new(0.0, 0.0, 1.0, 1.0), &cache, pdf.xref(), InterpreterSettings::default());
-            let mut ex = Ex(Vec::new());
-            interpret_page(page, &mut ctx, &mut ex);
-            let mut glyphs = ex.0;
+            let mut glyphs: Vec<(f64, f64, String)> = page.into_iter().map(|(y, x, _, s)| (y, x, s)).collect();
             glyphs.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.total_cmp(&b.1)));
             let mut rows: Vec<(f64, Vec<(f64, String)>)> = Vec::new();
             for (y, x, s) in glyphs {
@@ -190,7 +143,7 @@ fn every_line_of_the_pdf_is_a_line_of_the_output_script() {
 
 #[test]
 fn export_command_writes_a_file_and_respects_automation_roots() {
-    use wordsmith_engine::file_access::{AutomationRoots, confine};
+    use jcj_engine::file_access::{AutomationRoots, confine};
     let dir = std::env::temp_dir().join(format!("wordsmith-export-test-{}", std::process::id()));
     let inside = dir.join("out");
     let outside = dir.join("elsewhere");
@@ -294,7 +247,7 @@ fn revision_marks_sit_beside_the_revised_lines() {
     let (lines, _) = crate::paginate::measure::measure_text(&s.doc, &p, &p.text);
     assert!(lines.len() >= 3);
     let off = lines[2].0 + 3;
-    s.sel = wordsmith_engine::Selection::caret(wordsmith_doc::Pos { off, path: wordsmith_doc::Path::top(1), ..s.sel.focus.clone() });
+    s.sel = jcj_engine::Selection::caret(jcj_doc::Pos { off, path: jcj_doc::Path::top(1), ..s.sel.focus.clone() });
     s.run("text.insert", &json!({"text": "NEW "})).unwrap();
     let pag = paginate(&s.doc);
     assert!(pag.matches_plan);
@@ -314,7 +267,7 @@ fn revision_marks_sit_beside_the_revised_lines() {
         .iter()
         .filter_map(|b| b.as_para())
         .flat_map(|p| p.objects.iter())
-        .filter(|o| matches!(o, wordsmith_doc::InlineObject::Shape { fill: Some(_), .. }))
+        .filter(|o| matches!(o, jcj_doc::InlineObject::Shape { fill: Some(_), .. }))
         .count();
     assert_eq!(fills, 1);
 }
@@ -327,7 +280,7 @@ fn sample_revised_page() {
     let mut s = crate::session_for(speech_script());
     s.run("revision.configure", &json!({"colorPages": true})).unwrap();
     s.run("revision.mode", &json!({"on": true})).unwrap();
-    s.sel = wordsmith_engine::Selection::caret(wordsmith_doc::Pos { off: 3, path: wordsmith_doc::Path::top(10), ..s.sel.focus.clone() });
+    s.sel = jcj_engine::Selection::caret(jcj_doc::Pos { off: 3, path: jcj_doc::Path::top(10), ..s.sel.focus.clone() });
     s.run("text.insert", &json!({"text": "REVISED "})).unwrap();
     std::fs::write(path, super::pdf(&s.doc).unwrap()).unwrap();
 }
@@ -342,7 +295,7 @@ fn scene_numbers_print_either_side_of_their_headings() {
         para_block(paragraph("Action", "Sun.")),
     ];
     let mut s = crate::session_for(doc);
-    let rows = |s: &wordsmith_engine::Session| page_rows(&pdf_of(&paginate(&s.doc)).unwrap())[0].clone();
+    let rows = |s: &jcj_engine::Session| page_rows(&pdf_of(&paginate(&s.doc)).unwrap())[0].clone();
     assert_eq!(rows(&s)[0], "INT. KITCHEN - NIGHT", "hidden by default");
     s.run("scene.lockNumbers", &json!({"lock": true})).unwrap();
     s.doc.body.insert(2, para_block(paragraph("SceneHeading", "INT. HALL - NIGHT")));
@@ -360,7 +313,7 @@ fn lock_a_blue_revision_and_print_only_the_revised_pages() {
     s.run("lock.pages", &json!({"revisionMode": true})).unwrap();
     assert_eq!(crate::revisions::Revisions::of_doc(&s.doc).current, "Blue");
     // Revise a line on page 2 (block 40 is on it).
-    s.sel = wordsmith_engine::Selection::caret(wordsmith_doc::Pos { off: 4, path: wordsmith_doc::Path::top(40), ..s.sel.focus.clone() });
+    s.sel = jcj_engine::Selection::caret(jcj_doc::Pos { off: 4, path: jcj_doc::Path::top(40), ..s.sel.focus.clone() });
     s.run("text.insert", &json!({"text": " (changed)"})).unwrap();
     let (bytes, pages) = super::pdf_with(&s.doc, super::PrintOptions { revised_only: true, marks: true, ..Default::default() }).unwrap();
     assert_eq!(pages, 1);
@@ -387,7 +340,7 @@ fn hidden_outline_elements_leave_the_pages() {
         para_block(paragraph("Action", "Rain.")),
     ];
     let mut s = crate::session_for(doc);
-    let rows = |s: &wordsmith_engine::Session| page_rows(&pdf_of(&paginate(&s.doc)).unwrap())[0].clone();
+    let rows = |s: &jcj_engine::Session| page_rows(&pdf_of(&paginate(&s.doc)).unwrap())[0].clone();
     assert!(rows(&s).iter().any(|l| l == "Anna arrives."), "shown by default");
     s.run("outline.show", &json!({"show": false})).unwrap();
     assert_eq!(rows(&s), ["INT. KITCHEN - NIGHT", "Rain."]);
@@ -404,17 +357,17 @@ fn print_choices_pick_pages_sides_and_sets() {
     let mut s = crate::new_session();
     let mut body = Vec::new();
     for (n, who) in [(1, "ANNA"), (2, "BEN"), (3, "ANNA")] {
-        body.push(wordsmith_doc::para_block(crate::template::paragraph("SceneHeading", &format!("INT. ROOM {n} - DAY"))));
-        body.push(wordsmith_doc::para_block(crate::template::paragraph("Character", who)));
-        body.push(wordsmith_doc::para_block(crate::template::paragraph("Dialogue", "Words.")));
+        body.push(jcj_doc::para_block(crate::template::paragraph("SceneHeading", &format!("INT. ROOM {n} - DAY"))));
+        body.push(jcj_doc::para_block(crate::template::paragraph("Character", who)));
+        body.push(jcj_doc::para_block(crate::template::paragraph("Dialogue", "Words.")));
         let mut brk = crate::template::paragraph("Action", "End of the scene.");
         brk.props.page_break_before = Some(false);
-        body.push(wordsmith_doc::para_block(brk));
+        body.push(jcj_doc::para_block(brk));
     }
     s.doc.body = body;
     // One scene a page.
     for i in [4, 8] {
-        if let Some(wordsmith_doc::Block::Para(p)) = s.doc.body.get_mut(i).map(std::sync::Arc::make_mut) {
+        if let Some(jcj_doc::Block::Para(p)) = s.doc.body.get_mut(i).map(std::sync::Arc::make_mut) {
             p.props.page_break_before = Some(true);
         }
     }

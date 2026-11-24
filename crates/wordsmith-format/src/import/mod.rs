@@ -18,7 +18,7 @@ mod tests;
 
 use std::fmt;
 
-use wordsmith_doc::{Document, para_block};
+use jcj_doc::{Document, para_block};
 use wordsmith_script::template::{new_script, paragraph};
 use wordsmith_script::{ElementKind, Elements};
 
@@ -381,22 +381,39 @@ pub fn looks_like_script(src: &str) -> bool {
     headings >= 1 || cues >= 3 || transitions >= 2
 }
 
-/// Text of an RTF paragraph's runs.
-fn rtf_text(p: &craft_rtf::Para) -> String {
-    p.runs.iter().map(|r| r.text.as_str()).collect()
+/// An RTF paragraph as the import reads it: its text and, in twips, its left and first-line
+/// indents and space before.
+struct RtfPara {
+    text: String,
+    left_indent: i32,
+    first_line_indent: i32,
+    space_before: i32,
 }
 
-fn rtf_paras(blocks: &[craft_rtf::Block], out: &mut Vec<craft_rtf::Para>) {
-    for b in blocks {
-        match b {
-            craft_rtf::Block::Para(p) => out.push(p.clone()),
-            craft_rtf::Block::Table(t) => {
-                for cell in t.rows.iter().flatten() {
-                    out.extend(cell.paras.iter().cloned());
-                }
-            }
-        }
+fn rtf_text(p: &RtfPara) -> String {
+    p.text.clone()
+}
+
+fn twips(pt: f32) -> i32 {
+    (pt * 20.0).round().clamp(-1_000_000.0, 1_000_000.0) as i32
+}
+
+/// Every paragraph of an RTF file (tables' cells too), through the core's interchange.
+fn rtf_paras(bytes: &[u8]) -> Result<Vec<RtfPara>, ImportError> {
+    let doc = jcj_interchange::import(jcj_interchange::Format::Rtf, bytes).map_err(|_| ImportError::NotRtf)?;
+    let mut out = Vec::new();
+    for path in doc.para_paths(jcj_doc::StoryRef::Body) {
+        let Some(p) = doc.para(jcj_doc::StoryRef::Body, &path) else { continue };
+        let r = doc.styles.resolve_para(&p.props);
+        let text: String = p.text.chars().filter(|c| *c != jcj_doc::para::OBJ).collect();
+        out.push(RtfPara { text, left_indent: twips(r.indent_left), first_line_indent: twips(r.indent_first), space_before: twips(r.space_before) });
     }
+    Ok(out)
+}
+
+/// The text of an RTF file, a paragraph per line (for guessing whether it is a script).
+pub fn rtf_plain_text(bytes: &[u8]) -> Result<String, ImportError> {
+    Ok(rtf_paras(bytes)?.into_iter().map(|p| p.text).collect::<Vec<_>>().join("\n\n"))
 }
 
 /// Import RTF. Paragraph indents, when the file has them, place the text (an RTF this app
@@ -405,9 +422,7 @@ pub fn rtf(bytes: &[u8], as_script: bool) -> Result<Document, ImportError> {
     if bytes.len() > MAX_IMPORT_BYTES {
         return Err(ImportError::TooLarge);
     }
-    let doc = craft_rtf::read(bytes).map_err(|_| ImportError::NotRtf)?;
-    let mut paras = Vec::new();
-    rtf_paras(&doc.blocks, &mut paras);
+    let paras = rtf_paras(bytes)?;
     let indented = paras.iter().filter(|p| p.left_indent + p.first_line_indent >= 720 && !rtf_text(p).trim().is_empty()).count();
     if indented < 3 {
         // Space before of half a line or more is a blank line, as below.

@@ -11,16 +11,17 @@
 #![deny(clippy::indexing_slicing)]
 
 pub mod autocomplete;
-pub mod bookmarks;
 pub mod cast;
 pub mod checker;
+pub mod clock;
 pub mod commands;
 pub mod compare;
 pub mod data;
-pub mod dates;
 pub mod element;
 pub mod export;
+pub mod fonts;
 pub mod header_footer;
+pub mod keys;
 pub mod locks;
 pub mod macros;
 pub mod notes;
@@ -42,8 +43,10 @@ pub mod templates;
 pub mod title_page;
 pub mod tracking;
 pub mod typing;
-pub mod watermark;
 pub mod work;
+
+/// Shared document features, from the core (`jcj-features`), used as they are.
+pub use jcj_features::{bookmarks, dates, watermark};
 
 pub use commands::{new_session, registry, session_for};
 pub use element::{Casing, ElementDef, ElementKind, Elements};

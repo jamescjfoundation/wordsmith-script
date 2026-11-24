@@ -2,7 +2,7 @@
 //! Scenes are not stored: a scene runs from one Scene Heading to the next (SPEC "Document model
 //! and elements"). This derives them from the body's paragraphs.
 
-use wordsmith_doc::{Document, StoryRef};
+use jcj_doc::{Document, StoryRef};
 
 use crate::element::{ElementKind, Elements};
 
@@ -45,7 +45,7 @@ pub fn scene_at(scenes: &[Scene], block: usize) -> Option<&Scene> {
 mod tests {
     use super::*;
     use crate::template::new_script;
-    use wordsmith_doc::para_block;
+    use jcj_doc::para_block;
 
     fn script(lines: &[(&str, &str)]) -> Document {
         let mut doc = new_script();

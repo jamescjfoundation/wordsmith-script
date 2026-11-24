@@ -9,13 +9,14 @@
 //! keeps its heading as an OMITTED placeholder with its number; its text is kept and can be
 //! recalled. Settings (`wordsmith.sceneNumbers`): show the numbers, and whether they are locked.
 
+use crate::keys::ScriptPara;
 use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
+use jcj_doc::{Document, Paragraph, para_block};
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session, cmd::sel_result};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use wordsmith_doc::{Document, Paragraph, para_block};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session, cmd::sel_result};
 
 use crate::element::{ElementKind, Elements};
 use crate::scenes::scenes;
@@ -56,7 +57,7 @@ impl Default for SceneNumbers {
 
 impl SceneNumbers {
     pub fn of_doc(doc: &Document) -> Self {
-        let mut s: SceneNumbers = doc.app_data.get(SCENE_NUMBERS_KEY).and_then(|v| serde_json::from_value((**v).clone()).ok()).unwrap_or_default();
+        let mut s: SceneNumbers = doc.ext.get(SCENE_NUMBERS_KEY).and_then(|v| serde_json::from_value(v.clone()).ok()).unwrap_or_default();
         s.start = s.start.clamp(1, 100_000);
         s.restart_every = s.restart_every.min(10_000);
         if !matches!(s.sides.as_str(), "both" | "left" | "right") {
@@ -74,7 +75,7 @@ impl SceneNumbers {
     }
 
     pub fn store(&self, doc: &mut Document) {
-        doc.app_data.insert(SCENE_NUMBERS_KEY.to_string(), Arc::new(serde_json::to_value(self).unwrap_or_default()));
+        let _ = doc.ext.set(SCENE_NUMBERS_KEY, serde_json::to_value(self).unwrap_or_default());
     }
 }
 
@@ -159,7 +160,7 @@ pub fn numbers(doc: &Document) -> Vec<String> {
     let settings = SceneNumbers::of_doc(doc);
     let all = scenes(doc);
     let stored: Vec<Option<String>> =
-        all.iter().map(|sc| doc.body.get(sc.start).and_then(|b| b.as_para()).and_then(|p| p.props.scene_number.as_deref()).and_then(clean)).collect();
+        all.iter().map(|sc| doc.body.get(sc.start).and_then(|b| b.as_para()).and_then(|p| p.props.scene_number()).and_then(|n| clean(&n))).collect();
     if !settings.locked {
         return (0..all.len()).map(|i| settings.unlocked(i)).collect();
     }
@@ -201,8 +202,8 @@ fn show(s: &mut Session, v: &Value) -> CmdResult {
 }
 
 fn set_number(doc: &mut Document, block: usize, n: Option<String>) {
-    if let Some(wordsmith_doc::Block::Para(p)) = doc.body.get_mut(block).map(Arc::make_mut) {
-        p.props.scene_number = n;
+    if let Some(jcj_doc::Block::Para(p)) = doc.body.get_mut(block).map(Arc::make_mut) {
+        p.props.set_scene_number(n);
         p.touch();
     }
 }
@@ -245,7 +246,7 @@ fn renumber(s: &mut Session, v: &Value) -> CmdResult {
         .and_then(|x| x.trim_end_matches(|c: char| !c.is_ascii_digit()).trim_start_matches(|c: char| !c.is_ascii_digit()).parse().ok())
         .map_or(settings.start, |x: u32| x + 1);
     for sc in all.iter().skip(from) {
-        let has = s.doc.body.get(sc.start).and_then(|b| b.as_para()).is_some_and(|p| p.props.scene_number.is_some());
+        let has = s.doc.body.get(sc.start).and_then(|b| b.as_para()).is_some_and(|p| p.props.scene_number().is_some());
         if keep && has {
             continue;
         }
@@ -311,7 +312,7 @@ fn scene_param(s: &Session, v: &Value) -> Result<crate::scenes::Scene, CmdError>
 }
 
 fn omitted_store(doc: &Document) -> BTreeMap<String, Value> {
-    doc.app_data.get(OMITTED_KEY).and_then(|v| v.as_object().cloned()).map(|m| m.into_iter().collect()).unwrap_or_default()
+    doc.ext.get(OMITTED_KEY).and_then(|v| v.as_object().cloned()).map(|m| m.into_iter().collect()).unwrap_or_default()
 }
 
 /// `scene.omit {scene}`: replace a scene with an OMITTED heading that keeps its number. Its text
@@ -320,7 +321,7 @@ fn omit(s: &mut Session, v: &Value) -> CmdResult {
     let sc = scene_param(s, v)?;
     let heading =
         s.doc.body.get(sc.start).and_then(|b| b.as_para()).cloned().ok_or_else(|| CmdError::Failed("the heading is not a paragraph".into()))?;
-    if heading.props.omitted.is_some() {
+    if heading.props.omitted().is_some() {
         return Err(CmdError::Failed("the scene is already omitted".into()));
     }
     let number = numbers(&s.doc).get(sc.index).cloned();
@@ -328,12 +329,12 @@ fn omit(s: &mut Session, v: &Value) -> CmdResult {
     let mut store = omitted_store(&s.doc);
     let id = store.keys().filter_map(|k| k.parse::<u32>().ok()).max().map_or(1, |m| m + 1);
     store.insert(id.to_string(), serde_json::to_value(&paras).map_err(|e| CmdError::Failed(e.to_string()))?);
-    s.doc.app_data.insert(OMITTED_KEY.into(), Arc::new(Value::Object(store.into_iter().collect())));
+    let _ = s.doc.ext.set(OMITTED_KEY, Value::Object(store.into_iter().collect()));
     let mut placeholder = Paragraph::with_text(OMITTED, Default::default());
     placeholder.props.style = heading.props.style.clone();
-    placeholder.props.omitted = Some(id);
+    placeholder.props.set_omitted(Some(id));
     // Locked or not, the placeholder holds the number the scene had.
-    placeholder.props.scene_number = number.filter(|_| SceneNumbers::of_doc(&s.doc).locked);
+    placeholder.props.set_scene_number(number.filter(|_| SceneNumbers::of_doc(&s.doc).locked));
     s.doc.body.splice(sc.start..sc.end, [para_block(placeholder)]);
     s.clamp_selection();
     sel_result(s)
@@ -347,7 +348,7 @@ fn recall(s: &mut Session, v: &Value) -> CmdResult {
         .body
         .get(sc.start)
         .and_then(|b| b.as_para())
-        .and_then(|p| p.props.omitted)
+        .and_then(|p| p.props.omitted())
         .ok_or_else(|| CmdError::Params("the scene is not omitted".into()))?;
     let mut store = omitted_store(&s.doc);
     let paras: Vec<Paragraph> = store
@@ -357,7 +358,7 @@ fn recall(s: &mut Session, v: &Value) -> CmdResult {
     if paras.is_empty() {
         return Err(CmdError::Failed("the omitted scene's text is missing".into()));
     }
-    s.doc.app_data.insert(OMITTED_KEY.into(), Arc::new(Value::Object(store.into_iter().collect())));
+    let _ = s.doc.ext.set(OMITTED_KEY, Value::Object(store.into_iter().collect()));
     s.doc.body.splice(sc.start..sc.start + 1, paras.into_iter().map(para_block));
     s.clamp_selection();
     sel_result(s)
@@ -365,31 +366,31 @@ fn recall(s: &mut Session, v: &Value) -> CmdResult {
 
 /// After a paragraph is split in two, only the first part keeps its scene number, OMITTED mark and
 /// beat.
-pub fn after_split(doc: &mut Document, new: &wordsmith_doc::Pos) {
+pub fn after_split(doc: &mut Document, new: &jcj_doc::Pos) {
     if let Ok(p) = doc.para_mut(new.story, &new.path)
-        && (p.props.scene_number.is_some()
-            || p.props.omitted.is_some()
-            || p.props.beat.is_some()
-            || p.props.bookmark.is_some()
-            || p.props.dual.is_some()
-            || p.props.scene_id.is_some()
-            || !p.props.extra_attrs.is_empty())
+        && (p.props.scene_number().is_some()
+            || p.props.omitted().is_some()
+            || p.props.beat().is_some()
+            || p.props.bookmark().is_some()
+            || p.props.dual().is_some()
+            || p.props.scene_id().is_some()
+            || !p.props.extra_attrs().is_empty())
     {
-        p.props.scene_id = None;
-        p.props.bookmark = None;
-        p.props.dual = None;
-        p.props.scene_number = None;
-        p.props.omitted = None;
+        p.props.set_scene_id(None);
+        p.props.set_bookmark(None);
+        p.props.set_dual(None);
+        p.props.set_scene_number(None);
+        p.props.set_omitted(None);
         // A newer version's attributes stay with the first part, as the known ones do.
-        p.props.extra_attrs.clear();
+        p.props.set_extra_attrs(Vec::new());
         // A beat's paragraph stays one paragraph's.
-        p.props.beat = None;
+        p.props.set_beat(None);
     }
 }
 
 /// Whether `p` is an omitted scene's placeholder.
 pub fn is_omitted(p: &Paragraph) -> bool {
-    p.props.omitted.is_some()
+    p.props.omitted().is_some()
 }
 
 /// The element id of scene headings in `doc`.
@@ -444,7 +445,7 @@ mod tests {
         assert_eq!(numbers(&s.doc)[2], "11X");
         assert!(s.run("scene.setNumber", &json!({"scene": 0, "number": "13"})).is_err(), "unique");
         // Renumber from the caret keeps the scenes before it.
-        s.sel = wordsmith_engine::Selection::caret(crate::data::body_pos(4, 0));
+        s.sel = jcj_engine::Selection::caret(crate::data::body_pos(4, 0));
         s.run("scene.renumber", &json!({"fromCaret": true})).unwrap();
         assert_eq!(numbers(&s.doc), ["10", "11", "12", "13", "14"]);
         assert!(s.run("scene.configureNumbers", &json!({"sides": "middle"})).is_err());
@@ -513,7 +514,7 @@ mod tests {
         s.run("scene.renumber", &json!({})).unwrap();
         assert_eq!(numbers(&s.doc), ["1", "2", "3", "4", "5", "6"]);
         s.run("scene.lockNumbers", &json!({"lock": false})).unwrap();
-        assert!(s.doc.body.iter().filter_map(|b| b.as_para()).all(|p| p.props.scene_number.is_none()));
+        assert!(s.doc.body.iter().filter_map(|b| b.as_para()).all(|p| p.props.scene_number().is_none()));
     }
 
     #[test]
@@ -539,9 +540,9 @@ mod tests {
     fn a_split_heading_does_not_copy_its_number() {
         let mut s = session(&["INT. A - DAY"]);
         s.run("scene.lockNumbers", &json!({"lock": true})).unwrap();
-        s.sel = wordsmith_engine::Selection::caret(wordsmith_doc::Pos { off: 6, path: wordsmith_doc::Path::top(0), ..s.sel.focus.clone() });
+        s.sel = jcj_engine::Selection::caret(jcj_doc::Pos { off: 6, path: jcj_doc::Path::top(0), ..s.sel.focus.clone() });
         s.run("text.newParagraph", &json!({})).unwrap();
-        let stored: Vec<Option<String>> = s.doc.body.iter().filter_map(|b| b.as_para()).map(|p| p.props.scene_number.clone()).collect();
+        let stored: Vec<Option<String>> = s.doc.body.iter().filter_map(|b| b.as_para()).map(|p| p.props.scene_number()).collect();
         assert_eq!(stored.iter().flatten().count(), 1);
     }
 }

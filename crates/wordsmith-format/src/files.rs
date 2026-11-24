@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Scripts on disk: opening, importing, saving, exporting and backups. Every write goes through
 //! craft-atomic, so a failed or interrupted write never leaves a script half-written, and every
-//! path passes the automation file gateway (`wordsmith_engine::file_access`). Decision 0020.
+//! path passes the automation file gateway (`jcj_engine::file_access`). Decision 0020.
 //!
 //! Backups are copies of the saved file in a backups folder, named
 //! `<name> <YYYY-MM-DD HH.MM.SS> UTC.wss`; the oldest beyond the number to keep are removed.
 
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
 
-use wordsmith_doc::Document;
-use wordsmith_engine::file_access;
+use jcj_doc::Document;
+use jcj_engine::file_access;
 
 use crate::{export, fountain, import, native};
 
@@ -136,9 +136,8 @@ pub fn import_file(path: &Path, as_script: bool) -> Result<Document, String> {
 pub fn guess_is_script(path: &Path) -> Result<bool, String> {
     match Kind::of(path) {
         Some(Kind::Rtf) => {
-            let doc = craft_rtf::read(&read_bytes(path)?).map_err(|_| format!("{}: not an RTF file", shown(path)))?;
-            let text: Vec<String> = doc.paras().map(craft_rtf::Para::text).collect();
-            Ok(import::looks_like_script(&text.join("\n\n")))
+            let text = import::rtf_plain_text(&read_bytes(path)?).map_err(|_| format!("{}: not an RTF file", shown(path)))?;
+            Ok(import::looks_like_script(&text))
         }
         _ => Ok(import::looks_like_script(&read_text(path)?)),
     }
@@ -163,100 +162,30 @@ pub fn export_to(path: &Path, doc: &Document, kind: Kind) -> Result<(), String> 
     write_atomic(path, &bytes)
 }
 
-/// The time part of a backup's name: `2026-11-19 14.03.22 UTC`.
+/// The time part of a backup's name: `2026-11-19 14.03.22 UTC` (the core's backups,
+/// `jcj_project::files`).
 pub fn stamp(at: SystemTime) -> String {
-    let secs = at.duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
-    let (y, mo, d, h, mi, s) = wordsmith_script::dates::civil(secs);
-    format!("{y:04}-{mo:02}-{d:02} {h:02}.{mi:02}.{s:02} UTC")
+    jcj_project::files::stamp(at)
 }
 
-/// Whether `file` is a backup of a script named `stem` (`<stem> <stamp>[ n].wss`).
-fn is_backup_of(file: &str, stem: &str) -> bool {
-    let Some(rest) = file.strip_prefix(stem).and_then(|r| r.strip_prefix(' ')) else { return false };
-    let Some(rest) = rest.strip_suffix(".wss") else { return false };
-    let b = rest.as_bytes();
-    // "YYYY-MM-DD HH.MM.SS UTC", then possibly " n" for a second backup in the same second.
-    b.len() >= 23
-        && rest.get(..23).is_some_and(|s| {
-            s.char_indices().all(|(i, c)| match i {
-                4 | 7 => c == '-',
-                10 | 19 => c == ' ',
-                13 | 16 => c == '.',
-                20..=22 => "UTC".chars().nth(i - 20) == Some(c),
-                _ => c.is_ascii_digit(),
-            })
-        })
-        && rest
-            .get(23..)
-            .is_some_and(|tail| tail.is_empty() || tail.strip_prefix(' ').is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit())))
-}
-
-/// The backups of `stem` in `dir`, oldest first.
+/// The backups of the script named `stem` in `dir`, oldest first.
 pub fn backups_of(dir: &Path, stem: &str) -> Vec<PathBuf> {
-    let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
-    let mut found: Vec<(String, PathBuf)> = entries
-        .filter_map(Result::ok)
-        .filter_map(|e| {
-            let name = e.file_name().to_str()?.to_string();
-            is_backup_of(&name, stem).then(|| (name, e.path()))
-        })
-        .collect();
-    // The stamp sorts as text; a numbered copy comes after the one without a number.
-    found.sort_by(|a, b| {
-        let key = |s: &str| {
-            let tail = s.strip_suffix(".wss").unwrap_or(s);
-            let (base, n) = match tail.get(stem.len() + 24..) {
-                Some(n) if !n.is_empty() => (tail.get(..stem.len() + 24).unwrap_or(tail).to_string(), n.trim().parse::<u64>().unwrap_or(0)),
-                _ => (tail.to_string(), 0),
-            };
-            (base, n)
-        };
-        key(&a.0).cmp(&key(&b.0))
-    });
-    found.into_iter().map(|(_, p)| p).collect()
+    jcj_project::files::backups_of(dir, Path::new(&format!("{stem}.wss")))
 }
 
-/// Copy the script just saved at `saved` into `dir` as a timestamped backup, then remove the
-/// oldest backups of the same script beyond `keep` (1 to [`MAX_BACKUPS`]). Returns the new
-/// backup's path.
+/// Copy the script just saved at `saved` into `dir` as a timestamped backup
+/// (`<name> <stamp>[ n].wss`), then remove the oldest backups of the same script beyond `keep`
+/// (1 to [`MAX_BACKUPS`]). Returns the new backup's path. The core's backups
+/// (`jcj_project::files::backup`), named as Script's were.
 pub fn backup(saved: &Path, dir: &Path, keep: usize, at: SystemTime) -> Result<PathBuf, String> {
-    let keep = keep.clamp(1, MAX_BACKUPS);
-    let stem = saved.file_stem().and_then(|s| s.to_str()).filter(|s| !s.is_empty()).unwrap_or("Untitled");
-    let bytes = read_bytes(saved)?;
-    file_access::check_write(&shown(dir))?;
-    std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", shown(dir)))?;
-    let base = format!("{stem} {}", stamp(at));
-    let mut written = None;
-    for n in 0..100u32 {
-        let name = if n == 0 { format!("{base}.wss") } else { format!("{base} {}.wss", n + 1) };
-        let path = dir.join(name);
-        file_access::check_write(&shown(&path))?;
-        match craft_atomic::write_new(&path, &bytes) {
-            Ok(()) => {
-                written = Some(path);
-                break;
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(format!("{}: {e}", shown(&path))),
-        }
-    }
-    let written = written.ok_or_else(|| format!("{}: too many backups in one second", shown(dir)))?;
-    let all = backups_of(dir, stem);
-    if all.len() > keep {
-        for old in all.get(..all.len() - keep).unwrap_or_default() {
-            if *old != written {
-                let _ = std::fs::remove_file(old);
-            }
-        }
-    }
-    Ok(written)
+    jcj_project::files::backup(saved, dir, keep.clamp(1, MAX_BACKUPS), at).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::time::{Duration, UNIX_EPOCH};
 
-    use wordsmith_doc::para_block;
+    use jcj_doc::para_block;
     use wordsmith_script::Elements;
     use wordsmith_script::template::{new_script, paragraph};
 
@@ -359,8 +288,10 @@ mod tests {
         backup(&saved, &backups, 1, t0 + Duration::from_secs(180)).unwrap();
         assert_eq!(backups_of(&backups, "Draft").len(), 1);
         assert!(backups.join("Other 2026-11-19 15.03.22 UTC.wss").exists() && backups.join("Draft notes.txt").exists());
-        assert!(!is_backup_of("Draft 2026-11-19 15.03.22 UTC x.wss", "Draft"));
-        assert!(!is_backup_of("Draft2 2026-11-19 15.03.22 UTC.wss", "Draft"));
+        // Names that only look like backups are not taken for them.
+        std::fs::write(backups.join("Draft 2026-11-19 15.03.22 UTC x.wss"), b"x").unwrap();
+        std::fs::write(backups.join("Draft2 2026-11-19 15.03.22 UTC.wss"), b"x").unwrap();
+        assert_eq!(backups_of(&backups, "Draft").len(), 1);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

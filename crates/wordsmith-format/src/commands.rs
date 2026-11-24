@@ -9,10 +9,11 @@
 //! path}`), which makes the backup copy and restarts the auto-save clock.
 
 use std::path::{Path, PathBuf};
+use wordsmith_script::keys::ScriptPara;
 
 use crate::files::{self, Kind};
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session, params as p};
 use serde_json::{Value, json};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session, p};
 
 /// The script's name: its file's name, the name it was given, or "Untitled".
 pub fn script_name(s: &Session) -> String {
@@ -49,7 +50,7 @@ fn failed(e: String) -> CmdError {
 
 /// Put `doc` in the session: a native file keeps its path; anything else is a new, unsaved
 /// script named after the file it came from.
-fn replace(s: &mut Session, doc: wordsmith_doc::Document, path: &Path, native: bool, dirty: bool) {
+fn replace(s: &mut Session, doc: jcj_doc::Document, path: &Path, native: bool, dirty: bool) {
     s.set_document(doc);
     if native {
         s.path = Some(path.to_path_buf());
@@ -72,7 +73,7 @@ fn open_path(s: &mut Session, v: &Value) -> CmdResult {
     match kind {
         Kind::Native | Kind::Fountain => {
             let doc = files::open(&path).map_err(failed)?;
-            let template = doc.app_data.contains_key(wordsmith_script::templates::TEMPLATE_KEY);
+            let template = doc.ext.contains(wordsmith_script::templates::TEMPLATE_KEY);
             let read_only = std::fs::metadata(&path).is_ok_and(|m| m.permissions().readonly());
             if template {
                 // A template starts a new, untitled script.
@@ -227,7 +228,7 @@ fn export_filtered_pdf(s: &mut Session, v: &Value) -> CmdResult {
     Ok(json!({"path": path}))
 }
 
-fn write_pdf(path: &Path, doc: &wordsmith_doc::Document) -> CmdResult {
+fn write_pdf(path: &Path, doc: &jcj_doc::Document) -> CmdResult {
     let bytes = wordsmith_script::planning_pdf::pdf(doc).map_err(failed)?;
     files::write_atomic(path, &bytes).map_err(failed)?;
     Ok(json!({"path": path}))
@@ -278,7 +279,7 @@ fn save_as_template(s: &mut Session, v: &Value) -> CmdResult {
     let Some(path) = path_of(v) else { return ask(s, "export", json!({"format": "template", "name": script_name(s)})) };
     let path = path.with_extension("wst");
     let mut doc = s.doc.clone();
-    doc.app_data.insert(wordsmith_script::templates::TEMPLATE_KEY.into(), std::sync::Arc::new(json!(true)));
+    let _ = doc.ext.set(wordsmith_script::templates::TEMPLATE_KEY, json!(true));
     files::save(&path, &doc).map_err(failed)?;
     Ok(json!({"saved": path.display().to_string()}))
 }
@@ -300,7 +301,7 @@ fn merge(s: &mut Session, v: &Value) -> CmdResult {
     if s.dirty && v.get("discard").and_then(Value::as_bool) != Some(true) {
         return Err(failed("save the script first: the merged script replaces it in the window".into()));
     }
-    let mut out: Option<wordsmith_doc::Document> = None;
+    let mut out: Option<jcj_doc::Document> = None;
     for path in &paths {
         let doc = files::open(path).map_err(failed)?;
         match out.as_mut() {
@@ -315,9 +316,9 @@ fn merge(s: &mut Session, v: &Value) -> CmdResult {
                         let id = theirs.of_para(p).id.clone();
                         q.props.style =
                             Some(if elements.get(&id).is_some() { id } else { elements.id_of(wordsmith_script::ElementKind::General).to_string() });
-                        q.props.scene_id = None;
-                        q.props.bookmark = None;
-                        o.body.push(wordsmith_doc::para_block(q));
+                        q.props.set_scene_id(None);
+                        q.props.set_bookmark(None);
+                        o.body.push(jcj_doc::para_block(q));
                     }
                 }
             }
@@ -384,15 +385,18 @@ pub fn specs() -> Vec<CommandSpec> {
 
 /// Every command a session without a window needs: the engine's, the screenplay's and these
 /// file commands. The command line and the MCP server use it.
-pub fn headless_registry() -> wordsmith_engine::Registry {
-    let mut all = wordsmith_script::commands::specs();
-    all.extend(specs());
-    wordsmith_engine::cmd::registry_with(all)
+pub fn headless_registry() -> jcj_engine::Registry {
+    wordsmith_script::commands::registry_plus(specs())
 }
 
 /// A session on a new script with [`headless_registry`].
 pub fn headless_session() -> Session {
-    Session::with_registry(wordsmith_script::new_script(), std::sync::Arc::new(headless_registry()))
+    static REGISTRY: std::sync::OnceLock<std::sync::Arc<jcj_engine::Registry>> = std::sync::OnceLock::new();
+    let registry = REGISTRY.get_or_init(|| {
+        wordsmith_script::paginate::plan_pages_for_features();
+        std::sync::Arc::new(headless_registry())
+    });
+    jcj_engine::session_with(wordsmith_script::new_script(), registry.clone())
 }
 
 #[cfg(test)]
@@ -405,15 +409,22 @@ mod tests {
     }
 
     #[test]
+    fn the_file_keys_of_0_1_reach_their_commands() {
+        let r = headless_registry();
+        for (key, id) in [("Mod+O", "file.open"), ("Mod+Alt+P", "file.printPreview"), ("Mod+S", "file.save"), ("Mod+Shift+S", "file.saveAs")] {
+            assert_eq!(r.by_shortcut(key).map(|c| c.id), Some(id), "{key}");
+        }
+    }
+
+    #[test]
     fn every_headless_command_id_is_unique() {
-        let mut all = wordsmith_engine::cmd::specs();
-        all.extend(wordsmith_script::commands::specs());
+        let mut all = wordsmith_script::commands::specs();
         all.extend(specs());
-        // The screenplay layer may replace an engine command, never one of its own or these.
-        let engine: Vec<&str> = wordsmith_engine::cmd::specs().iter().map(|s| s.id).collect();
-        let dupes: Vec<&str> = wordsmith_engine::duplicate_ids(&all).into_iter().filter(|id| !engine.contains(id)).collect();
+        // The screenplay layer may replace a command of the engine, the core or the shared
+        // features, never one of its own or these.
+        let dupes: Vec<&str> = jcj_engine::duplicate_ids(&all);
         assert!(dupes.is_empty(), "registered twice: {dupes:?}");
-        assert!(wordsmith_engine::duplicate_ids(headless_registry().all()).is_empty());
+        assert!(jcj_engine::duplicate_ids(headless_registry().all()).is_empty());
     }
 
     fn dir(name: &str) -> PathBuf {
@@ -434,7 +445,7 @@ mod tests {
         let mut o = session();
         o.run("file.openPath", &json!({"path": t.display().to_string()})).unwrap();
         assert!(o.path.is_none());
-        assert!(!o.doc.app_data.contains_key(wordsmith_script::templates::TEMPLATE_KEY));
+        assert!(!o.doc.ext.contains(wordsmith_script::templates::TEMPLATE_KEY));
         // Revert puts back the saved script.
         let a = d.join("A.wss");
         s.run("file.saveAsPath", &json!({"path": a.display().to_string()})).unwrap();
@@ -456,7 +467,7 @@ mod tests {
     /// refuses through the file gateway and touches nothing there. Printing is refused outright.
     #[test]
     fn confined_commands_keep_to_their_folders() {
-        use wordsmith_engine::file_access::{AutomationRoots, confine};
+        use jcj_engine::file_access::{AutomationRoots, confine};
         let d = dir("confined");
         let (inside, outside) = (d.join("inside"), d.join("outside"));
         std::fs::create_dir_all(&inside).unwrap();
@@ -483,6 +494,8 @@ mod tests {
             .all()
             .iter()
             .filter(|c| c.params.contains("{\"path\"") || c.params.contains(", \"path\"") || c.params.contains("\"paths\""))
+            // Script's own commands (the engine's file commands are confined by the engine).
+            .filter(|c| specs().iter().chain(wordsmith_script::commands::specs().iter()).any(|o| o.id == c.id))
             .map(|c| c.id)
             .collect();
         for id in ["report.export", "report.exportFilteredPdf", "storyboard.exportPdf", "cards.exportPdf", "file.exportPdf", "file.saveAsPath"] {

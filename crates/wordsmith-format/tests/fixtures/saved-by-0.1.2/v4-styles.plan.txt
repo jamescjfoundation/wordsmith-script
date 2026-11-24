@@ -1,0 +1,42 @@
+matches_plan=true
+revs=[None]
+labels=None
+[
+    [
+        Para {
+            block: 0,
+            start: 0,
+            end: 15,
+            lines: 1,
+            space_before: false,
+        },
+        Para {
+            block: 1,
+            start: 0,
+            end: 17,
+            lines: 1,
+            space_before: true,
+        },
+        Para {
+            block: 2,
+            start: 0,
+            end: 27,
+            lines: 1,
+            space_before: true,
+        },
+        Para {
+            block: 3,
+            start: 0,
+            end: 4,
+            lines: 1,
+            space_before: true,
+        },
+        Para {
+            block: 4,
+            start: 0,
+            end: 3,
+            lines: 1,
+            space_before: false,
+        },
+    ],
+]

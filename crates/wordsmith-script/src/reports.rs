@@ -6,9 +6,9 @@
 //! before each paragraph that is not at the top of a page), in eighths of a page's text height,
 //! rounded up, at least 1/8: the convention a schedule uses. Written as "1 3/8", "5/8", "2".
 
+use jcj_doc::Document;
+use jcj_engine::{CmdResult, CommandSpec, Session};
 use serde_json::{Value, json};
-use wordsmith_doc::Document;
-use wordsmith_engine::{CmdResult, CommandSpec, Session};
 
 use crate::commands::character::csv_field;
 use crate::element::{ElementKind, Elements};
@@ -189,7 +189,7 @@ pub fn specs() -> Vec<CommandSpec> {
 
 #[cfg(test)]
 mod tests {
-    use wordsmith_doc::para_block;
+    use jcj_doc::para_block;
 
     use super::*;
     use crate::template::{new_script, paragraph};

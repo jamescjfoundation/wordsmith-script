@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Autocomplete through commands, the way a writer meets it.
 
+use jcj_engine::{CmdError, Session};
 use serde_json::{Value, json};
-use wordsmith_engine::{CmdError, Session};
 
 use crate::commands::{new_session, text::body_lines};
 
@@ -171,9 +171,9 @@ fn scene_intros_share_the_scene_heading_settings() {
 fn hostile_lists_are_repaired() {
     let mut s = new_session();
     let junk = json!({"lists": {"characters": {"enabled": true, "order": "alphabetical", "entries": ["", "x".repeat(500), "ANNA", "anna", "BOB"]}}, "guessNextSpeaker": "yes"});
-    s.doc.app_data.insert(crate::autocomplete::AUTOCOMPLETE_KEY.into(), std::sync::Arc::new(junk));
+    let _ = s.doc.ext.set(crate::autocomplete::AUTOCOMPLETE_KEY, junk);
     let lists = s.run("autocomplete.lists", &json!({})).unwrap();
     assert_eq!(lists["lists"][0]["entries"], json!(["ANNA", "BOB"]));
-    s.doc.app_data.insert(crate::autocomplete::AUTOCOMPLETE_KEY.into(), std::sync::Arc::new(json!(17)));
+    let _ = s.doc.ext.set(crate::autocomplete::AUTOCOMPLETE_KEY, json!(17));
     assert_eq!(s.run("autocomplete.lists", &json!({})).unwrap()["lists"][1]["entries"], json!(["V.O.", "O.S.", "O.C.", "CONT'D"]));
 }

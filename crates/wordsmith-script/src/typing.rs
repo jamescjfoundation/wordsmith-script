@@ -7,10 +7,10 @@
 //! They act on typed characters only (one character at a time), never on pasted text, so a
 //! paste lands exactly as copied.
 
+use jcj_doc::Document;
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session, params as p};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use wordsmith_doc::Document;
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session, p};
 
 use crate::element::{Casing, ElementKind};
 

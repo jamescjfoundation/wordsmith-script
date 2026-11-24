@@ -9,8 +9,8 @@
 
 use std::sync::Arc;
 
-use wordsmith_doc::props::{Align, CharProps, LineSpacing, ParaProps};
-use wordsmith_doc::{Document, Paragraph, Style, StyleKind, StyleSheet};
+use jcj_doc::props::{Align, CharProps, LineSpacing, ParaProps};
+use jcj_doc::{Document, Paragraph, Style, StyleKind, StyleSheet};
 
 use crate::element::{ElementKind, Elements};
 
@@ -134,7 +134,7 @@ pub fn element_style(id: &str, name: &str, f: &Formatting, next: &str) -> Style 
             size: Some(SCRIPT_SIZE),
             bold: Some(f.bold),
             italic: Some(f.italic),
-            underline: f.underline.then_some(wordsmith_doc::props::Underline::Single),
+            underline: f.underline.then_some(jcj_doc::props::Underline::Single),
             ..CharProps::default()
         },
         builtin: true,
@@ -167,6 +167,7 @@ pub fn paragraph(element: &str, text: &str) -> Paragraph {
 /// A new, empty screenplay: US Letter with the spec's margins, the element registry, the
 /// screenplay styles, scene-heading settings and one empty Scene Heading.
 pub fn new_script() -> Document {
+    crate::fonts::ensure();
     let mut doc = Document::new();
     let elements = Elements::defaults();
     doc.styles = Arc::new(style_sheet(&elements));
@@ -179,7 +180,7 @@ pub fn new_script() -> Document {
     s.margin_bottom = MARGIN_BOTTOM;
     s.margin_left = MARGIN_LEFT;
     s.margin_right = MARGIN_RIGHT;
-    doc.body = vec![wordsmith_doc::para_block(paragraph(elements.id_of(ElementKind::SceneHeading), ""))];
+    doc.body = vec![jcj_doc::para_block(paragraph(elements.id_of(ElementKind::SceneHeading), ""))];
     doc
 }
 
@@ -251,6 +252,6 @@ mod tests {
         assert_eq!((s.margin_top, s.margin_bottom, s.margin_left, s.margin_right), (72.0, 72.0, 108.0, 72.0));
         let first = doc.body.first().and_then(|b| b.as_para()).unwrap();
         assert_eq!(first.props.style.as_deref(), Some("SceneHeading"));
-        assert!(doc.app_data.contains_key(crate::element::ELEMENTS_KEY));
+        assert!(doc.ext.contains(crate::element::ELEMENTS_KEY));
     }
 }

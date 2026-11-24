@@ -3,16 +3,16 @@
 
 use std::sync::Arc;
 
-use wordsmith_doc::{Path, Pos, StoryRef, para_block};
-use wordsmith_layout::{LayoutCache, LayoutOptions, ViewMode};
+use jcj_doc::{Path, Pos, StoryRef, para_block};
+use jcj_layout::{LayoutCache, LayoutOptions, ViewMode};
 
 use crate::template::{INCH, new_script};
 
-fn layout_of(lines: &[(&str, &str)]) -> (wordsmith_doc::Document, Arc<wordsmith_layout::DocLayout>) {
+fn layout_of(lines: &[(&str, &str)]) -> (jcj_doc::Document, Arc<jcj_layout::DocLayout>) {
     let mut doc = new_script();
     doc.body = lines.iter().map(|(style, text)| para_block(crate::template::paragraph(style, text))).collect();
     let opts = LayoutOptions { view: ViewMode::Print, ..Default::default() };
-    let l = Arc::new(wordsmith_layout::layout(&doc, &mut LayoutCache::new(), &opts));
+    let l = Arc::new(jcj_layout::layout(&doc, &mut LayoutCache::new(), &opts));
     (doc, l)
 }
 

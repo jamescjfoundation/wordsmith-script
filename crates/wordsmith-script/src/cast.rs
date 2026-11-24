@@ -5,10 +5,10 @@
 
 use std::collections::BTreeMap;
 
+use jcj_doc::Document;
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session, params as p};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use wordsmith_doc::Document;
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session, p};
 
 use crate::data::clean_line;
 use crate::element::{ElementKind, Elements};
@@ -48,8 +48,8 @@ impl Default for Cast {
 
 impl Cast {
     pub fn of_doc(doc: &Document) -> Self {
-        let mut c: Cast = match doc.app_data.get(CAST_KEY) {
-            Some(v) => serde_json::from_value((**v).clone()).unwrap_or_default(),
+        let mut c: Cast = match doc.ext.get(CAST_KEY) {
+            Some(v) => serde_json::from_value(v.clone()).unwrap_or_default(),
             None => Cast::default(),
         };
         c.traits = c.traits.iter().map(|t| clean_line(t, 60)).filter(|t| !t.is_empty()).take(MAX_TRAITS).collect();
@@ -230,7 +230,7 @@ mod tests {
     use super::*;
     use crate::commands::new_session;
     use crate::template::paragraph;
-    use wordsmith_doc::para_block;
+    use jcj_doc::para_block;
 
     fn session() -> Session {
         let mut s = new_session();

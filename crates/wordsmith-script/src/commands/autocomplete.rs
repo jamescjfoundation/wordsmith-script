@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Autocomplete commands: suggest, accept, edit the lists, switch them, order them, rebuild.
 
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result, params as p};
 use serde_json::{Value, json};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result, p};
 
 use crate::autocomplete::{Autocomplete, ListKind, Order, rebuild, suggest};
 use crate::element::Elements;
@@ -41,7 +41,7 @@ fn accept(s: &mut Session, v: &Value) -> CmdResult {
     para.delete(ctx.start, at.off)?;
     para.insert_text(ctx.start, &text, &props)?;
     para.touch();
-    s.sel = Selection::caret(wordsmith_doc::Pos { off: ctx.start + text.len(), ..at });
+    s.sel = Selection::caret(jcj_doc::Pos { off: ctx.start + text.len(), ..at });
     sel_result(s)
 }
 

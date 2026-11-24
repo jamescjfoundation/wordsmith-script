@@ -1,0 +1,817 @@
+Wordsmith Script 4
+=== settings ===
+{
+  "appData": {
+    "wordsmith.elements": {
+      "elements": [
+        {
+          "casing": "asTyped",
+          "id": "General",
+          "kind": "general",
+          "name": "General",
+          "shortcut": "Mod+0"
+        },
+        {
+          "casing": "upper",
+          "id": "SceneHeading",
+          "kind": "sceneHeading",
+          "name": "Scene Heading",
+          "shortcut": "Mod+1",
+          "tab": "Action"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Action",
+          "kind": "action",
+          "name": "Action",
+          "shortcut": "Mod+2",
+          "tab": "Character"
+        },
+        {
+          "casing": "upper",
+          "id": "Character",
+          "kind": "character",
+          "name": "Character",
+          "shortcut": "Mod+3",
+          "tab": "Transition",
+          "tabOnlyWhenBlank": true
+        },
+        {
+          "casing": "asTyped",
+          "id": "Parenthetical",
+          "kind": "parenthetical",
+          "name": "Parenthetical",
+          "shortcut": "Mod+4",
+          "tab": "Dialogue"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Dialogue",
+          "kind": "dialogue",
+          "name": "Dialogue",
+          "shortcut": "Mod+5",
+          "tab": "Parenthetical"
+        },
+        {
+          "casing": "upper",
+          "id": "Transition",
+          "kind": "transition",
+          "name": "Transition",
+          "shortcut": "Mod+6",
+          "tab": "SceneHeading"
+        },
+        {
+          "casing": "upper",
+          "id": "Shot",
+          "kind": "shot",
+          "name": "Shot",
+          "shortcut": "Mod+7"
+        },
+        {
+          "casing": "asTyped",
+          "id": "CastList",
+          "kind": "castList",
+          "name": "Cast List",
+          "shortcut": "Mod+8"
+        },
+        {
+          "casing": "upper",
+          "id": "NewAct",
+          "kind": "newAct",
+          "name": "New Act",
+          "shortcut": "Mod+9"
+        },
+        {
+          "casing": "upper",
+          "id": "EndOfAct",
+          "kind": "endOfAct",
+          "name": "End of Act"
+        },
+        {
+          "casing": "upper",
+          "id": "Sequence",
+          "kind": "sequence",
+          "name": "Sequence",
+          "tab": "SceneHeading"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Outline1",
+          "kind": "outline1",
+          "name": "Outline 1",
+          "tab": "Outline2"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Outline2",
+          "kind": "outline2",
+          "name": "Outline 2",
+          "tab": "Outline3"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Outline3",
+          "kind": "outline3",
+          "name": "Outline 3",
+          "tab": "Note"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Note",
+          "kind": "note",
+          "name": "Note",
+          "tab": "Note"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Summary",
+          "kind": "summary",
+          "name": "Summary"
+        }
+      ],
+      "version": 1
+    }
+  },
+  "core": {
+    "category": "",
+    "created": "",
+    "creator": "",
+    "description": "",
+    "keywords": "",
+    "lastModifiedBy": "",
+    "modified": "",
+    "revision": 0,
+    "subject": "",
+    "title": "Fixture"
+  },
+  "page": {
+    "chapterSep": null,
+    "chapterStyle": null,
+    "columns": {
+      "count": 1,
+      "separator": false,
+      "space": 36.0,
+      "widths": []
+    },
+    "docGrid": null,
+    "footer": 36.0,
+    "footers": {
+      "default": null,
+      "even": null,
+      "first": null
+    },
+    "footnoteColumns": null,
+    "gutter": 0.0,
+    "header": 36.0,
+    "headers": {
+      "default": null,
+      "even": null,
+      "first": null
+    },
+    "landscape": false,
+    "lineNumbers": null,
+    "marginBottom": 72.0,
+    "marginLeft": 108.0,
+    "marginRight": 72.0,
+    "marginTop": 72.0,
+    "noEndnote": null,
+    "pageBorders": null,
+    "pageH": 792.0,
+    "pageNumFormat": "decimal",
+    "pageNumStart": null,
+    "pageW": 612.0,
+    "paperSrcFirst": null,
+    "paperSrcOther": null,
+    "rtl": false,
+    "start": "nextPage",
+    "titlePage": false,
+    "valign": "top"
+  },
+  "styles": {
+    "defaultChr": {
+      "font": "Courier Prime",
+      "size": 12.0
+    },
+    "defaultPara": {
+      "lineSpacing": {
+        "rule": "exactly",
+        "value": 12.0
+      },
+      "spaceAfter": 0.0
+    },
+    "defaultParaPresent": true,
+    "styles": [
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "General",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "General",
+        "next": "General",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "SceneHeading",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Scene Heading",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Action",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Action",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Character",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Character",
+        "next": "Dialogue",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 158.39999389648438,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Parenthetical",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Parenthetical",
+        "next": "Dialogue",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 115.19999694824219,
+          "indentRight": 136.80001831054688,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Dialogue",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Dialogue",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 72.0,
+          "indentRight": 108.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Transition",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Transition",
+        "next": "SceneHeading",
+        "para": {
+          "align": "right",
+          "indentFirst": 0.0,
+          "indentLeft": 288.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Shot",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Shot",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "CastList",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Cast List",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0,
+          "underline": "single"
+        },
+        "hidden": false,
+        "id": "NewAct",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "New Act",
+        "next": "SceneHeading",
+        "para": {
+          "align": "center",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": true,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0,
+          "underline": "single"
+        },
+        "hidden": false,
+        "id": "EndOfAct",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "End of Act",
+        "next": "NewAct",
+        "para": {
+          "align": "center",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 24.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": true,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0,
+          "underline": "single"
+        },
+        "hidden": false,
+        "id": "Sequence",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Sequence",
+        "next": "SceneHeading",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": -18.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 24.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": true,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Outline1",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Outline 1",
+        "next": "Outline1",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": true,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Outline2",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Outline 2",
+        "next": "Outline2",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 18.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Outline3",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Outline 3",
+        "next": "Outline3",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 36.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": true,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Note",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Note",
+        "next": "Note",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 36.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Summary",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Summary",
+        "next": "Summary",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      }
+    ]
+  }
+}
+=== script ===
+@SceneHeading
+EXT. YARD - DAY
+
+@Action
+Wind.
+
+@Character
+BOB
+
+@Dialogue
+Hi.
+

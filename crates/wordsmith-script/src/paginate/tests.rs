@@ -2,8 +2,8 @@
 //! Pagination rules on small scripts. A page holds 54 lines (9 in at 6 lines per inch). General
 //! paragraphs have no space before, so `n` single-line General paragraphs use exactly `n` lines.
 
-use wordsmith_doc::{Document, StoryRef, para_block};
-use wordsmith_layout::LayoutCache;
+use jcj_doc::{Document, StoryRef, para_block};
+use jcj_layout::LayoutCache;
 
 use super::{MoresContinueds, Paginated, Paginator, Piece, paginate};
 use crate::template::{new_script, paragraph};
@@ -206,8 +206,8 @@ fn pages_are_numbered_top_right_from_page_two() {
     let s = &p.doc.last_section;
     assert!(s.title_page, "page 1 uses the empty first-page header");
     let header = s.headers.default.and_then(|id| p.doc.parts.get(&id)).and_then(|part| part.blocks.first()).and_then(|b| b.as_para()).unwrap();
-    assert_eq!(header.props.style.as_deref(), Some(crate::header_footer::BAND_STYLE));
-    assert!(header.objects.iter().any(|o| matches!(o, wordsmith_doc::InlineObject::Field { instr, .. } if instr == "PAGE")));
+    assert_eq!(header.props.style.as_deref(), Some("Header"));
+    assert!(header.objects.iter().any(|o| matches!(o, jcj_doc::InlineObject::Field { instr, .. } if instr == "PAGE")));
     assert!(header.text.ends_with('.'));
     let first = s.headers.first.and_then(|id| p.doc.parts.get(&id)).and_then(|part| part.blocks.first()).and_then(|b| b.as_para()).unwrap();
     assert!(first.text.is_empty());
@@ -227,7 +227,7 @@ fn a_paragraph_longer_than_a_page_still_paginates() {
 fn source_and_output_positions_map_both_ways() {
     let p = run(&after_filler(PAGE_LINES - 6, &[("Character", "ANNA"), ("Dialogue", LONG_SPEECH)]));
     let dialogue_block = PAGE_LINES - 6 + 1;
-    let far = wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(dialogue_block), off: LONG_SPEECH.len() - 3 };
+    let far = jcj_doc::Pos { story: StoryRef::Body, path: jcj_doc::Path::top(dialogue_block), off: LONG_SPEECH.len() - 3 };
     let out = p.to_output(&far).unwrap();
     let back = p.to_source(&out).unwrap();
     assert_eq!(back, far);

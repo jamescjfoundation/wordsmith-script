@@ -12,11 +12,11 @@
 
 use std::sync::Arc;
 
+use jcj_doc::props::{Align, CharProps, LineSpacing, ParaProps, TabAlign, TabLeader, TabStop};
+use jcj_doc::{Document, Paragraph, Style, StyleKind, para_block};
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use wordsmith_doc::props::{Align, CharProps, LineSpacing, ParaProps, TabAlign, TabLeader, TabStop};
-use wordsmith_doc::{Document, Paragraph, Style, StyleKind, para_block};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session};
 
 use crate::template;
 
@@ -60,7 +60,7 @@ impl TitlePage {
     /// The title page `doc` holds; bad or hostile data reads as fields that are empty or cut
     /// down to the limits.
     pub fn of_doc(doc: &Document) -> Self {
-        let Some(v) = doc.app_data.get(TITLE_PAGE_KEY) else { return Self::default() };
+        let Some(v) = doc.ext.get(TITLE_PAGE_KEY) else { return Self::default() };
         let mut t = TitlePage::default();
         for name in FIELDS {
             if let Some(text) = v.get(name).and_then(Value::as_str) {
@@ -71,7 +71,7 @@ impl TitlePage {
     }
 
     pub fn store(&self, doc: &mut Document) {
-        doc.app_data.insert(TITLE_PAGE_KEY.to_string(), Arc::new(serde_json::to_value(self).unwrap_or_default()));
+        let _ = doc.ext.set(TITLE_PAGE_KEY, serde_json::to_value(self).unwrap_or_default());
     }
 
     /// The field named `name`.
@@ -273,7 +273,7 @@ mod tests {
         t.set("contact", &"y".repeat(MAX_FIELD_CHARS * 2));
         assert_eq!(t.contact.chars().count(), MAX_FIELD_CHARS);
         let mut doc = new_script();
-        doc.app_data.insert(TITLE_PAGE_KEY.into(), Arc::new(json!({"title": 5, "credit": "Written by", "bogus": "x"})));
+        let _ = doc.ext.set(TITLE_PAGE_KEY, json!({"title": 5, "credit": "Written by", "bogus": "x"}));
         let read = TitlePage::of_doc(&doc);
         assert_eq!((read.title.as_str(), read.credit.as_str()), ("", "Written by"), "hostile data reads safely");
         assert!(TitlePage::default().is_empty());

@@ -6,9 +6,9 @@
 
 use std::sync::Arc;
 
+use jcj_doc::{Block, Document, Pos, StoryRef, para_block};
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result};
 use serde_json::{Value, json};
-use wordsmith_doc::{Block, Document, Pos, StoryRef, para_block};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result};
 
 use crate::element::{ElementKind, Elements};
 use crate::paginate::output::speaker;
@@ -152,7 +152,7 @@ fn move_scenes(s: &mut Session, v: &Value) -> CmdResult {
     // Scripts have one section (the document's last), so moving paragraphs moves no section
     // break.
     s.doc.body = body;
-    s.sel = Selection::caret(Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(at), off: 0 });
+    s.sel = Selection::caret(Pos { story: StoryRef::Body, path: jcj_doc::Path::top(at), off: 0 });
     sel_result(s)
 }
 
@@ -205,7 +205,7 @@ fn set_summary(s: &mut Session, v: &Value) -> CmdResult {
 fn goto(s: &mut Session, v: &Value) -> CmdResult {
     let all = scenes(&s.doc);
     let start = pick(&all, v, "scene")?.start;
-    s.sel = Selection::caret(Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(start), off: 0 });
+    s.sel = Selection::caret(Pos { story: StoryRef::Body, path: jcj_doc::Path::top(start), off: 0 });
     sel_result(s)
 }
 

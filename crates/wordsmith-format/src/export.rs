@@ -8,8 +8,8 @@
 //! belong to printed pages, and these formats are continuous. The plain-text and RTF exports
 //! read back as the same elements through [`crate::import`].
 
-use wordsmith_doc::props::{Align, Underline};
-use wordsmith_doc::{Document, Paragraph};
+use jcj_doc::props::{Align, CharProps, Underline};
+use jcj_doc::{Document, Paragraph};
 use wordsmith_script::Elements;
 
 /// Points per character at 10 characters per inch, the plain-text grid.
@@ -23,7 +23,7 @@ fn paragraphs(doc: &Document) -> impl Iterator<Item = &Paragraph> {
 
 /// A paragraph's text without inline objects (pictures and fields are not part of a script).
 fn clean(text: &str) -> String {
-    text.chars().filter(|c| *c != wordsmith_doc::para::OBJ).collect()
+    text.chars().filter(|c| *c != jcj_doc::para::OBJ).collect()
 }
 
 /// Lines of `text` wrapped at `width` characters on spaces (a longer word is broken).
@@ -111,45 +111,43 @@ fn styled_runs(doc: &Document, p: &Paragraph) -> Vec<(String, bool, bool, bool)>
         .collect()
 }
 
-fn twips(pt: f32) -> i32 {
-    (pt * 20.0).round().clamp(-1_000_000.0, 1_000_000.0) as i32
-}
-
-/// RTF, through craft-rtf: one paragraph per element with its indents, alignment and space
-/// before; bold, italic and underline kept; Courier Prime 12 pt.
+/// RTF, through the core's direct RTF writer (`jcj_interchange::export_rtf_direct`): one
+/// paragraph per element with its indents, alignment and space before; bold, italic and
+/// underline kept; Courier Prime 12 pt.
 pub fn rtf(doc: &Document) -> String {
-    let blocks = paragraphs(doc)
+    let mut out = Document::new();
+    out.last_section = doc.last_section.clone();
+    out.body = paragraphs(doc)
         .enumerate()
         .map(|(n, p)| {
             let r = doc.styles.resolve_para(&p.props);
-            let mut runs: Vec<craft_rtf::Run> = styled_runs(doc, p)
-                .into_iter()
-                .map(|(text, bold, italic, underline)| craft_rtf::Run {
-                    text,
-                    fmt: craft_rtf::CharFmt { bold, italic, underline, half_points: Some(24), ..craft_rtf::CharFmt::default() },
-                })
-                .collect();
-            if r.page_break_before && n > 0 {
-                runs.insert(0, craft_rtf::Run { text: craft_rtf::PAGE_BREAK.to_string(), fmt: craft_rtf::CharFmt::default() });
+            let mut para = Paragraph::new();
+            para.props.indent_left = Some(r.indent_left);
+            para.props.indent_right = Some(r.indent_right);
+            para.props.indent_first = Some(r.indent_first);
+            para.props.space_before = Some(if n == 0 { 0.0 } else { r.space_before });
+            para.props.space_after = Some(r.space_after);
+            para.props.align = Some(r.align);
+            para.props.page_break_before = Some(r.page_break_before && n > 0);
+            for (text, bold, italic, underline) in styled_runs(doc, p) {
+                let props = CharProps {
+                    font: Some(wordsmith_script::template::SCRIPT_FONT.to_string()),
+                    size: Some(12.0),
+                    bold: bold.then_some(true),
+                    italic: italic.then_some(true),
+                    underline: underline.then_some(Underline::Single),
+                    ..CharProps::default()
+                };
+                let at = para.len();
+                let _ = para.insert_text(at, &text, &props);
             }
-            craft_rtf::Block::Para(craft_rtf::Para {
-                runs,
-                outline_level: None,
-                left_indent: twips(r.indent_left),
-                right_indent: twips(r.indent_right),
-                first_line_indent: twips(r.indent_first),
-                space_before: if n == 0 { 0 } else { twips(r.space_before) },
-                space_after: twips(r.space_after),
-                align: Some(match r.align {
-                    Align::Center => craft_rtf::Align::Center,
-                    Align::Right => craft_rtf::Align::Right,
-                    Align::Justify | Align::Distribute => craft_rtf::Align::Justified,
-                    Align::Left => craft_rtf::Align::Left,
-                }),
-            })
+            jcj_doc::para_block(para)
         })
         .collect();
-    craft_rtf::write(&craft_rtf::Document { blocks, pictures_left_out: 0 }, wordsmith_script::template::SCRIPT_FONT)
+    if out.body.is_empty() {
+        out.body.push(jcj_doc::para_block(Paragraph::new()));
+    }
+    jcj_interchange::export_rtf_direct(&out).map(|b| String::from_utf8_lossy(&b).into_owned()).unwrap_or_default()
 }
 
 /// Text escaped for HTML.
@@ -193,8 +191,8 @@ pub fn html(doc: &Document) -> String {
     used.sort_unstable();
     used.dedup();
     for id in used {
-        let r = doc.styles.resolve_para(&wordsmith_doc::props::ParaProps { style: Some(id.to_string()), ..Default::default() });
-        let c = doc.styles.resolve_char(Some(id), &wordsmith_doc::props::CharProps::default());
+        let r = doc.styles.resolve_para(&jcj_doc::props::ParaProps { style: Some(id.to_string()), ..Default::default() });
+        let c = doc.styles.resolve_char(Some(id), &jcj_doc::props::CharProps::default());
         let align = match r.align {
             Align::Center => "center",
             Align::Right => "right",
@@ -246,7 +244,7 @@ pub fn html(doc: &Document) -> String {
 
 #[cfg(test)]
 mod tests {
-    use wordsmith_doc::para_block;
+    use jcj_doc::para_block;
     use wordsmith_script::template::new_script;
 
     use super::*;
@@ -309,12 +307,22 @@ mod tests {
     fn rtf_keeps_emphasis_and_reads_back_as_the_same_elements() {
         let doc = script();
         let out = rtf(&doc);
-        let read = craft_rtf::read(out.as_bytes()).unwrap();
-        let bold: Vec<String> = read.paras().flat_map(|p| p.runs.iter().filter(|r| r.fmt.bold).map(|r| r.text.clone())).collect();
+        let read = jcj_interchange::import(jcj_interchange::Format::Rtf, out.as_bytes()).unwrap();
+        let runs: Vec<_> = read
+            .body
+            .iter()
+            .filter_map(|b| b.as_para())
+            .flat_map(|p| {
+                p.run_ranges()
+                    .map(|(r, c)| (p.text.get(r).unwrap_or("").to_string(), read.styles.resolve_char(p.props.style.as_deref(), c)))
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        let bold: Vec<&str> = runs.iter().filter(|(_, c)| c.bold).map(|(t, _)| t.as_str()).collect();
         assert_eq!(bold, ["hammers"]);
-        let italic: Vec<String> = read.paras().flat_map(|p| p.runs.iter().filter(|r| r.fmt.italic).map(|r| r.text.clone())).collect();
+        let italic: Vec<&str> = runs.iter().filter(|(_, c)| c.italic).map(|(t, _)| t.as_str()).collect();
         assert_eq!(italic, ["hear"]);
-        assert!(read.paras().any(|p| p.runs.iter().any(|r| r.fmt.underline && r.text == "wind")));
+        assert!(runs.iter().any(|(t, c)| c.underline != Underline::None && t == "wind"));
         assert!(!out.contains("(MORE)") && !out.contains("CONT'D"));
         assert_eq!(lines(&crate::import::rtf(out.as_bytes(), true).unwrap()), lines(&doc));
     }

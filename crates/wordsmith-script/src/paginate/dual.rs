@@ -8,10 +8,11 @@
 //! longer one, the paragraph after the pair starts lower by the difference. The second speech is
 //! edited in the normal and draft views (decision 0035).
 
+use crate::keys::ScriptPara;
 use std::collections::HashSet;
 
-use wordsmith_doc::props::Align;
-use wordsmith_doc::{Document, InlineObject, Paragraph, PartKind, para_block};
+use jcj_doc::props::Align;
+use jcj_doc::{Document, InlineObject, Paragraph, PartKind, para_block};
 
 use crate::element::{ElementKind, Elements};
 use crate::template::{self, INCH, MARGIN_LEFT};
@@ -45,7 +46,7 @@ pub fn pairs(doc: &Document) -> Vec<Pair> {
     let mut out = Vec::new();
     for (i, b) in doc.body.iter().enumerate() {
         let Some(p) = b.as_para() else { continue };
-        if p.props.dual != Some(true) || kinds.get(i) != Some(&ElementKind::Character) {
+        if p.props.dual() != Some(true) || kinds.get(i) != Some(&ElementKind::Character) {
             continue;
         }
         // The speech before: back over Dialogue and Parentheticals to its Character.
@@ -111,7 +112,7 @@ fn narrowed(doc: &Document, p: &Paragraph, start: f32) -> Paragraph {
     let mut q = p.clone();
     q.props.indent_left = Some(template::indent_left_pt(new_left));
     q.props.indent_right = Some(template::indent_right_pt(new_right));
-    q.props.dual = None;
+    q.props.set_dual(None);
     // Transitions and centred names keep their alignment; the rest read from the left.
     if rp.align == Align::Right {
         q.props.align = Some(Align::Right);
@@ -192,10 +193,10 @@ pub fn speech_box(out: &mut Document, paras: &[Paragraph], y: f32) -> InlineObje
         part.body.inset = Some([0; 4]);
     }
     let lines: f32 = paras.iter().map(|p| lines_height(out, p)).sum();
-    let float = wordsmith_doc::para::Float {
-        wrap: wordsmith_doc::para::Wrap::InFrontOfText,
-        h_rel: wordsmith_doc::para::Anchor::Page,
-        v_rel: wordsmith_doc::para::Anchor::Paragraph,
+    let float = jcj_doc::para::Float {
+        wrap: jcj_doc::para::Wrap::InFrontOfText,
+        h_rel: jcj_doc::para::Anchor::Page,
+        v_rel: jcj_doc::para::Anchor::Paragraph,
         // Over the text column, so the paragraphs' indents (from the margin) hold.
         x: out.last_section.margin_left,
         y,
@@ -203,7 +204,7 @@ pub fn speech_box(out: &mut Document, paras: &[Paragraph], y: f32) -> InlineObje
     };
     let s = &out.last_section;
     InlineObject::Shape {
-        kind: wordsmith_doc::para::ShapeKind::Rectangle,
+        kind: jcj_doc::para::ShapeKind::Rectangle,
         w: (s.page_w - s.margin_left - s.margin_right).max(72.0),
         h: lines.max(template::LINE),
         fill: None,

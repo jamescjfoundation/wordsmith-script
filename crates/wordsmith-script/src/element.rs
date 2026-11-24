@@ -8,10 +8,8 @@
 //! Return (`Style::next`), start new page and keep rules. The registry is stored in the
 //! document's `app_data` under [`ELEMENTS_KEY`], so undo covers it.
 
-use std::sync::Arc;
-
+use jcj_doc::{Document, Paragraph};
 use serde::{Deserialize, Serialize};
-use wordsmith_doc::{Document, Paragraph};
 
 /// `app_data` key of the element registry.
 pub const ELEMENTS_KEY: &str = "wordsmith.elements";
@@ -251,7 +249,7 @@ pub fn builtin_def(kind: ElementKind) -> ElementDef {
 thread_local! {
     /// The element registry [`Elements::of_doc`] read last on this thread, and the stored value
     /// it was read from.
-    static LAST_READ: std::cell::RefCell<Option<(Arc<serde_json::Value>, Elements)>> = const { std::cell::RefCell::new(None) };
+    static LAST_READ: std::cell::RefCell<Option<(serde_json::Value, Elements)>> = const { std::cell::RefCell::new(None) };
 }
 
 /// A script's elements, in menu order.
@@ -343,16 +341,12 @@ impl Elements {
     /// The registry a document holds, or the defaults when it holds none. A stored value that
     /// does not parse also gives the defaults: a hostile or damaged file never fails to open.
     pub fn of_doc(doc: &Document) -> Elements {
-        match doc.app_data.get(ELEMENTS_KEY) {
+        match doc.ext.get(ELEMENTS_KEY) {
             Some(v) => {
                 // Typing reads the registry a couple of dozen times a keystroke but changes it
-                // never: the last one read is kept with the stored value it came from. A stored
-                // value is never changed in place while another `Arc` holds it (`make_mut`
-                // copies it first), and the cache holds one, so the same pointer means the same
-                // value.
-                if let Some(e) =
-                    LAST_READ.with(|c| c.try_borrow().ok().and_then(|c| c.as_ref().filter(|(k, _)| Arc::ptr_eq(k, v)).map(|(_, e)| e.clone())))
-                {
+                // never: the last one read is kept with the stored value it came from, and the
+                // same value (compared whole: it is small) gives the same registry.
+                if let Some(e) = LAST_READ.with(|c| c.try_borrow().ok().and_then(|c| c.as_ref().filter(|(k, _)| k == v).map(|(_, e)| e.clone()))) {
                     return e;
                 }
                 let e = Elements::from_value(v);
@@ -429,7 +423,7 @@ impl Elements {
 
     /// Store the registry in the document.
     pub fn store(&self, doc: &mut Document) {
-        doc.app_data.insert(ELEMENTS_KEY.to_string(), Arc::new(self.to_value()));
+        let _ = doc.ext.set(ELEMENTS_KEY, self.to_value());
     }
 
     /// The element of a paragraph: its style's element, else General. An unusual or unknown

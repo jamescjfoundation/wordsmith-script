@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Typing a script the way a writer does, through commands only.
 
+use jcj_engine::{CmdError, Session};
 use serde_json::{Value, json};
-use wordsmith_engine::{CmdError, Session};
 
 use super::{new_session, registry, text::body_lines};
 
@@ -367,4 +367,61 @@ fn clicks_place_the_caret_and_select_words() {
     s.run("caret.to", &json!({"pos": {"story": "body", "path": [99], "off": 9999}})).unwrap();
     assert!(s.sel.is_collapsed());
     assert!(matches!(s.run("caret.to", &json!({"pos": "nowhere"})), Err(CmdError::Params(_))));
+}
+
+#[test]
+fn every_key_of_0_1_reaches_its_command() {
+    // Every key 0.1 bound (Shift with a caret key aside: the editor extends the caret's move),
+    // and the command it reaches now: the same, or the one that replaced it (core decision 0007).
+    let r = registry();
+    for (key, id) in [
+        ("Mod+M", "bookmark.add"),
+        ("Mod+End", "caret.docEnd"),
+        ("Mod+Home", "caret.docStart"),
+        ("Down", "caret.down"),
+        ("Left", "caret.left"),
+        ("End", "caret.end"),
+        ("Home", "caret.home"),
+        ("Right", "caret.right"),
+        ("Up", "caret.up"),
+        ("Mod+Left", "caret.wordLeft"),
+        ("Mod+Right", "caret.wordRight"),
+        ("Mod+Shift+D", "dialogue.dual"),
+        ("Mod+2", "element.action"),
+        ("Mod+8", "element.castList"),
+        ("Mod+3", "element.character"),
+        ("Mod+5", "element.dialogue"),
+        ("Mod+Shift+7", "element.endOfAct"),
+        ("Mod+0", "element.general"),
+        ("Mod+9", "element.newAct"),
+        ("Mod+Shift+4", "element.note"),
+        ("Mod+Shift+1", "element.outline1"),
+        ("Mod+Shift+2", "element.outline2"),
+        ("Mod+Shift+3", "element.outline3"),
+        ("Mod+4", "element.parenthetical"),
+        ("Mod+Shift+R", "element.reset"),
+        ("Mod+1", "element.sceneHeading"),
+        ("Mod+Shift+6", "element.sequence"),
+        ("Mod+7", "element.shot"),
+        ("Mod+Shift+5", "element.summary"),
+        ("Mod+6", "element.transition"),
+        ("Mod+B", "format.bold"),
+        ("Mod+I", "format.italic"),
+        ("Mod+Shift+T", "format.plain"),
+        ("Mod+U", "format.underline"),
+        ("Mod+Alt+Down", "note.next"),
+        ("Mod+Alt+Up", "note.previous"),
+        ("Mod+Shift+N", "scene.insert"),
+        ("Mod+A", "select.all"),
+        ("Mod+Shift+A", "select.scene"),
+        ("Backspace", "text.backspace"),
+        ("Delete", "text.delete"),
+        ("Enter", "text.newParagraph"),
+        ("Mod+Shift+Enter", "text.pageBreak"),
+        ("Tab", "text.tab"),
+        ("Mod+Shift+K", "format.toggleCapitals"),
+        ("Mod+Shift+C", "track.toggle"),
+    ] {
+        assert_eq!(r.by_shortcut(key).map(|c| c.id), Some(id), "{key}");
+    }
 }

@@ -1,16 +1,38 @@
-# A foundation app on open-source-core. Started from the core's template/ (see template/README.md).
+# Wordsmith Script: a screenplay writing app on open-source-core.
 [workspace]
 resolver = "3"
-members = ["apps/app", "xtask"]
+members = [
+    "crates/wordsmith-script",
+    "crates/wordsmith-format",
+    "crates/wordsmith-ui",
+    "apps/wordsmith",
+    "apps/wordsmith-cli",
+    "apps/wordsmith-web",
+    "xtask",
+]
+default-members = [
+    "crates/wordsmith-script",
+    "crates/wordsmith-format",
+    "crates/wordsmith-ui",
+    "apps/wordsmith",
+    "apps/wordsmith-cli",
+    "xtask",
+]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.95"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/jamescjfoundation/wordsmith-script"
 publish = false
 
 [workspace.dependencies]
+# Ours
+wordsmith-script = { path = "crates/wordsmith-script" }
+wordsmith-format = { path = "crates/wordsmith-format" }
+wordsmith-ui = { path = "crates/wordsmith-ui" }
+
 # The core, at a release tag. Apps use only jcj- interface crates (never jcj-upstream, WordCraft or
 # craft-libs); `cargo xtask layers` checks it. Move all of them together.
 jcj-doc = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
@@ -25,13 +47,24 @@ jcj-theme = { git = "https://github.com/jamescjfoundation/open-source-core", tag
 jcj-board = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
 jcj-shell = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
 jcj-agents = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+
+# Foundation (versions as the core pins them)
+serde = { version = "1", features = ["derive", "rc"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+log = "0.4"
+# All date and time conversion goes through chrono.
+chrono = { version = "0.4.45", default-features = false, features = ["std"] }
+proptest = "1"
+image = { version = "0.25", default-features = false }
+raw-window-handle = "0.6.2"
 # The window, at the egui version the core pins (the patch block points it at the same fork).
+egui = { version = "0.37", default-features = false }
 eframe = { version = "0.37", default-features = false, features = ["accesskit", "glow", "wayland", "x11"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
+# cargo llvm-cov sets `--cfg coverage`; timing tests skip themselves under it.
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(coverage)"] }
 
 [workspace.lints.clippy]
 cognitive_complexity = "deny"
@@ -40,6 +73,7 @@ too_many_arguments = "deny"
 dbg_macro = "warn"
 type_complexity = "allow"
 
+# Dependencies are optimized even in dev builds: layout and PDF tests are slow otherwise.
 [profile.dev.package."*"]
 opt-level = 2
 debug = false
@@ -74,6 +108,13 @@ wordcraft-formats = { git = "https://github.com/jamescjfoundation/wordcraft", re
 [patch.crates-io]
 # Required by craft-pdf: the backend rejects writers that failed during unwinding (as WordCraft).
 krilla = { git = "https://github.com/storytold/craft-libs", rev = "6e03f65bf45181db77ba6229716e6624db9eb25b" }
+# Required by craft-pdf's reader: craft-libs' Hayro snapshot with its input limits and fixes for
+# malformed files (as craft-libs builds it).
+hayro-syntax = { git = "https://github.com/storytold/craft-libs", rev = "6e03f65bf45181db77ba6229716e6624db9eb25b" }
+hayro-interpret = { git = "https://github.com/storytold/craft-libs", rev = "6e03f65bf45181db77ba6229716e6624db9eb25b" }
+hayro-cmap = { git = "https://github.com/storytold/craft-libs", rev = "6e03f65bf45181db77ba6229716e6624db9eb25b" }
+hayro-postscript = { git = "https://github.com/storytold/craft-libs", rev = "6e03f65bf45181db77ba6229716e6624db9eb25b" }
+hayro-jbig2 = { git = "https://github.com/storytold/craft-libs", rev = "6e03f65bf45181db77ba6229716e6624db9eb25b" }
 # egui 0.37 and winit on storytold's forks, at the commits WordCraft v0.18.1 pins.
 ecolor = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
 emath = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }

@@ -9,9 +9,9 @@
 
 use std::sync::Arc;
 
-use wordsmith_doc::para::{Anchor, Float, ShapeKind, Wrap};
-use wordsmith_doc::props::{Align, CharProps, LineSpacing, ParaProps, Rgb};
-use wordsmith_doc::{Document, InlineObject, Paragraph, PartKind, Style, StyleKind, para_block};
+use jcj_doc::para::{Anchor, Float, ShapeKind, Wrap};
+use jcj_doc::props::{Align, CharProps, LineSpacing, ParaProps, Rgb};
+use jcj_doc::{Document, InlineObject, Paragraph, PartKind, Style, StyleKind, para_block};
 
 use crate::template;
 
@@ -92,7 +92,7 @@ pub fn page_fill(out: &Document, color: Rgb) -> InlineObject {
         kind: ShapeKind::Rectangle,
         w: s.page_w,
         h: s.page_h,
-        fill: Some(wordsmith_doc::fill::Fill::Solid { color, transparency: 0.0 }),
+        fill: Some(jcj_doc::fill::Fill::Solid { color, transparency: 0.0 }),
         stroke: None,
         stroke_width: 0.0,
         float,

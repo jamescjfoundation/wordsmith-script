@@ -3,13 +3,8 @@
 //! grouped into lines by baseline, and placed by their left edge. A scanned script has no
 //! glyphs and is refused with a clear message.
 
-use craft_pdf::interpret::font::Glyph;
-use craft_pdf::interpret::hayro_cmap::BfString;
-use craft_pdf::interpret::{
-    BlendMode, ClipPath, Context, Device, GlyphDrawMode, Image, InterpreterCache, InterpreterSettings, Paint, PathDrawMode, SoftMask,
-};
-use kurbo::{Affine, BezPath, Rect};
-use wordsmith_doc::Document;
+use jcj_doc::Document;
+use jcj_output::read::{GlyphMode, ReadLimits, read_pages};
 
 use super::{ImportError, Line, MAX_IMPORT_BYTES, MAX_LINES, classify};
 
@@ -18,33 +13,13 @@ pub const MAX_PAGES: usize = 5_000;
 /// Most glyphs kept from one page.
 const MAX_GLYPHS: usize = 200_000;
 
-/// The glyphs of a page: (baseline y, x, text, size).
-struct Glyphs(Vec<(f64, f64, String)>);
-
-impl Device<'_> for Glyphs {
-    fn set_soft_mask(&mut self, _: Option<SoftMask<'_>>) {}
-    fn set_blend_mode(&mut self, _: BlendMode) {}
-    fn draw_path(&mut self, _: &BezPath, _: Affine, _: &Paint<'_>, _: &PathDrawMode) {}
-    fn push_clip_path(&mut self, _: &ClipPath) {}
-    fn push_transparency_group(&mut self, _: f32, _: Option<SoftMask<'_>>, _: BlendMode) {}
-    fn draw_glyph(&mut self, g: &Glyph<'_>, t: Affine, glyph: Affine, _: &Paint<'_>, mode: &GlyphDrawMode) {
-        if matches!(mode, GlyphDrawMode::Invisible) || self.0.len() >= MAX_GLYPHS {
-            return;
-        }
-        let s = match g.as_unicode() {
-            Some(BfString::Char(c)) => c.to_string(),
-            Some(BfString::String(s)) => s.to_string(),
-            None => return,
-        };
-        // Where the glyph lands on the page: its own placement, then the page transform.
-        let at = (t * glyph).translation();
-        if at.x.is_finite() && at.y.is_finite() {
-            self.0.push((at.y, at.x, s));
-        }
-    }
-    fn draw_image(&mut self, _: Image<'_, '_>, _: Affine) {}
-    fn pop_clip_path(&mut self) {}
-    fn pop_transparency_group(&mut self) {}
+/// A page's visible glyphs that have text: (baseline y, x, text), in drawing order.
+fn page_glyphs(page: &jcj_output::read::PdfPage) -> Vec<(f64, f64, String)> {
+    page.glyphs
+        .iter()
+        .filter(|g| g.mode != GlyphMode::Invisible && g.x.is_finite() && g.y.is_finite())
+        .filter_map(|g| g.text.clone().map(|t| (g.y, g.x, t)))
+        .collect()
 }
 
 /// A page's lines, top to bottom: (baseline y in points from the bottom, left x in points,
@@ -104,19 +79,18 @@ pub fn pdf(bytes: &[u8]) -> Result<Document, ImportError> {
     if bytes.len() > MAX_IMPORT_BYTES {
         return Err(ImportError::TooLarge);
     }
-    let file = craft_pdf::open_slice(bytes, None).map_err(|e| ImportError::NotPdf(e.to_string()))?;
-    let cache = InterpreterCache::new();
+    // The core's PDF reader (`jcj_output::read`, craft-libs' guarded interpreter underneath).
+    let limits = ReadLimits { max_input_bytes: MAX_IMPORT_BYTES, max_pages: MAX_PAGES, max_glyphs_per_page: MAX_GLYPHS };
+    let read = read_pages(bytes, &limits).map_err(|e| ImportError::NotPdf(e.to_string()))?;
     let mut pages: Vec<Vec<(f64, f64, String)>> = Vec::new();
     let mut first_page: Vec<Segment> = Vec::new();
     let mut count = 0;
-    for page in file.pages().iter().take(MAX_PAGES) {
-        let mut ctx = Context::new(Affine::IDENTITY, Rect::new(0.0, 0.0, 1.0, 1.0), &cache, file.xref(), InterpreterSettings::default());
-        let mut glyphs = Glyphs(Vec::new());
-        craft_pdf::interpret_page(page, &mut ctx, &mut glyphs).map_err(|e| ImportError::NotPdf(e.to_string()))?;
+    for page in &read {
+        let glyphs = page_glyphs(page);
         if pages.is_empty() {
-            first_page = segments(glyphs.0.clone());
+            first_page = segments(glyphs.clone());
         }
-        let rows = page_lines(glyphs.0);
+        let rows = page_lines(glyphs);
         count += rows.len();
         pages.push(rows);
         if count >= MAX_LINES {

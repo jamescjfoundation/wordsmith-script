@@ -2,9 +2,10 @@
 //! Changing a paragraph's element (SPEC "Typing behavior": a command reformats the paragraph
 //! under the cursor; `Mod+0` to `Mod+9` select the ten core elements).
 
+use crate::keys::ScriptRun;
+use jcj_doc::{Document, Path, Pos};
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result, params as p};
 use serde_json::{Value, json};
-use wordsmith_doc::{Document, Path, Pos};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result, p};
 
 use crate::element::{Casing, ElementDef, ElementKind, Elements};
 
@@ -12,7 +13,7 @@ use crate::element::{Casing, ElementDef, ElementKind, Elements};
 pub(crate) fn element_of_para_at<'a>(doc: &Document, elements: &'a Elements, at: &Pos) -> &'a ElementDef {
     match doc.para_at(at) {
         Some(p) => elements.of_para(p),
-        None => elements.of_kind(ElementKind::General).unwrap_or_else(|| elements.of_para(&wordsmith_doc::Paragraph::new())),
+        None => elements.of_kind(ElementKind::General).unwrap_or_else(|| elements.of_para(&jcj_doc::Paragraph::new())),
     }
 }
 
@@ -27,7 +28,7 @@ pub(crate) fn apply_element(s: &mut Session, elements: &Elements, path: &Path, i
     let was = elements.of_para(para).kind;
     if revising.is_some() && para.props.style.as_deref() != Some(target.id.as_str()) && !para.text.is_empty() {
         // In revision mode, changing a paragraph's element is a revision of it.
-        para.mark.revised = revising;
+        para.mark.set_revised(revising);
     }
     para.props.style = Some(target.id.clone());
     if target.casing != Casing::AsTyped {
@@ -35,7 +36,7 @@ pub(crate) fn apply_element(s: &mut Session, elements: &Elements, path: &Path, i
     }
     let mut caret_at = None;
     if target.kind == ElementKind::Parenthetical && para.text.is_empty() {
-        para.insert_text(0, "()", &wordsmith_doc::props::CharProps::default())?;
+        para.insert_text(0, "()", &jcj_doc::props::CharProps::default())?;
         caret_at = Some(1);
     } else if was == ElementKind::Parenthetical && target.kind != ElementKind::Parenthetical && para.text == "()" {
         para.delete(0, 2)?;
@@ -50,7 +51,7 @@ pub(crate) fn apply_element(s: &mut Session, elements: &Elements, path: &Path, i
 
 /// Put a paragraph's text in the element's casing, run by run, so each run keeps its formatting
 /// even where capitals are longer ("ß" → "SS").
-fn recase(para: &mut wordsmith_doc::Paragraph, casing: Casing) {
+fn recase(para: &mut jcj_doc::Paragraph, casing: Casing) {
     let upper = casing.apply(&para.text);
     if upper == para.text {
         return;

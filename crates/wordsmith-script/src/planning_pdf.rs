@@ -5,12 +5,12 @@
 
 use std::sync::Arc;
 
+use jcj_doc::fill::Fill;
+use jcj_doc::freeform::{FreePath, Freeform};
+use jcj_doc::para::{Anchor, Float, ShapeKind, Wrap};
+use jcj_doc::props::{Align, CharProps, LineSpacing, Rgb};
+use jcj_doc::{Document, InlineObject, Paragraph, PartKind, para_block};
 use serde_json::Value;
-use wordsmith_doc::fill::Fill;
-use wordsmith_doc::freeform::{FreePath, Freeform};
-use wordsmith_doc::para::{Anchor, Float, ShapeKind, Wrap};
-use wordsmith_doc::props::{Align, CharProps, LineSpacing, Rgb};
-use wordsmith_doc::{Document, InlineObject, Paragraph, PartKind, para_block};
 
 use crate::storyboard::Storyboard;
 use crate::template::{INCH, SCRIPT_FONT};
@@ -259,8 +259,8 @@ pub fn cards_document(doc: &Document, o: &CardOptions) -> Document {
 
 /// A built document as PDF bytes.
 pub fn pdf(doc: &Document) -> Result<Vec<u8>, String> {
-    let layout = crate::paginate::measure::print_layout(doc, &mut wordsmith_layout::LayoutCache::new());
-    wordsmith_pdf::export_layout(doc, &layout, &wordsmith_pdf::PdfOptions::default()).map_err(|e| e.to_string())
+    let layout = crate::paginate::measure::print_layout(doc, &mut jcj_layout::LayoutCache::new());
+    jcj_output::export_pdf(doc, &layout, &jcj_output::PdfSettings::default()).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

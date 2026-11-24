@@ -14,7 +14,8 @@
 //! A paragraph taller than a whole page is split at a line break as a last resort, so pagination
 //! always ends.
 
-use wordsmith_doc::Document;
+use crate::keys::ScriptRun;
+use jcj_doc::Document;
 
 use super::measure::{Measured, measure_text};
 use super::{MoresContinueds, Rules};
@@ -281,7 +282,7 @@ impl Planner<'_> {
             // the page.
             let inside = self.locks.get(&p.block).and_then(|offs| offs.iter().copied().find(|o| *o > item.start && *o < item.end));
             if let Some(off) = inside
-                && let Some(sp) = self.doc.story(wordsmith_doc::StoryRef::Body).and_then(|b| b.get(p.block)).and_then(|b| b.as_para())
+                && let Some(sp) = self.doc.story(jcj_doc::StoryRef::Body).and_then(|b| b.get(p.block)).and_then(|b| b.as_para())
             {
                 let measure = |a: usize, b: usize| {
                     let (lines, heights) = measure_text(self.doc, sp, p.text.get(a..b).unwrap_or(""));
@@ -315,7 +316,7 @@ impl Planner<'_> {
                 let avail = self.room() - sb;
                 if let Some((kept, end, rest)) = self.split_point(&item, avail, forced) {
                     self.place(&item, kept, end);
-                    let src = self.doc.story(wordsmith_doc::StoryRef::Body).and_then(|b| b.get(p.block)).and_then(|b| b.as_para());
+                    let src = self.doc.story(jcj_doc::StoryRef::Body).and_then(|b| b.get(p.block)).and_then(|b| b.as_para());
                     let remainder = p.text.get(rest..item.end).unwrap_or("");
                     let (lines, heights) = match src {
                         Some(sp) => measure_text(self.doc, sp, remainder),
@@ -367,7 +368,7 @@ pub fn lock_starts(doc: &Document) -> std::collections::BTreeMap<usize, Vec<usiz
     for (block, b) in doc.body.iter().enumerate() {
         let Some(p) = b.as_para() else { continue };
         for (range, c) in p.run_ranges() {
-            if c.page_lock.is_some() {
+            if c.page_lock().is_some() {
                 out.entry(block).or_default().push(range.start);
             }
         }

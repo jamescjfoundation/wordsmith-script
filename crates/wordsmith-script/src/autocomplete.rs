@@ -9,10 +9,9 @@
 //! agree.
 
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
+use jcj_doc::{Document, Paragraph, Pos};
 use serde::{Deserialize, Serialize};
-use wordsmith_doc::{Document, Paragraph, Pos};
 
 use crate::element::{ElementKind, Elements};
 use crate::scene_heading::SceneHeadingSettings;
@@ -122,7 +121,7 @@ fn clean_term(t: &str) -> Option<String> {
 impl Autocomplete {
     /// The lists a document holds, repaired; the defaults when it holds none or they do not parse.
     pub fn of_doc(doc: &Document) -> Self {
-        let Some(v) = doc.app_data.get(AUTOCOMPLETE_KEY) else { return Self::default() };
+        let Some(v) = doc.ext.get(AUTOCOMPLETE_KEY) else { return Self::default() };
         let d = Self::default();
         // Field by field, so one bad value loses only itself.
         let mut a = d.clone();
@@ -150,7 +149,7 @@ impl Autocomplete {
     }
 
     pub fn store(&self, doc: &mut Document) {
-        doc.app_data.insert(AUTOCOMPLETE_KEY.to_string(), Arc::new(serde_json::to_value(self).unwrap_or_default()));
+        let _ = doc.ext.set(AUTOCOMPLETE_KEY, serde_json::to_value(self).unwrap_or_default());
     }
 
     pub fn list(&self, kind: ListKind) -> List {

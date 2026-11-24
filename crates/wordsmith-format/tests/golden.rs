@@ -16,49 +16,22 @@ fn dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden")
 }
 
-/// Each page's text, a line per baseline. Adapted from WordCraft's `wordsmith-pdf` tests
-/// (MIT OR Apache-2.0).
+/// Each page's text, a line per baseline, through the core's PDF reader (`jcj_output::read`).
+/// The grouping is the one 0.1.x used (adapted from WordCraft's `wordsmith-pdf` tests, MIT OR
+/// Apache-2.0): glyphs by where they land, top to bottom, left to right, a gap wider than a
+/// character read as a space; stroked text is left out.
 fn pdf_pages(bytes: &[u8]) -> Vec<Vec<String>> {
-    use hayro_interpret::font::Glyph;
-    use hayro_interpret::{
-        BlendMode, ClipPath, Context, Device, GlyphDrawMode, Image, InterpreterCache, InterpreterSettings, Paint, PathDrawMode, SoftMask,
-        interpret_page,
-    };
-    struct Ex(Vec<(f64, f64, String)>);
-    impl Device<'_> for Ex {
-        fn set_soft_mask(&mut self, _: Option<SoftMask<'_>>) {}
-        fn set_blend_mode(&mut self, _: BlendMode) {}
-        fn draw_path(&mut self, _: &kurbo::BezPath, _: kurbo::Affine, _: &Paint<'_>, _: &PathDrawMode) {}
-        fn push_clip_path(&mut self, _: &ClipPath) {}
-        fn push_transparency_group(&mut self, _: f32, _: Option<SoftMask<'_>>, _: BlendMode) {}
-        fn draw_glyph(&mut self, g: &Glyph<'_>, t: kurbo::Affine, glyph: kurbo::Affine, _: &Paint<'_>, mode: &GlyphDrawMode) {
-            if matches!(mode, GlyphDrawMode::Stroke(_)) {
-                return;
-            }
-            let s = match g.as_unicode() {
-                Some(hayro_cmap::BfString::Char(c)) => c.to_string(),
-                Some(hayro_cmap::BfString::String(s)) => s.to_string(),
-                None => "\u{FFFD}".into(),
-            };
-            // Where the glyph lands on the page: its own placement, then the page transform.
-            let at = (t * glyph).translation();
-            self.0.push((at.y, at.x, s));
-        }
-        fn draw_image(&mut self, _: Image<'_, '_>, _: kurbo::Affine) {}
-        fn pop_clip_path(&mut self) {}
-        fn pop_transparency_group(&mut self) {}
-    }
-    let pdf = hayro_syntax::Pdf::new(bytes.to_vec()).expect("parse");
-    let cache = InterpreterCache::new();
-    pdf.pages()
+    use jcj_output::read::{GlyphMode, ReadLimits, read_pages};
+    let pages = read_pages(bytes, &ReadLimits::default()).expect("parse");
+    pages
         .iter()
         .map(|page| {
-            let mut ctx =
-                Context::new(kurbo::Affine::IDENTITY, kurbo::Rect::new(0.0, 0.0, 1.0, 1.0), &cache, pdf.xref(), InterpreterSettings::default());
-            let mut ex = Ex(Vec::new());
-            interpret_page(page, &mut ctx, &mut ex);
-            // Group glyphs into lines by baseline, then order each line left to right.
-            let mut glyphs = ex.0;
+            let mut glyphs: Vec<(f64, f64, String)> = page
+                .glyphs
+                .iter()
+                .filter(|g| g.mode != GlyphMode::Stroke)
+                .map(|g| (g.y, g.x, g.text.clone().unwrap_or_else(|| "\u{FFFD}".into())))
+                .collect();
             // PDF y grows upward: the top line has the largest y.
             glyphs.sort_by(|a, b| b.0.total_cmp(&a.0).then(a.1.total_cmp(&b.1)));
             let mut lines: Vec<(f64, Vec<(f64, String)>)> = Vec::new();
@@ -93,7 +66,7 @@ fn pdf_pages(bytes: &[u8]) -> Vec<Vec<String>> {
 type Flat = Vec<(String, String)>;
 
 /// Paragraphs (element, text with line breaks as spaces), for comparing imports.
-fn flat(d: &wordsmith_doc::Document) -> Flat {
+fn flat(d: &jcj_doc::Document) -> Flat {
     wordsmith_script::commands::text::body_lines(&wordsmith_script::session_for(d.clone()))
         .into_iter()
         .map(|(e, t)| (e, t.split_whitespace().collect::<Vec<_>>().join(" ")))
@@ -192,7 +165,7 @@ fn golden_scripts_survive_the_native_format() {
         let doc = fountain::read(&text).expect("reads").doc;
         let saved = native::write(&doc).expect("native writes");
         let back = native::read(&saved).expect("native reads");
-        let lines = |d: &wordsmith_doc::Document| wordsmith_script::commands::text::body_lines(&wordsmith_script::session_for(d.clone()));
+        let lines = |d: &jcj_doc::Document| wordsmith_script::commands::text::body_lines(&wordsmith_script::session_for(d.clone()));
         assert_eq!(lines(&back), lines(&doc), "{name}");
         assert_eq!(native::write(&back).expect("native writes"), saved, "{name}: stable bytes");
     }
@@ -205,7 +178,7 @@ fn golden_scripts_survive_a_fountain_round_trip() {
         let doc = fountain::read(&text).expect("reads").doc;
         let written = fountain::write(&doc);
         let back = fountain::read(&written).expect("our Fountain reads");
-        let lines = |d: &wordsmith_doc::Document| wordsmith_script::commands::text::body_lines(&wordsmith_script::session_for(d.clone()));
+        let lines = |d: &jcj_doc::Document| wordsmith_script::commands::text::body_lines(&wordsmith_script::session_for(d.clone()));
         assert_eq!(lines(&back.doc), lines(&doc), "{name}");
         assert_eq!(back.doc.core.title, doc.core.title, "{name}: title");
         assert_eq!(fountain::write(&back.doc), written, "{name}: stable text");

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+use jcj_doc::para_block;
+use jcj_engine::Session;
 use serde_json::json;
-use wordsmith_doc::para_block;
-use wordsmith_engine::Session;
 
 use super::*;
 use crate::commands::new_session;
@@ -78,7 +78,7 @@ fn filtered_notes_and_statistics() {
     let f = s.run("report.run", &json!({"kind": "filtered", "elements": ["SceneHeading"]})).unwrap();
     assert_eq!(f["sections"][0]["rows"].as_array().map(Vec::len), Some(4));
     assert_eq!(filtered_script(&s.doc, &["Action".into()]).body.len(), 2);
-    s.sel = wordsmith_engine::Selection::caret(crate::data::body_pos(6, 0));
+    s.sel = jcj_engine::Selection::caret(crate::data::body_pos(6, 0));
     s.run("note.add", &json!({"text": "Louder", "type": "Story", "now": 1_700_000_000u64})).unwrap();
     let n = notes_report(&s.doc, "script", &[]);
     assert_eq!(n.sections[0].rows[0][2], "Louder");

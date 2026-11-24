@@ -7,10 +7,10 @@
 //! New scripts get a starter set of our own on Mod+Alt+Shift and a digit (Mod+Alt and a digit
 //! switch views, decision 0032).
 
+use jcj_doc::Document;
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use wordsmith_doc::Document;
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result};
 
 use crate::data::{body_pos, clean_line};
 use crate::element::Elements;
@@ -102,8 +102,8 @@ pub fn starter() -> Macros {
 
 impl Macros {
     pub fn of_doc(doc: &Document) -> Self {
-        let mut m: Macros = match doc.app_data.get(MACROS_KEY) {
-            Some(v) => serde_json::from_value((**v).clone()).unwrap_or_else(|_| Macros { slots: Vec::new() }),
+        let mut m: Macros = match doc.ext.get(MACROS_KEY) {
+            Some(v) => serde_json::from_value(v.clone()).unwrap_or_else(|_| Macros { slots: Vec::new() }),
             None => starter(),
         };
         m.slots = m.slots.into_iter().take(SLOTS).map(Macro::repaired).collect();
@@ -292,7 +292,7 @@ fn expand_cmd(s: &mut Session, v: &Value) -> CmdResult {
 fn copy_from(s: &mut Session, v: &Value) -> CmdResult {
     let given = v.get("macros").cloned().ok_or_else(|| CmdError::Params("`macros` is required".into()))?;
     let mut doc = Document::new();
-    doc.app_data.insert(MACROS_KEY.into(), std::sync::Arc::new(given));
+    let _ = doc.ext.set(MACROS_KEY, given);
     let mut m = Macros::of_doc(&doc);
     // Elements this script does not have are dropped from the copied macros.
     let elements = Elements::of_doc(&s.doc);

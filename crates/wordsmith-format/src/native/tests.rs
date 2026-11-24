@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+use jcj_doc::props::{CharProps, Underline};
+use jcj_doc::{Document, Paragraph, para_block};
 use serde_json::json;
-use wordsmith_doc::props::{CharProps, Underline};
-use wordsmith_doc::{Document, Paragraph, para_block};
+use wordsmith_script::keys::ScriptPara;
+use wordsmith_script::keys::ScriptRun;
 use wordsmith_script::template::{new_script, paragraph};
 use wordsmith_script::{Elements, commands::text::body_lines};
 
@@ -73,7 +75,7 @@ fn everything_round_trips_exactly() {
     let back = read(&text).unwrap();
     assert_eq!(lines(&back), lines(&doc));
     assert_eq!(content(&back), content(&doc));
-    assert_eq!(back.app_data, doc.app_data, "every app_data entry");
+    assert_eq!(back.ext, doc.ext, "every extension data entry");
     assert_eq!(back.styles, doc.styles, "element styles");
     assert_eq!(back.core.title, "The Test");
     assert_eq!(back.last_section.page_w, doc.last_section.page_w);
@@ -137,7 +139,7 @@ fn missing_settings_are_filled_and_unknown_elements_read_as_general() {
 fn notes_and_their_anchors_round_trip_and_version_1_braces_stay_braces() {
     let mut s = wordsmith_script::new_session();
     s.run("text.insert", &json!({"text": "INT. A {B} - DAY"})).unwrap();
-    s.sel = wordsmith_engine::Selection { anchor: wordsmith_doc::Pos { off: 5, ..s.sel.focus.clone() }, focus: s.sel.focus.clone() };
+    s.sel = jcj_engine::Selection { anchor: jcj_doc::Pos { off: 5, ..s.sel.focus.clone() }, focus: s.sel.focus.clone() };
     s.run("note.add", &json!({"text": "Is {B} right?"})).unwrap();
     let text = write(&s.doc).unwrap();
     assert!(text.contains("INT. {n1}A \\{B} - DAY{/n}"), "{text}");
@@ -150,7 +152,7 @@ fn notes_and_their_anchors_round_trip_and_version_1_braces_stay_braces() {
         text.replacen(&format!("Wordsmith Script {VERSION}"), "Wordsmith Script 1", 1).replace("{n1}", "").replace("{/n}", "").replace("\\{", "{");
     let old = read(&v1).unwrap();
     assert_eq!(old.body[0].as_para().map(|p| p.text.as_str()), Some("INT. A {B} - DAY"));
-    assert!(old.body[0].as_para().unwrap().run_ranges().all(|(_, c)| c.note.is_none()));
+    assert!(old.body[0].as_para().unwrap().run_ranges().all(|(_, c)| c.note().is_none()));
 }
 
 #[test]
@@ -205,7 +207,7 @@ fn the_story_board_and_sent_beats_round_trip() {
 
 #[test]
 fn more_styles_bookmarks_and_dual_dialogue_round_trip() {
-    use wordsmith_doc::props::{Highlight, Rgb, TextColor, VertAlign};
+    use jcj_doc::props::{Highlight, Rgb, TextColor, VertAlign};
     let mut doc = new_script();
     let mut p = Paragraph::with_text("a", CharProps::default()).styled("Action");
     let styles = [
@@ -219,9 +221,9 @@ fn more_styles_bookmarks_and_dual_dialogue_round_trip() {
     for (i, c) in styles.iter().enumerate() {
         let _ = p.insert_text(p.len(), &format!("{i}{{"), c);
     }
-    p.props.bookmark = Some(3);
+    p.props.set_bookmark(Some(3));
     let mut dual = paragraph("Character", "BEN");
-    dual.props.dual = Some(true);
+    dual.props.set_dual(Some(true));
     doc.body = vec![para_block(p), para_block(dual)];
     let text = write(&doc).unwrap();
     assert!(text.lines().next().is_some_and(|l| l.ends_with(&format!(" {VERSION}"))));
@@ -237,8 +239,8 @@ fn more_styles_bookmarks_and_dual_dialogue_round_trip() {
         );
     }
     assert_eq!(bp.text, "a0{1{2{3{4{5{");
-    assert_eq!(bp.props.bookmark, Some(3));
-    assert_eq!(back.body[1].as_para().unwrap().props.dual, Some(true));
+    assert_eq!(bp.props.bookmark(), Some(3));
+    assert_eq!(back.body[1].as_para().unwrap().props.dual(), Some(true));
     // A version 3 file reads as before.
     let old = text.replacen(&format!(" {VERSION}\n"), " 3\n", 1);
     assert!(read(&old).is_ok());
@@ -251,7 +253,7 @@ fn tracked_changes_round_trip() {
     s.author = "Ana".into();
     s.run("track.toggle", &json!({"on": true})).unwrap();
     s.run("text.insert", &json!({"text": " Hard."})).unwrap();
-    s.sel = wordsmith_engine::Selection { anchor: wordsmith_script::data::body_pos(1, 0), focus: wordsmith_script::data::body_pos(1, 4) };
+    s.sel = jcj_engine::Selection { anchor: wordsmith_script::data::body_pos(1, 0), focus: wordsmith_script::data::body_pos(1, 4) };
     s.run("text.backspace", &json!({})).unwrap();
     let back = read(&write(&s.doc).unwrap()).unwrap();
     assert_eq!(back.revisions, s.doc.revisions);
@@ -267,7 +269,7 @@ fn resaves_without_loss(name: &str, text: &str) -> Document {
     assert!(saved.starts_with(&format!("Wordsmith Script {VERSION}\n")), "{name}: saved in the newest version");
     let again = read(&saved).unwrap();
     assert_eq!(again.body, first.body, "{name}: paragraphs");
-    assert_eq!(again.app_data, first.app_data, "{name}: app data");
+    assert_eq!(again.ext, first.ext, "{name}: extension data");
     assert_eq!(again.revisions, first.revisions, "{name}: tracked-change records");
     assert_eq!(again.core.title, first.core.title, "{name}: title");
     assert_eq!(again.styles, first.styles, "{name}: styles");
@@ -284,7 +286,7 @@ fn a_stored_file_of_every_version_reads_and_saves_again_without_loss() {
     let v2 = resaves_without_loss("v2", include_str!("../../tests/fixtures/v2-notes.wss"));
     let heading = v2.body[0].as_para().unwrap();
     assert_eq!(heading.text, "INT. HALL {B} - NIGHT");
-    assert_eq!(heading.props_at(6).note, Some(1));
+    assert_eq!(heading.props_at(6).note(), Some(1));
     assert_eq!(wordsmith_script::notes::Notes::of_doc(&v2).notes.get(&1).map(|n| n.text.clone()), Some("Is {B} right?".into()));
     assert_eq!(v2.body[1].as_para().unwrap().text, "Rain hits the window.\n\nA second line.");
     assert_eq!(v2.body[1].as_para().unwrap().props_at(6).bold, Some(true));
@@ -293,10 +295,10 @@ fn a_stored_file_of_every_version_reads_and_saves_again_without_loss() {
     // Version 3: a locked page start, revised text with a deletion mark, stored scene numbers.
     let v3 = resaves_without_loss("v3", include_str!("../../tests/fixtures/v3-revisions.wss"));
     let first = v3.body[0].as_para().unwrap();
-    assert_eq!(first.props.scene_number.as_deref(), Some("1"));
-    assert_eq!(first.props_at(1).page_lock, Some(1));
+    assert_eq!(first.props.scene_number().as_deref(), Some("1"));
+    assert_eq!(first.props_at(1).page_lock(), Some(1));
     let action = v3.body[1].as_para().unwrap();
-    assert_eq!((action.mark.revised, action.props_at(7).revised), (Some(0), Some(0)));
+    assert_eq!((action.mark.revised(), action.props_at(7).revised()), (Some(0), Some(0)));
     assert_eq!(wordsmith_script::scene_numbers::numbers(&v3), vec!["1".to_string(), "1A".to_string()]);
 
     // Version 4: more styles, tracked changes and their records, a bookmark and dual dialogue.
@@ -304,14 +306,14 @@ fn a_stored_file_of_every_version_reads_and_saves_again_without_loss() {
     assert_eq!(v4.revisions.len(), 2);
     assert_eq!(wordsmith_script::tracking::changes(&v4).len(), 2);
     let styled = v4.body[2].as_para().unwrap();
-    assert_eq!(styled.props.bookmark, Some(1));
+    assert_eq!(styled.props.bookmark(), Some(1));
     assert_eq!(styled.props_at(1).strike, Some(true));
     assert_eq!(styled.props_at(8).underline, Some(Underline::Double));
     let marked = styled.text.find("marked").unwrap();
     assert!(styled.props_at(marked + 1).highlight.is_some(), "{:?}", styled.props_at(marked + 1));
     let raised = styled.text.find("raised").unwrap();
-    assert_eq!(styled.props_at(raised + 1).vert_align, Some(wordsmith_doc::props::VertAlign::Superscript));
-    assert_eq!(v4.body[5].as_para().unwrap().props.dual, Some(true));
+    assert_eq!(styled.props_at(raised + 1).vert_align, Some(jcj_doc::props::VertAlign::Superscript));
+    assert_eq!(v4.body[5].as_para().unwrap().props.dual(), Some(true));
 }
 
 #[test]
@@ -321,8 +323,8 @@ fn attributes_of_a_newer_version_are_kept_and_written_back() {
     );
     let doc = read(&text).unwrap();
     let p = doc.body[0].as_para().unwrap();
-    assert_eq!(p.props.extra_attrs, vec!["shot=12".to_string(), "colour=#FF0000".to_string()]);
-    assert_eq!(p.props.scene_number.as_deref(), Some("4"));
+    assert_eq!(p.props.extra_attrs(), vec!["shot=12".to_string(), "colour=#FF0000".to_string()]);
+    assert_eq!(p.props.scene_number().as_deref(), Some("4"));
     assert_eq!(p.props.page_break_before, Some(true));
     let saved = write(&doc).unwrap();
     assert!(saved.contains("@SceneHeading page-break #4 shot=12 colour=#FF0000\nINT. A - DAY\n"), "{saved}");
@@ -330,15 +332,15 @@ fn attributes_of_a_newer_version_are_kept_and_written_back() {
     assert_eq!(read(&saved).unwrap().body, doc.body);
     // Editing the paragraph keeps them; splitting it keeps them on the first part only.
     let mut s = wordsmith_script::session_for(doc);
-    s.sel = wordsmith_engine::Selection::caret(wordsmith_script::data::body_pos(0, 4));
+    s.sel = jcj_engine::Selection::caret(wordsmith_script::data::body_pos(0, 4));
     s.run("text.insert", &json!({"text": "X"})).unwrap();
     s.run("text.newParagraph", &json!({})).unwrap();
-    assert_eq!(s.doc.body[0].as_para().unwrap().props.extra_attrs.len(), 2);
-    assert!(s.doc.body[1].as_para().unwrap().props.extra_attrs.is_empty());
+    assert_eq!(s.doc.body[0].as_para().unwrap().props.extra_attrs().len(), 2);
+    assert!(s.doc.body[1].as_para().unwrap().props.extra_attrs().is_empty());
     // A hostile line keeps at most so many, and never a known attribute.
     let many: Vec<String> = (0..100).map(|i| format!("x{i}=1")).collect();
     let text = format!("Wordsmith Script {VERSION}\n=== settings ===\n{{}}\n=== script ===\n@Action {} {}\nA.\n", many.join(" "), "y".repeat(1000));
-    let p = read(&text).unwrap().body[0].as_para().unwrap().props.extra_attrs.clone();
+    let p = read(&text).unwrap().body[0].as_para().unwrap().props.extra_attrs().clone();
     assert_eq!(p.len(), super::MAX_EXTRA_ATTRS);
     assert!(p.iter().all(|a| a.len() <= super::MAX_EXTRA_ATTR_LEN));
 }
@@ -346,7 +348,7 @@ fn attributes_of_a_newer_version_are_kept_and_written_back() {
 #[test]
 fn too_many_tracked_change_records_are_refused_not_cut() {
     let mut doc = new_script();
-    doc.revisions = vec![wordsmith_doc::Revision::default(); super::MAX_REVISIONS + 1];
+    doc.revisions = vec![jcj_doc::Revision::default(); super::MAX_REVISIONS + 1];
     assert_eq!(write(&doc), Err(super::WriteError::TooManyRevisions(super::MAX_REVISIONS + 1)));
     doc.revisions.pop();
     let text = write(&doc).unwrap();
@@ -377,12 +379,12 @@ fn every_scene_number_the_app_makes_survives_saving_and_opening() {
     // come back different.
     let mut doc = new_script();
     let mut p = paragraph("SceneHeading", "INT. A");
-    p.props.scene_number = Some("a number far too long".into());
+    p.props.set_scene_number(Some("a number far too long".into()));
     doc.body = vec![para_block(p)];
     let text = write(&doc).unwrap();
     assert!(text.contains("@SceneHeading\n"), "{text}");
     let mut p = paragraph("SceneHeading", "INT. A");
-    p.props.scene_number = Some(" 12a ".into());
+    p.props.set_scene_number(Some(" 12a ".into()));
     doc.body = vec![para_block(p)];
     assert!(write(&doc).unwrap().contains("@SceneHeading #12A\n"));
 }

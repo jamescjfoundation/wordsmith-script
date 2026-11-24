@@ -3,10 +3,8 @@
 //! Tab inserts after the intro and after the location (SPEC "Typing behavior": ". " and " - ",
 //! stored per script and changeable). Kept in `app_data` under [`SCENE_HEADING_KEY`].
 
-use std::sync::Arc;
-
+use jcj_doc::Document;
 use serde::{Deserialize, Serialize};
-use wordsmith_doc::Document;
 
 /// `app_data` key of the scene-heading settings.
 pub const SCENE_HEADING_KEY: &str = "wordsmith.sceneHeading";
@@ -36,8 +34,8 @@ impl SceneHeadingSettings {
     /// The settings a document holds, or the defaults. Values over the limits are dropped or
     /// replaced by defaults, so a hostile file never fails.
     pub fn of_doc(doc: &Document) -> Self {
-        let Some(v) = doc.app_data.get(SCENE_HEADING_KEY) else { return Self::default() };
-        let mut s: SceneHeadingSettings = serde_json::from_value((**v).clone()).unwrap_or_default();
+        let Some(v) = doc.ext.get(SCENE_HEADING_KEY) else { return Self::default() };
+        let mut s: SceneHeadingSettings = serde_json::from_value(v.clone()).unwrap_or_default();
         let d = Self::default();
         s.intros.retain(|i| !i.trim().is_empty() && i.len() <= MAX_PIECE_LEN);
         s.intros.truncate(MAX_INTROS);
@@ -51,7 +49,7 @@ impl SceneHeadingSettings {
     }
 
     pub fn store(&self, doc: &mut Document) {
-        doc.app_data.insert(SCENE_HEADING_KEY.to_string(), Arc::new(serde_json::to_value(self).unwrap_or_default()));
+        let _ = doc.ext.set(SCENE_HEADING_KEY, serde_json::to_value(self).unwrap_or_default());
     }
 
     /// The intro `text` is, ignoring case and a trailing period (`int`, `INT.`), if it is one.
@@ -86,14 +84,11 @@ mod tests {
         s.store(&mut doc);
         assert_eq!(SceneHeadingSettings::of_doc(&doc), s);
 
-        doc.app_data.insert(
-            SCENE_HEADING_KEY.into(),
-            Arc::new(json!({"intros": ["", "x".repeat(99), "OK"], "introSeparator": "", "timeSeparator": "y".repeat(99)})),
-        );
+        let _ = doc.ext.set(SCENE_HEADING_KEY, json!({"intros": ["", "x".repeat(99), "OK"], "introSeparator": "", "timeSeparator": "y".repeat(99)}));
         let s = SceneHeadingSettings::of_doc(&doc);
         assert_eq!(s.intros, ["OK"]);
         assert_eq!((s.intro_separator.as_str(), s.time_separator.as_str()), (". ", " - "));
-        doc.app_data.insert(SCENE_HEADING_KEY.into(), Arc::new(json!(42)));
+        let _ = doc.ext.set(SCENE_HEADING_KEY, json!(42));
         assert_eq!(SceneHeadingSettings::of_doc(&doc), SceneHeadingSettings::default());
     }
 }

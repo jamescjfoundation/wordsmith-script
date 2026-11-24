@@ -2,10 +2,11 @@
 //! Typing: text, Return, Tab, Backspace and Delete, with the screenplay rules from
 //! `docs/SPEC.md` ("Typing behavior") and `docs/decisions/0010-typing-rules.md`.
 
+use crate::keys::ScriptRun;
+use jcj_doc::props::CharProps;
+use jcj_doc::{Pos, StoryRef};
+use jcj_engine::{CmdError, CmdResult, Selection, Session, cmd::sel_result, params as p};
 use serde_json::Value;
-use wordsmith_doc::props::CharProps;
-use wordsmith_doc::{Pos, StoryRef};
-use wordsmith_engine::{CmdError, CmdResult, Selection, Session, cmd::sel_result, p};
 
 use super::element::{apply_element, element_of_para_at};
 use crate::element::{ElementKind, Elements};
@@ -42,14 +43,18 @@ fn typing_props(s: &Session, at: &Pos) -> CharProps {
     // next to revised text. A locked page's start mark stays on its one character.
     let revised = crate::revisions::typing_set(&s.doc);
     if let Some(p) = &s.pending {
-        return CharProps { note: None, revised, page_lock: None, ..p.clone() };
+        let mut c = p.clone();
+        c.set_note(None);
+        c.set_revised(revised);
+        c.set_page_lock(None);
+        return c;
     }
     let mut props = s.doc.para_at(at).map(|p| p.props_at(at.off).clone()).unwrap_or_default();
-    if props.note.is_some() && crate::notes::note_at_char(&s.doc, at) != props.note {
-        props.note = None;
+    if props.note().is_some() && crate::notes::note_at_char(&s.doc, at) != props.note() {
+        props.set_note(None);
     }
-    props.revised = revised;
-    props.page_lock = None;
+    props.set_revised(revised);
+    props.set_page_lock(None);
     props.del = None;
     props.ins = None;
     props
@@ -71,22 +76,22 @@ fn insert_line(s: &mut Session, text: &str) -> Result<(), CmdError> {
     let mut props = typing_props(s, &at);
     // While changes are tracked, typed text is a tracked insertion.
     if at.story == StoryRef::Body && crate::tracking::is_on(&s.doc) {
-        props.ins = crate::tracking::record(s, wordsmith_doc::RevisionKind::Insert);
+        props.ins = crate::tracking::record(s, jcj_doc::RevisionKind::Insert);
     }
     // Typing at the start of a locked page goes on that page: the page's mark moves to the
     // typed text's first character.
     let lock = s
         .doc
         .para_at(&at)
-        .and_then(|p| p.text.get(at.off..).and_then(|t| t.chars().next()).map(|c| p.props_at(at.off + c.len_utf8()).page_lock))
+        .and_then(|p| p.text.get(at.off..).and_then(|t| t.chars().next()).map(|c| p.props_at(at.off + c.len_utf8()).page_lock()))
         .flatten();
     let end = s.doc.insert_text(&at, &casing.apply(text), &props)?;
     if let Some(id) = lock
         && let Some(first) = s.doc.para_at(&at).and_then(|p| p.text.get(at.off..)).and_then(|t| t.chars().next()).map(char::len_utf8)
     {
         let after = s.doc.para_at(&end).and_then(|p| p.text.get(end.off..)).and_then(|t| t.chars().next()).map_or(0, char::len_utf8);
-        s.doc.format_range(&end, &Pos { off: end.off + after, ..end.clone() }, &|c| c.page_lock = None)?;
-        s.doc.format_range(&at, &Pos { off: at.off + first, ..at.clone() }, &|c| c.page_lock = Some(id))?;
+        s.doc.format_range(&end, &Pos { off: end.off + after, ..end.clone() }, &|c| c.set_page_lock(None))?;
+        s.doc.format_range(&at, &Pos { off: at.off + first, ..at.clone() }, &|c| c.set_page_lock(Some(id)))?;
     }
     s.sel = Selection::caret(end);
     Ok(())

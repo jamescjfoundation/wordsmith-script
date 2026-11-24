@@ -8,12 +8,12 @@
 //! paragraph (its title) and a Summary paragraph (its body) at the caret; the Outline 1 paragraph
 //! is tagged with the beat (`ParaProps::beat`) so the outline can show the pages it covers.
 
-use std::sync::Arc;
+use crate::keys::ScriptPara;
 
+use jcj_doc::{Document, Pos, StoryRef, para_block};
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use wordsmith_doc::{Document, Pos, StoryRef, para_block};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result};
 
 use crate::element::{ElementKind, Elements};
 use crate::template::paragraph;
@@ -234,7 +234,7 @@ impl Storyboard {
     /// The story board `doc` holds; hostile data is brought within the limits and links to
     /// missing beats are dropped.
     pub fn of_doc(doc: &Document) -> Self {
-        let Some(v) = doc.app_data.get(STORYBOARD_KEY) else { return Self::default() };
+        let Some(v) = doc.ext.get(STORYBOARD_KEY) else { return Self::default() };
         let mut b = Self::read(v);
         b.beats.truncate(MAX_BEATS);
         let mut seen = std::collections::HashSet::new();
@@ -296,7 +296,7 @@ impl Storyboard {
     }
 
     pub fn store(&self, doc: &mut Document) {
-        doc.app_data.insert(STORYBOARD_KEY.to_string(), Arc::new(serde_json::to_value(self).unwrap_or_default()));
+        let _ = doc.ext.set(STORYBOARD_KEY, serde_json::to_value(self).unwrap_or_default());
     }
 
     pub fn beat(&self, id: u32) -> Option<&Beat> {
@@ -619,7 +619,7 @@ fn configure(s: &mut Session, v: &Value) -> CmdResult {
 
 /// The Outline 1 paragraph sent from beat `id`, if any (body block index).
 pub fn sent_paragraph(doc: &Document, id: u32) -> Option<usize> {
-    doc.body.iter().position(|b| b.as_para().is_some_and(|p| p.props.beat == Some(id)))
+    doc.body.iter().position(|b| b.as_para().is_some_and(|p| p.props.beat() == Some(id)))
 }
 
 /// `beat.toScript {id}`: put the beat in the script before the caret's paragraph: its title as
@@ -635,14 +635,14 @@ fn to_script(s: &mut Session, v: &Value) -> CmdResult {
     let at = s.sel.focus.path.last().min(s.doc.body.len());
     let title = if beat.title.trim().is_empty() { "Untitled beat".to_string() } else { beat.title.clone() };
     let mut heading = paragraph(elements.id_of(ElementKind::Outline1), &title);
-    heading.props.beat = Some(id);
+    heading.props.set_beat(Some(id));
     let mut new = vec![para_block(heading)];
     if !beat.body.trim().is_empty() {
         new.push(para_block(paragraph(elements.id_of(ElementKind::Summary), beat.body.trim())));
     }
     let count = new.len();
     s.doc.body.splice(at..at, new);
-    s.sel = Selection::caret(Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(at + count), off: 0 });
+    s.sel = Selection::caret(Pos { story: StoryRef::Body, path: jcj_doc::Path::top(at + count), off: 0 });
     s.clamp_selection();
     sel_result(s)
 }

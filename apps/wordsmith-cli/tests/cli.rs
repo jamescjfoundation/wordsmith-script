@@ -77,10 +77,53 @@ fn the_mcp_server_answers_over_standard_input() {
             r#"{{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{{"name":"type_text","arguments":{{"text":"INT. KITCHEN - NIGHT"}}}}}}"#
         )
         .expect("write");
-        writeln!(stdin, r#"{{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{{"name":"scenes","arguments":{{}}}}}}"#).expect("write");
+        writeln!(stdin, r#"{{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{{"name":"scene_list","arguments":{{}}}}}}"#).expect("write");
     }
     drop(child.stdin.take());
     let out = child.wait_with_output().expect("ends");
     let text = String::from_utf8_lossy(&out.stdout);
     assert!(text.contains(r#""id":3"#) && text.contains("INT. KITCHEN - NIGHT"), "{text}");
+}
+
+#[test]
+fn an_agent_opens_a_script_and_lists_its_scenes() {
+    use std::io::Write;
+    let mut child = Command::new(env!("CARGO_BIN_EXE_wordsmith-cli"))
+        .arg("mcp")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .expect("starts");
+    {
+        let stdin = child.stdin.as_mut().expect("stdin");
+        let path = serde_json_string(&golden("timid-teddy"));
+        writeln!(stdin, r#"{{"jsonrpc":"2.0","id":1,"method":"initialize","params":{{"protocolVersion":"2025-06-18","capabilities":{{}},"clientInfo":{{"name":"test","version":"1"}}}}}}"#).expect("write");
+        writeln!(stdin, r#"{{"jsonrpc":"2.0","method":"notifications/initialized"}}"#).expect("write");
+        writeln!(
+            stdin,
+            r#"{{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{{"name":"execute","arguments":{{"command":"file.openPath","params":{{"path":{path}}}}}}}}}"#
+        )
+        .expect("write");
+        writeln!(stdin, r#"{{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{{"name":"scene_list","arguments":{{}}}}}}"#).expect("write");
+    }
+    drop(child.stdin.take());
+    let out = child.wait_with_output().expect("ends");
+    let text = String::from_utf8_lossy(&out.stdout);
+    let reply = text.lines().find(|l| l.contains(r#""id":3"#)).unwrap_or_default();
+    assert!(reply.contains("TEDDY'S ROOMS") && !reply.contains("isError\":true"), "{text}");
+}
+
+/// `s` as a JSON string literal.
+fn serde_json_string(s: &str) -> String {
+    let mut out = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
 }

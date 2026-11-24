@@ -8,11 +8,9 @@
 //! a treatment or a series bible, kept in `app_data` under [`KIND_KEY`]. A document saved as a
 //! template is flagged under [`TEMPLATE_KEY`]; opening it starts a new, untitled document.
 
-use std::sync::Arc;
-
+use jcj_doc::{Document, para_block};
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session, params as p};
 use serde_json::{Value, json};
-use wordsmith_doc::{Document, para_block};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session, p};
 
 use crate::element::ElementKind;
 use crate::template::{new_script, paragraph};
@@ -63,11 +61,11 @@ pub const TEMPLATES: [TemplateInfo; 12] = [
 
 /// Whether `doc` is a text document.
 pub fn is_text(doc: &Document) -> bool {
-    doc.app_data.get(KIND_KEY).and_then(|v| v.as_str()) == Some("text")
+    doc.ext.get(KIND_KEY).and_then(|v| v.as_str()) == Some("text")
 }
 
 fn set(doc: &mut Document, key: &str, v: Value) {
-    doc.app_data.insert(key.to_string(), Arc::new(v));
+    let _ = doc.ext.set(key, v);
 }
 
 fn body(doc: &mut Document, lines: &[(ElementKind, &str)]) {
@@ -205,7 +203,7 @@ pub fn build(id: &str) -> Option<Document> {
 
 /// A document opened from a template file, as a new one: the template flag removed.
 pub fn from_template(mut doc: Document) -> Document {
-    doc.app_data.remove(TEMPLATE_KEY);
+    doc.ext.remove(TEMPLATE_KEY);
     doc
 }
 

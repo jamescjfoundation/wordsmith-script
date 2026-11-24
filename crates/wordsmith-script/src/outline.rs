@@ -3,9 +3,10 @@
 //! under them, kept with the story board's beats so edits in one view show in the other. Beats
 //! sent to the script cover the pages from their Outline 1 paragraph to the next one.
 
+use crate::keys::ScriptPara;
+use jcj_doc::Document;
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session};
 use serde_json::{Value, json};
-use wordsmith_doc::Document;
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session};
 
 use crate::element::{ElementKind, Elements};
 use crate::paginate::{Paginated, Piece};
@@ -17,26 +18,22 @@ pub const OUTLINE_KEY: &str = "wordsmith.outline";
 /// Whether outline elements (Outline 1 to 3, Summary, Note) show in the page view, the PDF and
 /// print. On unless switched off.
 pub fn shows_outline(doc: &Document) -> bool {
-    doc.app_data.get(OUTLINE_KEY).and_then(|v| v.get("show")).and_then(Value::as_bool).unwrap_or(true)
+    doc.ext.get(OUTLINE_KEY).and_then(|v| v.get("show")).and_then(Value::as_bool).unwrap_or(true)
 }
 
 /// `outline.show {show?}`: show or hide outline elements in the pages (or the other way). Hiding
 /// them with the caret in one moves the caret to the next paragraph that shows.
 fn show(s: &mut Session, v: &Value) -> CmdResult {
     let on = v.get("show").and_then(Value::as_bool).unwrap_or(!shows_outline(&s.doc));
-    s.doc.app_data.insert(OUTLINE_KEY.into(), std::sync::Arc::new(json!({"show": on})));
-    if !on && s.sel.focus.story == wordsmith_doc::StoryRef::Body {
+    let _ = s.doc.ext.set(OUTLINE_KEY, json!({"show": on}));
+    if !on && s.sel.focus.story == jcj_doc::StoryRef::Body {
         let elements = Elements::of_doc(&s.doc);
         let hidden = |i: usize| s.doc.body.get(i).and_then(|b| b.as_para()).is_some_and(|p| elements.of_para(p).kind.is_outline());
         let here = s.sel.focus.path.last();
         if hidden(here)
             && let Some(next) = (here..s.doc.body.len()).chain((0..here).rev()).find(|i| !hidden(*i))
         {
-            s.sel = wordsmith_engine::Selection::caret(wordsmith_doc::Pos {
-                story: wordsmith_doc::StoryRef::Body,
-                path: wordsmith_doc::Path::top(next),
-                off: 0,
-            });
+            s.sel = jcj_engine::Selection::caret(jcj_doc::Pos { story: jcj_doc::StoryRef::Body, path: jcj_doc::Path::top(next), off: 0 });
         }
     }
     Ok(json!({"show": on}))
@@ -228,7 +225,7 @@ pub fn beat_pages(doc: &Document, pag: &Paginated) -> std::collections::HashMap<
         .collect();
     let mut out = std::collections::HashMap::new();
     for (k, &start) in tops.iter().enumerate() {
-        let Some(id) = doc.body.get(start).and_then(|b| b.as_para()).and_then(|p| p.props.beat) else { continue };
+        let Some(id) = doc.body.get(start).and_then(|b| b.as_para()).and_then(|p| p.props.beat()) else { continue };
         let end_block = tops.get(k + 1).map_or(doc.body.len(), |n| *n).saturating_sub(1);
         let from = (start..=end_block).find_map(|b| first_page.get(&b).copied());
         let to = (start..=end_block).rev().find_map(|b| last_page.get(&b).copied());
@@ -265,8 +262,8 @@ pub fn specs() -> Vec<CommandSpec> {
 
 #[cfg(test)]
 mod tests {
+    use jcj_doc::para_block;
     use serde_json::json;
-    use wordsmith_doc::para_block;
 
     use super::*;
     use crate::template::paragraph;
@@ -311,10 +308,10 @@ mod tests {
         let mut body: Vec<_> = (0..60).map(|i| para_block(paragraph("Action", &format!("Line {i}.")))).collect();
         body.push(para_block(paragraph("Action", "End.")));
         s.doc.body = body;
-        s.sel = wordsmith_engine::Selection::caret(wordsmith_doc::Pos { path: wordsmith_doc::Path::top(0), off: 0, ..s.sel.focus.clone() });
+        s.sel = jcj_engine::Selection::caret(jcj_doc::Pos { path: jcj_doc::Path::top(0), off: 0, ..s.sel.focus.clone() });
         s.run("beat.toScript", &json!({"id": a})).unwrap();
         let end = s.doc.body.len() - 1;
-        s.sel = wordsmith_engine::Selection::caret(wordsmith_doc::Pos { path: wordsmith_doc::Path::top(end), off: 0, ..s.sel.focus.clone() });
+        s.sel = jcj_engine::Selection::caret(jcj_doc::Pos { path: jcj_doc::Path::top(end), off: 0, ..s.sel.focus.clone() });
         s.run("beat.toScript", &json!({"id": b})).unwrap();
         let pages = s.run("outline.pages", &json!({})).unwrap();
         assert_eq!(pages, json!([{"beat": a, "from": 1, "to": 3}, {"beat": b, "from": 3, "to": 3}]));

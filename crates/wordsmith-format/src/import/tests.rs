@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-use wordsmith_doc::para_block;
+use jcj_doc::para_block;
 use wordsmith_script::template::{new_script, paragraph};
 
 use super::*;
@@ -112,29 +112,29 @@ fn guessing_whether_text_is_a_script() {
 
 #[test]
 fn rtf_with_indents_is_placed_and_plain_rtf_is_read_as_text() {
-    use craft_rtf::{Block, CharFmt, Para, Run};
+    // RTF files made by the core's direct writer, with indents and space before.
     let para = |text: &str, left_in: f32, space_lines: i32| {
-        Block::Para(Para {
-            runs: vec![Run { text: text.into(), fmt: CharFmt::default() }],
-            left_indent: (left_in * 1440.0) as i32,
-            space_before: space_lines * 240,
-            ..Para::default()
-        })
+        let mut p = jcj_doc::Paragraph::with_text(text, jcj_doc::props::CharProps::default());
+        p.props.indent_left = Some(left_in * 72.0);
+        p.props.space_before = Some(space_lines as f32 * 12.0);
+        para_block(p)
     };
-    let placed = craft_rtf::Document {
-        blocks: vec![
-            para("INT. KITCHEN - NIGHT", 0.0, 1),
-            para("Rain.", 0.0, 1),
-            para("ANNA", 2.2, 1),
-            para("(quietly)", 1.6, 0),
-            para("Did you hear that?", 1.0, 0),
-            para("BOB", 2.2, 1),
-            para("No.", 1.0, 0),
-            para("CUT TO:", 4.5, 1),
-        ],
-        pictures_left_out: 0,
+    let write = |body: Vec<std::sync::Arc<jcj_doc::Block>>| {
+        let mut d = Document::new();
+        d.body = body;
+        jcj_interchange::export_rtf_direct(&d).unwrap()
     };
-    let doc = rtf(craft_rtf::write(&placed, "Courier Prime").as_bytes(), true).unwrap();
+    let placed = write(vec![
+        para("INT. KITCHEN - NIGHT", 0.0, 1),
+        para("Rain.", 0.0, 1),
+        para("ANNA", 2.2, 1),
+        para("(quietly)", 1.6, 0),
+        para("Did you hear that?", 1.0, 0),
+        para("BOB", 2.2, 1),
+        para("No.", 1.0, 0),
+        para("CUT TO:", 4.5, 1),
+    ]);
+    let doc = rtf(&placed, true).unwrap();
     assert_eq!(
         lines(&doc),
         [
@@ -148,11 +148,8 @@ fn rtf_with_indents_is_placed_and_plain_rtf_is_read_as_text() {
             l("Transition", "CUT TO:"),
         ]
     );
-    let plain = craft_rtf::Document {
-        blocks: vec![para("EXT. YARD - DAY", 0.0, 0), para("", 0.0, 0), para("ANNA", 0.0, 0), para("Hello.", 0.0, 0)],
-        pictures_left_out: 0,
-    };
-    let doc = rtf(craft_rtf::write(&plain, "Courier Prime").as_bytes(), true).unwrap();
+    let plain = write(vec![para("EXT. YARD - DAY", 0.0, 0), para("", 0.0, 0), para("ANNA", 0.0, 0), para("Hello.", 0.0, 0)]);
+    let doc = rtf(&plain, true).unwrap();
     assert_eq!(lines(&doc), [l("SceneHeading", "EXT. YARD - DAY"), l("Character", "ANNA"), l("Dialogue", "Hello.")]);
     assert_eq!(rtf(b"not rtf", true).unwrap_err(), ImportError::NotRtf);
 }
@@ -208,7 +205,7 @@ fn revision_marks_in_a_pdf_are_not_read_as_text() {
     s.run("revision.mode", &serde_json::json!({"on": true})).unwrap();
     for block in [1, 3] {
         let len = s.doc.body[block].as_para().map_or(0, |p| p.len());
-        s.sel = wordsmith_engine::Selection::caret(wordsmith_doc::Pos { off: len, path: wordsmith_doc::Path::top(block), ..s.sel.focus.clone() });
+        s.sel = jcj_engine::Selection::caret(jcj_doc::Pos { off: len, path: jcj_doc::Path::top(block), ..s.sel.focus.clone() });
         s.run("text.insert", &serde_json::json!({"text": " Yes."})).unwrap();
     }
     let bytes = wordsmith_script::export::pdf(&s.doc).unwrap();

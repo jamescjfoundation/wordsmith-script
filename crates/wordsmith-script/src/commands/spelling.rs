@@ -1,77 +1,55 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! Spelling commands: list misspellings, suggest, ignore in this script, add to the dictionary,
-//! and replace a word.
+//! Spelling commands. The core's (`jcj_engine::commands::spelling`): `spelling.suggest`,
+//! `spelling.ignore` (the script's own words, `core.spelling`), `spelling.unignore`,
+//! `spelling.words`; the engine's `review.addToDictionary` adds to the dictionary.
+//!
+//! Script's own `spelling.check` replaces the core's with the screenplay rules
+//! ([`crate::spelling`]): Character paragraphs are not checked and speakers' names are right
+//! everywhere. Each misspelling also gives its body `block`, as Script's did before 0.2, and
+//! `spelling.replace` takes either the core's positions or Script's `{block, start, end}`.
+//! `spelling.addWord` is kept as another name for `review.addToDictionary`.
 
+use jcj_doc::{Path, Pos, StoryRef};
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session, params as p};
 use serde_json::{Value, json};
-use wordsmith_doc::{Path, Pos, StoryRef};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result, p};
 
-use crate::spelling::{ScriptWords, SpellCache, check, suggest};
+use crate::spelling::{SpellCache, check};
 
 fn list(s: &mut Session, _: &Value) -> CmdResult {
-    let found: Vec<Value> = check(&s.doc, &mut SpellCache::default())
+    let found = check(&s.doc, &mut SpellCache::default());
+    let truncated = found.len() >= crate::spelling::MAX_REPORTED;
+    let list: Vec<Value> = found
         .into_iter()
-        .map(|m| json!({"block": m.block, "start": m.start, "end": m.end, "word": m.word}))
+        .map(|m| {
+            let at = |off| jcj_engine::cmd::pos_json(&Pos { story: StoryRef::Body, path: Path::top(m.block), off });
+            json!({"start": at(m.start), "end": at(m.end), "block": m.block, "word": m.word})
+        })
         .collect();
-    Ok(json!({"misspellings": found}))
+    Ok(json!({"misspellings": list, "truncated": truncated}))
 }
 
-fn suggest_cmd(_: &mut Session, v: &Value) -> CmdResult {
-    let word = p::req_str(v, "word")?;
-    Ok(json!({"suggestions": suggest(word, 8)}))
-}
-
-/// `spelling.ignore {word}`: the word is correct in this script (kept with the script, undoable).
-fn ignore(s: &mut Session, v: &Value) -> CmdResult {
-    let mut w = ScriptWords::of_doc(&s.doc);
-    let added = w.add(p::req_str(v, "word")?);
-    w.store(&mut s.doc);
-    Ok(json!({"added": added}))
-}
-
-/// `spelling.addWord {word}`: add to the dictionary for every script, this session.
-fn add_word(_: &mut Session, v: &Value) -> CmdResult {
-    let word = p::req_str(v, "word")?.trim();
-    if word.is_empty() || word.len() > 100 {
-        return Err(CmdError::Params("`word` is 1 to 100 bytes".into()));
-    }
-    craft_proof::add_word(word);
-    Ok(json!({"added": word}))
-}
-
-/// `spelling.replace {block, start, end, with}`: replace a misspelled word, checking that the
-/// range is still the word that was misspelled (`word`).
+/// `spelling.replace`: the core's, also taking `{block, start, end}` as numbers.
 fn replace(s: &mut Session, v: &Value) -> CmdResult {
-    let block = p::u64(v, "block").ok_or_else(|| CmdError::Params("`block` is required".into()))? as usize;
-    let start = p::u64(v, "start").ok_or_else(|| CmdError::Params("`start` is required".into()))? as usize;
-    let end = p::u64(v, "end").ok_or_else(|| CmdError::Params("`end` is required".into()))? as usize;
-    let word = p::req_str(v, "word")?;
-    let with = p::req_str(v, "with")?;
-    if with.contains('\n') || with.len() > 200 {
-        return Err(CmdError::Params("`with` is one line of at most 200 bytes".into()));
+    let mut v = v.clone();
+    if let Some(block) = p::u64(&v, "block").filter(|_| v.get("start").is_some_and(serde_json::Value::is_number)) {
+        let block = usize::try_from(block).map_err(|_| CmdError::Params("`block` is too large".into()))?;
+        for key in ["start", "end"] {
+            let off = p::u64(&v, key).ok_or_else(|| CmdError::Params(format!("`{key}` is required")))?;
+            let off = usize::try_from(off).map_err(|_| CmdError::Params(format!("`{key}` is too large")))?;
+            if let Some(o) = v.as_object_mut() {
+                o.insert(key.into(), jcj_engine::cmd::pos_json(&Pos { story: StoryRef::Body, path: Path::top(block), off }));
+            }
+        }
     }
-    let path = Path::top(block);
-    let para = s.doc.para_mut(StoryRef::Body, &path)?;
-    if para.text.get(start..end) != Some(word) {
-        return Err(CmdError::Failed(format!("the text there is no longer `{word}`")));
-    }
-    let props = para.props_at(start).clone();
-    para.delete(start, end)?;
-    para.insert_text(start, with, &props)?;
-    para.touch();
-    s.sel = Selection::caret(Pos { story: StoryRef::Body, path, off: start + with.len() });
-    sel_result(s)
+    super::aliases::call(s, "spelling.replace", &v)
 }
 
 pub fn specs() -> Vec<CommandSpec> {
-    const LOC: &str = "Tools › Spelling";
+    const LOC: &str = "Review › Spelling";
     vec![
         CommandSpec::new("spelling.check", "Check Spelling", LOC, list).pure(),
-        CommandSpec::new("spelling.suggest", "Spelling Suggestions", LOC, suggest_cmd).params(r#"{"word": string}"#).pure(),
-        CommandSpec::new("spelling.ignore", "Ignore in This Script", LOC, ignore).params(r#"{"word": string}"#),
-        CommandSpec::new("spelling.addWord", "Add to Dictionary", LOC, add_word).params(r#"{"word": string}"#).pure(),
         CommandSpec::new("spelling.replace", "Replace Misspelling", LOC, replace)
-            .params(r#"{"block": n, "start": n, "end": n, "word": string, "with": string}"#),
+            .params(r#"{"start": position, "end": position, "word": string, "with": string} or {"block": n, "start": n, "end": n, "word", "with"}"#),
     ]
 }
 

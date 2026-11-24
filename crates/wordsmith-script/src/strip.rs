@@ -5,10 +5,10 @@
 //! is as long as the pages it spans. Which elements feed the lanes is kept in `app_data` under
 //! [`STRIP_KEY`].
 
+use jcj_doc::Document;
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use wordsmith_doc::Document;
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session};
 
 use crate::element::{ElementKind, Elements};
 use crate::paginate::{Piece, paginate};
@@ -163,7 +163,7 @@ mod tests {
     use super::*;
     use crate::commands::new_session;
     use crate::template::paragraph;
-    use wordsmith_doc::para_block;
+    use jcj_doc::para_block;
 
     #[test]
     fn lanes_follow_acts_sequences_and_scenes() {

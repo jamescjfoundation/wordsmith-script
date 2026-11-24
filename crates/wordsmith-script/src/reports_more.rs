@@ -6,9 +6,9 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
+use jcj_doc::Document;
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session, params as p};
 use serde_json::{Value, json};
-use wordsmith_doc::Document;
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session, p};
 
 use crate::element::{ElementKind, Elements};
 use crate::paginate::output::speaker;
@@ -422,7 +422,7 @@ pub fn notes_report(doc: &Document, sort: &str, types: &[String]) -> Report {
         if !types.is_empty() && !types.iter().any(|t| t.eq_ignore_ascii_case(&n.kind)) {
             continue;
         }
-        let block = anchors.get(id).map(|a| a.start.0);
+        let block = anchors.get(id).map(|a| a.start.path.0.first().map_or(0, |b| *b as usize));
         let scene = block.and_then(|b| scene_at(&all, b)).map(|s| scene_number(&numbers, s.index)).unwrap_or_default();
         let page = block.and_then(|b| page_of.get(&b).cloned()).unwrap_or_default();
         rows.push((
@@ -452,7 +452,7 @@ pub fn date(secs: u64) -> String {
 
 /// The flagged words of a script.
 pub fn flagged_words(doc: &Document) -> Vec<String> {
-    match doc.app_data.get(FLAGGED_KEY) {
+    match doc.ext.get(FLAGGED_KEY) {
         Some(v) => v
             .as_array()
             .map(|a| a.iter().filter_map(Value::as_str).map(|w| w.trim().to_lowercase()).filter(|w| !w.is_empty()).take(1_000).collect())
@@ -468,7 +468,7 @@ pub fn statistics_report(doc: &Document, sections: &[String]) -> Report {
     let all = scenes(doc);
     let numbers = crate::scene_numbers::numbers(doc);
     let (page_of, _) = pages(doc);
-    let paras: Vec<(&wordsmith_doc::Paragraph, usize)> = doc.body.iter().enumerate().filter_map(|(i, b)| b.as_para().map(|p| (p, i))).collect();
+    let paras: Vec<(&jcj_doc::Paragraph, usize)> = doc.body.iter().enumerate().filter_map(|(i, b)| b.as_para().map(|p| (p, i))).collect();
     let total_words: usize = paras.iter().map(|(p, _)| words(&p.text)).sum();
     let mut out = Vec::new();
     let mut lines = vec![format!("{total_words} words in {} paragraphs, {} scenes.", paras.len(), all.len())];

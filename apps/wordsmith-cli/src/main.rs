@@ -18,9 +18,8 @@
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-use std::sync::Arc;
 
-use wordsmith_doc::Document;
+use jcj_doc::Document;
 use wordsmith_format::files::{self, Kind};
 
 const USAGE: &str = "usage:
@@ -46,11 +45,6 @@ fn load(input: &Path) -> Result<Document, Error> {
         Some(Kind::Native | Kind::Fountain) => files::open(input).map_err(failed),
         _ => files::import_file(input, true).map_err(failed),
     }
-}
-
-/// Every command a headless session needs: the screenplay's and the file commands.
-fn registry() -> wordsmith_engine::Registry {
-    wordsmith_format::commands::headless_registry()
 }
 
 fn convert(args: &[String]) -> Result<(), Error> {
@@ -115,6 +109,32 @@ fn info(args: &[String]) -> Result<(), Error> {
     Ok(())
 }
 
+/// What the agent server tells a client about the app.
+const INSTRUCTIONS: &str = "Wordsmith Script is a screenwriting app. Every action is a command: find ids and \
+parameters with list_commands and run them with execute (or several with batch); the screenplay's own \
+commands are also tools of their own (scene_list, element_action, report_characters ...). Positions are \
+{story:\"body\", path:[block], off:byteOffset}. Undo with execute edit.undo. render_page shows a page as it prints.";
+
+/// The command namespaces that are tools of their own: the screenplay's.
+const EXPORTED: [&str; 16] = [
+    "element.",
+    "scene.",
+    "character.",
+    "dialogue.",
+    "report.",
+    "beat.",
+    "beats.",
+    "storyboard.",
+    "outline.",
+    "titlePage.",
+    "sceneHeading.",
+    "moresContinueds.",
+    "autocomplete.",
+    "check.",
+    "tables.",
+    "strip.",
+];
+
 fn mcp(args: &[String]) -> Result<(), Error> {
     let (mut read, mut write): (Option<PathBuf>, Option<PathBuf>) = (None, None);
     let mut it = args.iter();
@@ -127,17 +147,21 @@ fn mcp(args: &[String]) -> Result<(), Error> {
         }
         it.next();
     }
-    let roots = wordsmith_engine::file_access::AutomationRoots::new(read.as_deref(), write.as_deref()).map_err(Error::Usage)?;
+    let roots = jcj_engine::file_access::AutomationRoots::new(read.as_deref(), write.as_deref()).map_err(Error::Usage)?;
     match &roots {
         Some(r) => {
-            wordsmith_engine::file_access::confine_process(r.clone());
+            jcj_engine::file_access::confine_process(r.clone());
         }
         // Standard error: standard output carries the protocol.
         None => eprintln!("wordsmith-cli mcp: no --read-root or --write-root given, so commands can read and write any file you can"),
     }
-    let session = wordsmith_engine::Session::with_registry(wordsmith_script::new_script(), Arc::new(registry()));
-    let backend = wordsmith_mcp::Headless::new(session).with_automation_roots(roots);
-    let mut server = wordsmith_mcp::Server::new(Box::new(backend));
+    let session = wordsmith_format::commands::headless_session();
+    let info = jcj_agents::AgentInfo::new("wordsmith-script", wordsmith_script::PRODUCT_NAME, wordsmith_script::VERSION, INSTRUCTIONS);
+    let mut config = jcj_agents::AgentConfig::new(info).confined(roots);
+    for prefix in EXPORTED {
+        config = config.export(prefix);
+    }
+    let mut server = jcj_agents::AgentServer::headless(session, config);
     let stdin = std::io::stdin();
     server.serve(stdin.lock(), std::io::stdout()).map_err(|e| failed(e.to_string()))
 }

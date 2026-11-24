@@ -1,30 +1,18 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! Change tracking (SPEC-2 11.5). While it is on, typed text is marked as inserted and deleted
-//! text is kept, marked as deleted, each with who made the change and when (the document's
-//! tracked-change records, `Document::revisions`). Changes can be stepped through, accepted and
-//! rejected, one at a time or all at once. Deleting your own tracked insertion simply removes
-//! it. Paragraph breaks are not tracked. The setting is kept in `app_data` under
-//! [`TRACKING_KEY`]; writers' colors come from the order they first made a change.
+//! Change tracking (SPEC-2 11.5) is the core's (`jcj_features::tracking`): the model's tracked
+//! changes and its switch (`settings.track_changes`), listing, stepping, accepting and rejecting.
+//!
+//! Script types with its own rules (`commands::text`), so it records its own tracked insertions
+//! and deletions: each with who made the change and the day. Deleting your own tracked insertion
+//! simply removes it. Paragraph breaks are not tracked.
 
-use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
-use wordsmith_doc::{Document, Path, Pos, Revision, RevisionKind, StoryRef};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result};
+pub use jcj_features::tracking::*;
 
-/// `app_data` key of the tracking switch.
-pub const TRACKING_KEY: &str = "wordsmith.tracking";
+use jcj_doc::{Pos, Revision, RevisionKind};
+use jcj_engine::{CmdError, Session};
+
 /// Most tracked-change records a script keeps.
 pub const MAX_RECORDS: usize = 100_000;
-
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Tracking {
-    pub on: bool,
-}
-
-pub fn is_on(doc: &Document) -> bool {
-    crate::data::load::<Tracking>(doc, TRACKING_KEY).on
-}
 
 /// The writer's name, or a stand-in.
 fn author(s: &Session) -> String {
@@ -34,7 +22,7 @@ fn author(s: &Session) -> String {
 /// The record for a change of `kind` by the session's writer today, made if needed.
 pub fn record(s: &mut Session, kind: RevisionKind) -> Option<u32> {
     let who = author(s);
-    let date = crate::reports_more::date(s.now);
+    let date = crate::reports_more::date(crate::clock::now());
     if let Some(i) = s.doc.revisions.iter().position(|r| r.kind == kind && r.author == who && r.date == date && r.move_name.is_none()) {
         return u32::try_from(i).ok();
     }
@@ -89,134 +77,11 @@ pub fn delete(s: &mut Session, a: &Pos, b: &Pos, forwards: bool) -> Result<Pos, 
     Ok(if forwards { end } else { a.clone() })
 }
 
-/// One tracked change in the script: where, what kind, by whom and when.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Change {
-    pub block: usize,
-    pub start: usize,
-    pub end: usize,
-    pub inserted: bool,
-    pub record: u32,
-}
-
-/// Every tracked change in the body, in order (runs next to each other with the same record
-/// are one change).
-pub fn changes(doc: &Document) -> Vec<Change> {
-    let mut out: Vec<Change> = Vec::new();
-    for (block, b) in doc.body.iter().enumerate() {
-        let Some(p) = b.as_para() else { continue };
-        for (r, c) in p.run_ranges() {
-            let (inserted, record) = match (c.ins, c.del) {
-                (_, Some(d)) => (false, d),
-                (Some(i), None) => (true, i),
-                _ => continue,
-            };
-            if let Some(last) = out.last_mut()
-                && last.block == block
-                && last.end == r.start
-                && last.inserted == inserted
-                && last.record == record
-            {
-                last.end = r.end;
-                continue;
-            }
-            out.push(Change { block, start: r.start, end: r.end, inserted, record });
-        }
-    }
-    out
-}
-
-fn pos(block: usize, off: usize) -> Pos {
-    Pos { story: StoryRef::Body, path: Path::top(block), off }
-}
-
-/// Accept (`keep` true) or reject one change.
-fn settle(doc: &mut Document, c: &Change, accept: bool) -> Result<(), CmdError> {
-    let remove = c.inserted != accept;
-    if remove {
-        let para = doc.para_mut(StoryRef::Body, &Path::top(c.block))?;
-        para.delete(c.start, c.end)?;
-        para.touch();
-    } else {
-        doc.format_range(&pos(c.block, c.start), &pos(c.block, c.end), &|p| {
-            p.ins = None;
-            p.del = None;
-        })?;
-    }
-    Ok(())
-}
-
-fn toggle(s: &mut Session, v: &Value) -> CmdResult {
-    let mut t: Tracking = crate::data::load(&s.doc, TRACKING_KEY);
-    t.on = v.get("on").and_then(Value::as_bool).unwrap_or(!t.on);
-    crate::data::store(&mut s.doc, TRACKING_KEY, &t);
-    Ok(json!({"on": t.on}))
-}
-
-fn list(s: &mut Session, _: &Value) -> CmdResult {
-    let items: Vec<Value> = changes(&s.doc)
-        .iter()
-        .map(|c| {
-            let r = s.doc.revisions.get(c.record as usize);
-            let text = s.doc.body.get(c.block).and_then(|b| b.as_para()).and_then(|p| p.text.get(c.start..c.end)).unwrap_or("").to_string();
-            json!({"block": c.block, "start": c.start, "end": c.end, "kind": if c.inserted { "inserted" } else { "deleted" }, "author": r.map(|r| r.author.clone()), "date": r.map(|r| r.date.clone()), "text": text})
-        })
-        .collect();
-    Ok(json!({"on": is_on(&s.doc), "changes": items}))
-}
-
-/// The changes the selection touches, or the one at the caret.
-fn picked(s: &Session) -> Vec<Change> {
-    let (a, b) = s.sel.ordered();
-    let at = |c: &Change| (c.block, c.start) <= (b.path.last(), b.off) && (c.block, c.end) >= (a.path.last(), a.off);
-    changes(&s.doc).into_iter().filter(at).collect()
-}
-
-fn settle_cmd(s: &mut Session, v: &Value, accept: bool) -> CmdResult {
-    let all = v.get("all").and_then(Value::as_bool) == Some(true);
-    let mut list = if all { changes(&s.doc) } else { picked(s) };
-    if list.is_empty() {
-        return Err(CmdError::Failed("there is no tracked change here".into()));
-    }
-    // Last first, so earlier offsets stay right.
-    list.sort_by_key(|c| std::cmp::Reverse((c.block, c.start)));
-    let n = list.len();
-    for c in &list {
-        settle(&mut s.doc, c, accept)?;
-    }
-    s.clamp_selection();
-    Ok(json!({"settled": n}))
-}
-
-fn step(s: &mut Session, forward: bool) -> CmdResult {
-    let here = (s.sel.focus.path.last(), s.sel.focus.off);
-    let all = changes(&s.doc);
-    let pick = if forward {
-        all.iter().find(|c| (c.block, c.start) > here).or_else(|| all.first())
-    } else {
-        all.iter().rev().find(|c| (c.block, c.start) < here).or_else(|| all.last())
-    };
-    let Some(c) = pick.cloned() else { return Err(CmdError::Failed("there are no tracked changes".into())) };
-    s.sel = Selection { anchor: pos(c.block, c.start), focus: pos(c.block, c.end) };
-    sel_result(s)
-}
-
-pub fn specs() -> Vec<CommandSpec> {
-    const LOC: &str = "Production › Changes";
-    vec![
-        CommandSpec::new("track.toggle", "Track Changes", LOC, toggle).params(r#"{"on"?: bool}"#).key("Mod+Shift+C"),
-        CommandSpec::new("track.list", "Tracked Changes", LOC, list).pure(),
-        CommandSpec::new("track.accept", "Accept Change", LOC, |s, v| settle_cmd(s, v, true)).params(r#"{"all"?: bool}"#),
-        CommandSpec::new("track.reject", "Reject Change", LOC, |s, v| settle_cmd(s, v, false)).params(r#"{"all"?: bool}"#),
-        CommandSpec::new("track.acceptAll", "Accept All Changes", LOC, |s, _| settle_cmd(s, &json!({"all": true}), true)),
-        CommandSpec::new("track.rejectAll", "Reject All Changes", LOC, |s, _| settle_cmd(s, &json!({"all": true}), false)),
-        CommandSpec::new("track.next", "Next Change", LOC, |s, _| step(s, true)).pure(),
-        CommandSpec::new("track.previous", "Previous Change", LOC, |s, _| step(s, false)).pure(),
-    ]
-}
-
 #[cfg(test)]
 mod tests {
+    use jcj_engine::Selection;
+    use serde_json::json;
+
     use super::*;
     use crate::commands::new_session;
     use crate::commands::text::body_lines;
@@ -226,7 +91,7 @@ mod tests {
         let mut s = new_session();
         s.run("text.insert", &json!({"text": "int. hall\nRain falls hard."})).unwrap();
         s.author = "Ana".into();
-        s.now = 1_700_000_000;
+        crate::clock::fix(Some(1_700_000_000));
         s.run("track.toggle", &json!({"on": true})).unwrap();
         s
     }

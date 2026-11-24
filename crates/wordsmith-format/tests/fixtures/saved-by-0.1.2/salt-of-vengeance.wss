@@ -1,0 +1,1154 @@
+Wordsmith Script 4
+=== settings ===
+{
+  "appData": {
+    "wordsmith.elements": {
+      "elements": [
+        {
+          "casing": "asTyped",
+          "id": "General",
+          "kind": "general",
+          "name": "General",
+          "shortcut": "Mod+0"
+        },
+        {
+          "casing": "upper",
+          "id": "SceneHeading",
+          "kind": "sceneHeading",
+          "name": "Scene Heading",
+          "shortcut": "Mod+1",
+          "tab": "Action"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Action",
+          "kind": "action",
+          "name": "Action",
+          "shortcut": "Mod+2",
+          "tab": "Character"
+        },
+        {
+          "casing": "upper",
+          "id": "Character",
+          "kind": "character",
+          "name": "Character",
+          "shortcut": "Mod+3",
+          "tab": "Transition",
+          "tabOnlyWhenBlank": true
+        },
+        {
+          "casing": "asTyped",
+          "id": "Parenthetical",
+          "kind": "parenthetical",
+          "name": "Parenthetical",
+          "shortcut": "Mod+4",
+          "tab": "Dialogue"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Dialogue",
+          "kind": "dialogue",
+          "name": "Dialogue",
+          "shortcut": "Mod+5",
+          "tab": "Parenthetical"
+        },
+        {
+          "casing": "upper",
+          "id": "Transition",
+          "kind": "transition",
+          "name": "Transition",
+          "shortcut": "Mod+6",
+          "tab": "SceneHeading"
+        },
+        {
+          "casing": "upper",
+          "id": "Shot",
+          "kind": "shot",
+          "name": "Shot",
+          "shortcut": "Mod+7"
+        },
+        {
+          "casing": "asTyped",
+          "id": "CastList",
+          "kind": "castList",
+          "name": "Cast List",
+          "shortcut": "Mod+8"
+        },
+        {
+          "casing": "upper",
+          "id": "NewAct",
+          "kind": "newAct",
+          "name": "New Act",
+          "shortcut": "Mod+9"
+        },
+        {
+          "casing": "upper",
+          "id": "EndOfAct",
+          "kind": "endOfAct",
+          "name": "End of Act"
+        },
+        {
+          "casing": "upper",
+          "id": "Sequence",
+          "kind": "sequence",
+          "name": "Sequence",
+          "tab": "SceneHeading"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Outline1",
+          "kind": "outline1",
+          "name": "Outline 1",
+          "tab": "Outline2"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Outline2",
+          "kind": "outline2",
+          "name": "Outline 2",
+          "tab": "Outline3"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Outline3",
+          "kind": "outline3",
+          "name": "Outline 3",
+          "tab": "Note"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Note",
+          "kind": "note",
+          "name": "Note",
+          "tab": "Note"
+        },
+        {
+          "casing": "asTyped",
+          "id": "Summary",
+          "kind": "summary",
+          "name": "Summary"
+        }
+      ],
+      "version": 1
+    },
+    "wordsmith.sceneHeading": {
+      "introSeparator": ". ",
+      "intros": [
+        "INT",
+        "EXT",
+        "I/E"
+      ],
+      "timeSeparator": " - "
+    },
+    "wordsmith.sceneNumbers": {
+      "font": "",
+      "locked": true,
+      "prefix": false,
+      "restartEvery": 0,
+      "show": true,
+      "sides": "both",
+      "start": 1
+    },
+    "wordsmith.titlePage": {
+      "authors": "",
+      "contact": "",
+      "copyright": "",
+      "credit": "By Henry Albert Phillips",
+      "draftDate": "",
+      "notes": "",
+      "source": "Phillips, The Photodrama (1914), Project Gutenberg #70937",
+      "title": "The Salt of Vengeance"
+    }
+  },
+  "core": {
+    "category": "",
+    "created": "",
+    "creator": "",
+    "description": "",
+    "keywords": "",
+    "lastModifiedBy": "",
+    "modified": "",
+    "revision": 0,
+    "subject": "",
+    "title": "The Salt of Vengeance"
+  },
+  "page": {
+    "chapterSep": null,
+    "chapterStyle": null,
+    "columns": {
+      "count": 1,
+      "separator": false,
+      "space": 36.0,
+      "widths": []
+    },
+    "docGrid": null,
+    "footer": 36.0,
+    "footers": {
+      "default": null,
+      "even": null,
+      "first": null
+    },
+    "footnoteColumns": null,
+    "gutter": 0.0,
+    "header": 36.0,
+    "headers": {
+      "default": null,
+      "even": null,
+      "first": null
+    },
+    "landscape": false,
+    "lineNumbers": null,
+    "marginBottom": 72.0,
+    "marginLeft": 108.0,
+    "marginRight": 72.0,
+    "marginTop": 72.0,
+    "noEndnote": null,
+    "pageBorders": null,
+    "pageH": 792.0,
+    "pageNumFormat": "decimal",
+    "pageNumStart": null,
+    "pageW": 612.0,
+    "paperSrcFirst": null,
+    "paperSrcOther": null,
+    "rtl": false,
+    "start": "nextPage",
+    "titlePage": false,
+    "valign": "top"
+  },
+  "styles": {
+    "defaultChr": {
+      "font": "Courier Prime",
+      "size": 12.0
+    },
+    "defaultPara": {
+      "lineSpacing": {
+        "rule": "exactly",
+        "value": 12.0
+      },
+      "spaceAfter": 0.0
+    },
+    "defaultParaPresent": true,
+    "styles": [
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "General",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "General",
+        "next": "General",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "SceneHeading",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Scene Heading",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Action",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Action",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Character",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Character",
+        "next": "Dialogue",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 158.39999389648438,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Parenthetical",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Parenthetical",
+        "next": "Dialogue",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 115.19999694824219,
+          "indentRight": 136.80001831054688,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Dialogue",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Dialogue",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 72.0,
+          "indentRight": 108.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Transition",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Transition",
+        "next": "SceneHeading",
+        "para": {
+          "align": "right",
+          "indentFirst": 0.0,
+          "indentLeft": 288.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Shot",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Shot",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "CastList",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Cast List",
+        "next": "Action",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0,
+          "underline": "single"
+        },
+        "hidden": false,
+        "id": "NewAct",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "New Act",
+        "next": "SceneHeading",
+        "para": {
+          "align": "center",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": true,
+          "spaceAfter": 0.0,
+          "spaceBefore": 0.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0,
+          "underline": "single"
+        },
+        "hidden": false,
+        "id": "EndOfAct",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "End of Act",
+        "next": "NewAct",
+        "para": {
+          "align": "center",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 24.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": true,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0,
+          "underline": "single"
+        },
+        "hidden": false,
+        "id": "Sequence",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Sequence",
+        "next": "SceneHeading",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": -18.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 24.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": true,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Outline1",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Outline 1",
+        "next": "Outline1",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": true,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Outline2",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Outline 2",
+        "next": "Outline2",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 18.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": true,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Outline3",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Outline 3",
+        "next": "Outline3",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 36.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": true,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Note",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Note",
+        "next": "Note",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 36.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      },
+      {
+        "basedOn": null,
+        "builtin": true,
+        "chr": {
+          "bold": false,
+          "font": "Courier Prime",
+          "italic": false,
+          "size": 12.0
+        },
+        "hidden": false,
+        "id": "Summary",
+        "kind": "paragraph",
+        "linked": null,
+        "name": "Summary",
+        "next": "Summary",
+        "para": {
+          "align": "left",
+          "indentFirst": 0.0,
+          "indentLeft": 0.0,
+          "indentRight": 0.0,
+          "keepLines": false,
+          "keepNext": false,
+          "lineSpacing": {
+            "rule": "exactly",
+            "value": 12.0
+          },
+          "pageBreakBefore": false,
+          "spaceAfter": 0.0,
+          "spaceBefore": 12.0,
+          "widowControl": true
+        },
+        "priority": null,
+        "quick": true,
+        "table": null
+      }
+    ]
+  }
+}
+=== script ===
+@SceneHeading #1
+BENEATH RICKETY RAILROAD BRIDGE
+
+@Action
+Dalton making notes; he directs one of two laborers to strike pier of bridge. He does so; there is a hail of debris; they all hurry out in alarm.
+
+@Action
+TITLE: CONSULTING ENGINEER DALTON BRINGS MATTER OF ROTTEN BRIDGE BEFORE DONNELLY, PRESIDENT OF THE ROAD.
+
+@SceneHeading #2
+PRESIDENT DONNELLY'S OFFICE
+
+@Action
+Donnelly bullying stenographer over an error. Boy enters; announces Dalton; Donnelly shakes head emphatically can't see him; boy says it is urgent; Donnelly looks at him a second, then nods and turns belligerently to receive Dalton.
+
+@SceneHeading #3
+ANTEROOM OF OFFICE
+
+@Action
+Dalton pacing determinedly and anxiously. Boy enters; nods; exit Dalton.
+
+@SceneHeading #4
+OFFICE
+
+@Action
+Dalton advances and begins confidently. Donnelly stops him. Dalton amazed; walks to map and points out bridge. Donnelly angrily refuses to listen. Dalton turns; delivers eloquent tirade. Donnelly in rage rings bell; obsequious employe enters; he is told to put Dalton out and pay him off. Dalton speaks his mind before he goes.
+
+@SceneHeading #5
+DALTON LIVING-ROOM
+
+@Action
+Mrs. Dalton sewing a man's shirt; kisses sleeve tenderly; turns in surprise and pleasure as Dalton enters; looks into his eyes; questions him anxiously; looks at clock. He pats her on shoulder and smiles, shaking head; asks for Arthur. They call and child runs in; Dalton takes him in his arms and makes plain his love.
+
+@SceneHeading #6
+VERANDA, DONNELLY MANSION
+
+@Action
+Mrs. Donnelly reading to Florence; pauses occasionally to lavish affection; they register approach of motor. Mother sighs; child brightens. Car swings up; Donnelly alights; scolds chauffeur about tire; brushes maid who holds open door; scowls at wife who approaches yearningly; sees child and softens; takes her in his arms.
+
+@Action
+TITLE: MRS. DALTON LEARNS THE TRUTH AFTER TWO MONTHS' DECEPTION.
+
+@SceneHeading #7
+LIVING-ROOM
+
+@Action
+Dalton leave-taking; marked change in his appearance which he tries to hide from wife. He looks at clock saying it is time he was at office; kisses her and child; exit. Mrs. Dalton looks after him, then turns resolutely to telephone.
+
+@SceneHeading #8
+ANTEROOM OF OFFICE
+
+@Action
+Same boy as in 2 at switchboard; looks up name in book; same employe as in 4. Passes thru; pantomimes throwing person out bodily at boy's question; boy shakes head emphatically and bangs up receiver.
+
+@SceneHeading #9
+LIVING-ROOM
+
+@Action
+Mrs. Dalton staggering back from telephone; sinks into chair and takes Arthur tragically into her arms.
+
+@SceneHeading #10
+ANOTHER OUTER OFFICE
+
+@Action
+Dalton pacing up and down; another man enters; men shake hands cordially; Dalton asks question; other points to empty desks; Dalton turns sadly away.
+
+@SceneHeading #11
+LIVING-ROOM
+
+@Action
+Mrs. Dalton and Arthur dressed for journey; bag on table; she is finishing note; holds it up and reads:
+
+@Action
+LETTER: FATHER WILL HELP US OUT, DEAR, AND I AM TAKING ARTHUR TO HOYTSVILLE WITH ME.
+
+@Action
+She has Arthur kiss note; she kisses it, sticks it in the mirror; exeunt.
+
+@SceneHeading #12
+CITY STREET
+
+@Action
+Dalton going along despondent; boy asks him to buy paper. Dalton brushes him away; boy insists, pointing excitedly to scare head. Dalton shows wild interest;
+
+@Action
+INSERT: TERRIBLE TRAIN WRECK. HOYTSVILLE LOCAL PLUNGES THRU FAULTY TRESTLE.
+
+@Action
+Dalton devours news; boy demands payment and he absently hands him coin; boy offers change, but he moves away, paying no attention.
+
+@SceneHeading #13
+LIVING-ROOM
+
+@Action
+Enter Dalton still reading; pauses; realizes no one is there to welcome him; shrugs shoulders and sits down shaking his head; suddenly espies note in mirror; seizes it with a look of apprehension; reads, falling back in chair and clutching his hair; rises unsteadily; gropes his way out his face contorted in agony.
+
+@Action
+TITLE: MRS. DONNELLY INCOGNITO OFFERS AID.
+
+@SceneHeading #14
+STRETCH OF ROAD
+
+@Action
+Crowd held back by guards, evidently railroad employes. Donnelly car drives on; Mrs. Donnelly orders car stopped and alights, inquiring the trouble; face convulsed in horror; asks guard to let her pass; he refuses; she shows pass; he takes off his hat and sends one of men with her.
+
+@SceneHeading #15
+FIELD HOSPITAL NEAR SCENE OF WRECK
+
+@Action
+Mrs. Dalton on stretcher in foreground; she becomes conscious; cries for Arthur. But everyone seems to be working over form on cot a few feet away; a doctor steps aside; Mrs. Dalton screams and creeps toward them; falls, fainting as she clasps a limp little hand; Arthur is revealed to audience. Doctor turns to companion.
+
+@Action
+TITLE: WE MUST OPERATE IMMEDIATELY!
+
+@Action
+One doctor has opened case; stands scratching his head in despair; instrument missing.
+
+@SceneHeading #16
+ROADWAY
+
+@Action
+Guards pushing back the curious. Dalton, now completely mad, enters hatless and wild-eyed; looks about till he sees people on beds; gives a cry and tries to pass; guard pushes him back. Dalton beats down guard murderously; rushes on.
+
+@SceneHeading #17
+SAME AS 15, FIELD HOSPITAL
+
+@Action
+Mrs. Dalton on her knees sobbing before pallet. Doctor is telling Mrs. Donnelly of predicament; she instantly points to car; doctor calls his aid and instantly the cot is lifted and hurried away, Mrs. Donnelly supporting Mrs. Dalton from scene.
+
+@SceneHeading #18
+VERY NEAR DONNELLY CAR
+
+@Action
+Florence standing alongside and looking painfully at what is approaching. Men enter with stretcher. They are halted this moment by appearance of Dalton who lifts cover from Arthur's face and sobs like a child. The two women appear. A terrible look of frenzy comes into Dalton's eyes; it gradually disappears as he feels Florence's hand in his; she soothes him completely. Mrs. Dalton is helped into car that drives away. A buggy nearby is requisitioned; they all get in and exeunt.
+
+@Action
+TITLE: FLORENCE BECOMES THE DALTONS' ANGEL OF HAPPINESS.
+
+@SceneHeading #19
+HOSPITAL PRIVATE ROOM
+
+@Action
+Arthur in bed; opens his eyes and speaks; nurse motions toward door; Mrs. Dalton enters; Arthur half turns away to mother's great grief. Dalton enters listlessly; maniacal cunning in his eye; in turn, he is almost repulsed by Arthur. Florence enters with bouquet; tiptoes to downcast parents; her influence marked, especially on Dalton; she puts her arm round both of their necks and kisses them in turn. She moves to bedside; Arthur looks up and smiles immediately; she strokes the hand he puts out; kisses his cheek and moves away. Dalton now sobbing takes her in his arms, showing great affection. They all exeunt on tiptoe.
+
+@Action
+TITLE: SEEKING TERRIBLE VENGEANCE DALTON LEARNS THAT DONNELLY TOO HAS A CHILD.
+
+@SceneHeading #20
+ANTEROOM
+
+@Action
+Dalton conversing with boy to latter's discomfiture; asks cunningly, pointing toward Donnelly's private office, if he has children. Boy annoyed nods and indicates height of child. Dalton persists; finally boy writes Donnelly's country home address on piece of paper; Dalton stows it away with vicious delight and sneaks out. Donnelly enters hurriedly; tells boy never to let Dalton in again.
+
+@Action
+TITLE: THE MESSENGER OF DESTRUCTION AND ITS UNSUSPECTED VICTIMS.
+
+@SceneHeading #21
+LIVING-ROOM
+
+@Action
+Arthur in reclining chair; crutches beside him. Dalton in corner working on obvious bomb with time clock connection; looks around crazily now and then, gathering the outfit in his arms when he thinks he hears someone coming. Mrs. Dalton pats him gently when he shows violence toward an unseen enemy. Enter Florence; Dalton is first to see her; takes her in his arms joyfully; changed at once. Florence plays with machine; he shows how it operates; imitates train; points to clock; then pantomimes big explosion. They have not heard Mrs. Donnelly enter; she comes forward and picks it up; but he is suspicious and will say no more. Mrs. Dalton draws her gently away; two shake their heads sadly; approach Arthur.
+
+@Action
+TITLE: THE 4.29 TRAIN DOOMED!
+
+@SceneHeading #22
+SIMILAR TO 1. BENEATH RAILROAD BRIDGE
+
+@Action
+Dalton's face slowly emerges from bushes; now hideously maniacal; opens valise and hurriedly arranges mechanism of bomb; clock in plain view; connects wires already strung; hears a noise and crawls away grinning fiendishly.
+
+@SceneHeading #23
+TELEGRAPH OFFICE
+
+@Action
+Dalton enters; takes folded telegram from pocket; hands it to clerk who opens and reads:
+
+@Action
+INSERT: MRS. JOHN DONNELLY, MANORVIEW.
+
+@Action
+YOUR HUSBAND INJURED--COME AND BRING CHILD--WILL MEET YOU ON TRAIN LEAVING 4.29.
+
+@Action
+DR. SAVAGE.
+
+@Action
+Clerk looks up skeptically; points to signature; he nods with a frown; he pays and hurries out.
+
+@SceneHeading #24
+SAME AS 3, ANTEROOM
+
+@Action
+Boy reading; registers bell; shakes his fist at it; reluctantly shuffles thru door other than that marked "President." Enter Dalton cautiously; hurries to and thru president's door; boy returns; puzzled at finding no one; resumes reading.
+
+@SceneHeading #25
+DONNELLY'S OFFICE
+
+@Action
+Enter Dalton, softly locking door; Donnelly alone at desk; does not look up; Dalton throws key thru window as Donnelly looks up; covers him with revolver as he rises angrily; Donnelly startled at something he sees in Dalton's eyes, sits down; reaches for button; Dalton stops him and makes him move chair from desk; places two photographs in his hand; he glowers at them.
+
+@Action
+INSERT: CLOSE-VIEW PHOTOGRAPHS.
+
+@Action
+One showing little Arthur smiling and healthy. Other of him emaciated; face disfigured; on crutches, with but one leg.
+
+@Action
+Dalton now convulsed with madness has taken rope from pocket; springs on Donnelly; there is an uncertain struggle in process as scene fades.
+
+@SceneHeading #26
+VERANDA
+
+@Action
+Maid returning telegram to messenger and urging him to follow disappearing auto; he rides away as fast as he can.
+
+@SceneHeading #27
+OFFICE
+
+@Action
+Dalton sits facing Donnelly whom he has bound and gagged; both men with clothes half torn off. Dalton approaches pointing to photographs; tries to speak; breaks down and weeps like a child. Donnelly merely indifferent and defiant. Dalton pantomimes tragically the whole story; beats his breast, points accusingly at Donnelly; raises his clenched fists as tho to brain him; then remembers and smiles crazily; whispers behind his hand:
+
+@Character
+DONNELLY
+
+@Dialogue
+IN 50 MINUTES YOUR CHILD WILL BE ON THE SCRAP-HEAP, TOO!
+
+@Action
+Instant change in Donnelly who rises horror-struck; searches the maniac's face with terrible anxiety. Dalton begins to laugh exultantly.
+
+@SceneHeading #28
+LIVING-ROOM
+
+@Action
+Mrs. Donnelly has just entered with Florence with packages which they put on table before Arthur; it is a big iced cake and delicacies; Florence claps her hands and kisses boy; Mrs. Dalton admiring. Messenger interrupts; at first too exhausted to speak; Mrs. Donnelly takes telegram; nods; tears it open; half faints; hands it to Mrs. Dalton who is amazed at her identity. She comforts Mrs. Donnelly, who seizes Florence; hurries out. Florence kissing flower Arthur has given her.
+
+@SceneHeading #29
+OFFICE
+
+@Action
+Shocking change in Donnelly; hair almost white; jaw sagging as he slumps in seat. Dalton points malignantly to time with gun; gives way to terrible memory. Donnelly now turns supplicatingly; pleads; weeps. Dalton laughs tauntingly. Donnelly makes a furious but futile effort; curses gnashes his teeth; tries to cry out. Dalton springs to door menacing it with gun.
+
+@SceneHeading #30
+RAILROAD STATION
+
+@Action
+Mrs. Donnelly and Florence anxiously clamber aboard train.
+
+@SceneHeading #31
+OFFICE
+
+@Action
+Donnelly now exhausted and still more terribly changed; hair matted on brow; all arrogance burnt out of him; brutality gone. Dalton now walking about room in a ferment; suddenly pauses before a photograph of Florence on bookcase; pleasure comes in his eyes; he kisses it. Suddenly he springs back; pain in his eyes; a shudder passing over him. Horror in his eyes as he extends portrait toward Donnelly.
+
+@Action
+INSERT: CLOSE-VIEW PHOTOGRAPH of Florence; Dalton's twitching thumb grasping it.
+
+@Action
+Dalton's face has lost its madness and has become like Donnelly's; he approaches Donnelly, his gun falling to the floor; he tries to speak; Donnelly nods; like a flash he unties Donnelly; the two men look into each other's face an instant; then grasp each other's hand, making it plain that they forgive; they rush to the door which they tear and break down after desperate effort.
+
+@SceneHeading #32
+STRETCH OF RAILROAD
+
+@Action
+Train speeding along.
+
+@SceneHeading #33
+STRETCH OF RAILROAD WITH HIGHWAY ALONGSIDE
+
+@Action
+(Be sure to have auto moving toward train.) Follow swaying, madly-driven car containing Donnelly and Dalton. Obvious explosion of tire; auto stops; both spring out in dismay. Show futility; rush despairingly to track; suddenly Dalton points ahead with a glad cry; a hand car is on a siding close by; laborer tries to stop them from seizing car and is thrown down the embankment; they propel it away.
+
+@SceneHeading #34
+STRAIGHTAWAY STRETCH OF RAILWAY
+
+@Action
+(Following car.) Both men working in half exhaustion; suddenly Donnelly collapses and pitches off the side of the car. Dalton tries in vain to push car alone up steep incline; seeing the futility he too drops off exhausted; is up again and runs on.
+
+@SceneHeading #35
+INT. PASSENGER COACH
+
+@Action
+Florence and Mrs. Donnelly in foreground; Florence seeing her mother weeping asks her to kiss the flower Arthur gave her; both smile.
+
+@SceneHeading #36
+STRETCH OF RAILWAY TRESTLE
+
+@Action
+Dalton making his way groggily over it in dangerous manner; looks down once while resting and draws away in horror, realizing that dynamite is there; glances at watch; registers the singing of the rails; hurries on in terror.
+
+@Action
+TITLE: DALTON SEVERS HIS WRIST TO MAKE THE BLOOD-RED DANGER SIGNAL.
+
+@SceneHeading #37
+CURVE OF RAILROAD
+
+@Action
+Dalton has fallen at last between the tracks; structure (artificial) of bridge may be seen several hundred feet behind; train plainly in sight bearing down on him. He has been waving his handkerchief weakly with no effect; shakes his head and with frantic weakness gets out his knife; severs his wrist; presses handkerchief.
+
+@SceneHeading #38
+ENGINE CAB
+
+@Action
+Cab swaying; fireman leans over frantically signalling to engineer to down brakes; engineer pulls throttle back and both jump down.
+
+@SceneHeading #39
+RAILROAD
+
+@Action
+Dalton, his arm still raised waveringly; streams of blood running down it; he collapses. Mrs. Donnelly and Florence among first passengers to appear. Doctor comes forward and tourniquets arm. They are all startled by tremendous explosion that sends debris up in a cloud; supposed bridge collapses. All turn thankfully to Dalton.
+
+@Action
+TITLE: THE BALM OF VENGEANCE.
+
+@SceneHeading #40
+LIVING ROOM
+
+@Action
+Dalton sleeping in chair, his arm, in bandage; Florence enters; signals someone; Donnelly enters tenderly carrying Arthur; Dalton opens his eyes; sees Donnelly caressing his boy; Donnelly turns; they look at each other and smile; Florence takes her father's hand and puts it into Dalton's. (Fade.)
+

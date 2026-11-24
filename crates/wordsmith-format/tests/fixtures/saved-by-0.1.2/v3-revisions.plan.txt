@@ -1,0 +1,28 @@
+matches_plan=true
+revs=[Some(0)]
+labels=Some(["1"])
+[
+    [
+        Para {
+            block: 0,
+            start: 0,
+            end: 12,
+            lines: 1,
+            space_before: false,
+        },
+        Para {
+            block: 1,
+            start: 0,
+            end: 10,
+            lines: 1,
+            space_before: true,
+        },
+        Para {
+            block: 2,
+            start: 0,
+            end: 14,
+            lines: 1,
+            space_before: true,
+        },
+    ],
+]

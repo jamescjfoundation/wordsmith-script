@@ -9,9 +9,9 @@
 
 use std::collections::BTreeMap;
 
+use jcj_doc::{Document, Paragraph, para_block};
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session, params as p};
 use serde_json::{Value, json};
-use wordsmith_doc::{Document, Paragraph, para_block};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session, p};
 
 use crate::autocomplete::{Autocomplete, ListKind};
 use crate::element::{ElementKind, Elements};
@@ -251,7 +251,7 @@ mod tests {
     fn styled(element: &str, text: &str) -> Paragraph {
         let mut p = paragraph(element, "");
         for (i, piece) in text.split("**").enumerate() {
-            let props = wordsmith_doc::props::CharProps { bold: (i % 2 == 1).then_some(true), ..Default::default() };
+            let props = jcj_doc::props::CharProps { bold: (i % 2 == 1).then_some(true), ..Default::default() };
             let at = p.len();
             let _ = p.insert_text(at, piece, &props);
         }

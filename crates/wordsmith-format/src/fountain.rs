@@ -17,8 +17,9 @@
 //! as Action, as the spec says.
 
 use std::collections::BTreeMap;
+use wordsmith_script::keys::ScriptPara;
 
-use wordsmith_doc::{Document, Paragraph, para_block};
+use jcj_doc::{Document, Paragraph, para_block};
 use wordsmith_script::template::{new_script, paragraph};
 use wordsmith_script::title_page::TitlePage;
 use wordsmith_script::{ElementKind, Elements};
@@ -160,7 +161,7 @@ fn with_page_breaks(body: Vec<Paragraph>) -> Vec<Paragraph> {
 fn cue(element: &str, name: &str, line: &str) -> Paragraph {
     let mut p = paragraph(element, &name.to_uppercase());
     if line.trim_end().ends_with('^') {
-        p.props.dual = Some(true);
+        p.props.set_dual(Some(true));
     }
     p
 }
@@ -265,7 +266,7 @@ pub fn read(text: &str) -> Result<FountainScript, String> {
             // A numbered scene keeps its number (decision 0025), if it is one the app keeps:
             // letters, digits, `-` and `.`, at most 12. Any other is left out.
             if let Some(num) = number.as_deref().and_then(wordsmith_script::scene_numbers::clean) {
-                p.props.scene_number = Some(num.clone());
+                p.props.set_scene_number(Some(num.clone()));
                 scene_numbers.insert(n, num);
             }
             body.push(p);
@@ -511,7 +512,7 @@ pub fn write(doc: &Document) -> String {
         }
         let block = para_blocks.get(n).copied().unwrap_or(usize::MAX);
         let note = |id: u32| {
-            let ends_here = anchors.get(&id).is_some_and(|a| a.end.0 == block);
+            let ends_here = anchors.get(&id).is_some_and(|a| a.end.path.0.first().map(|b| *b as usize) == Some(block));
             notes.notes.get(&id).filter(|_| ends_here).map(|nt| note_text(&nt.text)).filter(|t| !t.is_empty())
         };
         let text = marked(p, &note);
@@ -552,7 +553,7 @@ pub fn write(doc: &Document) -> String {
                     && !t.ends_with("TO:")
                     && !t.ends_with('^');
                 let cue = if plain_ok { t } else { format!("@{t}") };
-                blocks.push(if paras.get(n).is_some_and(|p| p.props.dual == Some(true)) { format!("{cue} ^") } else { cue });
+                blocks.push(if paras.get(n).is_some_and(|p| p.props.dual() == Some(true)) { format!("{cue} ^") } else { cue });
                 in_speech = true;
                 continue;
             }
@@ -625,7 +626,7 @@ mod tests {
     #[test]
     fn scene_numbers_are_kept_only_when_the_app_can_keep_them() {
         let s = read("INT. A - DAY #12a#\n\nINT. B - DAY #1234567890123#\n\nINT. C - DAY #Ⅻ#\n\nINT. D - DAY #7-B.2#\n").unwrap();
-        let stored: Vec<Option<String>> = s.doc.body.iter().filter_map(|b| b.as_para()).map(|p| p.props.scene_number.clone()).collect();
+        let stored: Vec<Option<String>> = s.doc.body.iter().filter_map(|b| b.as_para()).map(|p| p.props.scene_number().clone()).collect();
         assert_eq!(stored, vec![Some("12A".into()), None, None, Some("7-B.2".into())]);
         assert_eq!(lines(&s)[1], l("SceneHeading", "INT. B - DAY"), "the heading itself is read");
         // What is kept is saved and read back the same.
@@ -674,7 +675,7 @@ mod tests {
                     action.text[r].to_string(),
                     c.bold == Some(true),
                     c.italic == Some(true),
-                    c.underline.is_some_and(|u| u != wordsmith_doc::props::Underline::None),
+                    c.underline.is_some_and(|u| u != jcj_doc::props::Underline::None),
                 )
             })
             .collect();
@@ -833,11 +834,8 @@ mod tests {
         let mut s = wordsmith_script::new_session();
         s.run("element.action", &serde_json::json!({})).unwrap();
         s.run("text.insert", &serde_json::json!({"text": "Rain hits **x** [[y]].\nMore."})).unwrap();
-        let start = wordsmith_doc::Pos { off: 0, path: wordsmith_doc::Path::top(0), ..s.sel.focus.clone() };
-        s.sel = wordsmith_engine::Selection {
-            anchor: start,
-            focus: wordsmith_doc::Pos { off: 9, path: wordsmith_doc::Path::top(0), ..s.sel.focus.clone() },
-        };
+        let start = jcj_doc::Pos { off: 0, path: jcj_doc::Path::top(0), ..s.sel.focus.clone() };
+        s.sel = jcj_engine::Selection { anchor: start, focus: jcj_doc::Pos { off: 9, path: jcj_doc::Path::top(0), ..s.sel.focus.clone() } };
         s.run("note.add", &serde_json::json!({"text": "Snow? ]] not here"})).unwrap();
         let text = write(&s.doc);
         assert!(text.contains("Rain hits [[Snow? ] ] not here]] \\*\\*x\\*\\* [\\[y]]."), "{text}");

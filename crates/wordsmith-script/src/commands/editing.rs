@@ -3,10 +3,11 @@
 //! select scene, page breaks, new scenes, deleting a paragraph (the reformat tool's delete) and
 //! going to a page.
 
+use crate::keys::ScriptPara;
+use jcj_doc::props::CharProps;
+use jcj_doc::{Path, Pos, StoryRef, para_block};
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result, params as p};
 use serde_json::{Value, json};
-use wordsmith_doc::props::CharProps;
-use wordsmith_doc::{Path, Pos, StoryRef, para_block};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Selection, Session, cmd::sel_result, p};
 
 use super::element::element_of_para_at;
 use crate::data::body_pos;
@@ -36,54 +37,17 @@ fn reset(s: &mut Session, _: &Value) -> CmdResult {
     for path in paths {
         let para = s.doc.para_mut(a.story, &path)?;
         let keep = para.props.clone();
-        para.props = wordsmith_doc::props::ParaProps {
-            style: keep.style,
-            scene_number: keep.scene_number,
-            omitted: keep.omitted,
-            beat: keep.beat,
-            bookmark: keep.bookmark,
-            dual: keep.dual,
-            ..Default::default()
-        };
+        // The paragraph's extension data (scene number, omitted, beat, bookmark, dual) stays.
+        para.props = jcj_doc::props::ParaProps { style: keep.style, ext: keep.ext, ..Default::default() };
         let len = para.len();
         let start = Pos { story: a.story, path: path.clone(), off: 0 };
         let end = Pos { off: len, ..start.clone() };
         s.doc.format_range(&start, &end, &|c: &mut CharProps| {
-            *c = CharProps { note: c.note, revised: c.revised, page_lock: c.page_lock, ..CharProps::default() };
+            // Marks (notes, revision marks, page locks) are extension data: they stay.
+            *c = CharProps { ext: c.ext.clone(), ..CharProps::default() };
         })?;
     }
     s.pending = None;
-    sel_result(s)
-}
-
-/// `text.toggleCase`: the selection in capitals, or in small letters if it already is.
-fn toggle_case(s: &mut Session, _: &Value) -> CmdResult {
-    if s.sel.is_collapsed() {
-        return Err(CmdError::Failed("select some text first".into()));
-    }
-    let (a, b) = s.sel.ordered();
-    let selected = s.selected_text();
-    let to_upper = selected.chars().any(char::is_lowercase);
-    for path in s.doc.para_paths_in(&a, &b) {
-        let para = s.doc.para_mut(a.story, &path)?;
-        let from = if path == a.path { a.off } else { 0 };
-        let to = if path == b.path { b.off } else { para.len() };
-        let Some(piece) = para.text.get(from..to) else { continue };
-        let changed: String = if to_upper { piece.to_uppercase() } else { piece.to_lowercase() };
-        if changed == piece {
-            continue;
-        }
-        if changed.len() == piece.len() {
-            // Same length (nearly always): change the letters in place, runs untouched.
-            para.text.replace_range(from..to, &changed);
-        } else {
-            let props = para.props_at(from + piece.chars().next().map_or(0, char::len_utf8)).clone();
-            para.delete(from, to)?;
-            para.insert_text(from, &changed, &props)?;
-        }
-        para.touch();
-    }
-    s.clamp_selection();
     sel_result(s)
 }
 
@@ -142,20 +106,9 @@ fn delete_paragraph(s: &mut Session, _: &Value) -> CmdResult {
     sel_result(s)
 }
 
-/// `paragraph.next` / `paragraph.previous`: select the next (previous) paragraph whole, for
-/// stepping through the script (the reformat tool).
-fn step_paragraph(s: &mut Session, forward: bool) -> CmdResult {
-    let here = s.sel.focus.path.last();
-    let n = s.doc.body.len();
-    let to = if forward { (here + 1).min(n.saturating_sub(1)) } else { here.saturating_sub(1) };
-    let len = s.doc.body.get(to).and_then(|b| b.as_para()).map_or(0, |p| p.len());
-    s.sel = Selection { anchor: body_pos(to, 0), focus: body_pos(to, len) };
-    sel_result(s)
-}
-
 /// The body block a page starts with: `page` is a page number (1-based) or, in a locked
 /// script, a page label ("12A").
-pub fn page_start(doc: &wordsmith_doc::Document, page: &str) -> Option<usize> {
+pub fn page_start(doc: &jcj_doc::Document, page: &str) -> Option<usize> {
     let pag = crate::paginate::paginate(doc);
     let page = page.trim();
     let index = pag
@@ -196,10 +149,6 @@ fn goto_scene(s: &mut Session, v: &Value) -> CmdResult {
     sel_result(s)
 }
 
-fn has_selection(s: &Session) -> Option<&'static str> {
-    if s.sel.is_collapsed() { Some("nothing is selected") } else { None }
-}
-
 fn in_scene(s: &Session) -> Option<&'static str> {
     let all = crate::scenes::scenes(&s.doc);
     if crate::scenes::scene_at(&all, s.sel.focus.path.last()).is_none() { Some("the caret is not in a scene") } else { None }
@@ -209,13 +158,10 @@ pub fn specs() -> Vec<CommandSpec> {
     vec![
         CommandSpec::new("element.hint", "Return and Tab Hint", "Format › Element", hint).pure(),
         CommandSpec::new("element.reset", "Reset to Element", "Format › Element", reset).key("Mod+Shift+R"),
-        CommandSpec::new("text.toggleCase", "Toggle Case", "Format", toggle_case).key("Mod+Shift+K").when(has_selection),
         CommandSpec::new("select.scene", "Select Scene", "Edit", select_scene).key("Mod+Shift+A").when(in_scene).pure(),
         CommandSpec::new("text.pageBreak", "Page Break", "Insert", page_break).key("Mod+Shift+Enter"),
         CommandSpec::new("scene.insert", "New Scene", "Insert", insert_scene).key("Mod+Shift+N"),
         CommandSpec::new("paragraph.delete", "Delete Paragraph", "Edit", delete_paragraph),
-        CommandSpec::new("paragraph.next", "Next Paragraph", "Edit", |s, _| step_paragraph(s, true)).pure(),
-        CommandSpec::new("paragraph.previous", "Previous Paragraph", "Edit", |s, _| step_paragraph(s, false)).pure(),
         CommandSpec::new("goto.page", "Go to Page", "Go", goto_page).params(r#"{"page": number | label}"#).pure(),
         CommandSpec::new("goto.scene", "Go to Scene Number", "Go", goto_scene).params(r#"{"scene": number | label}"#).pure(),
     ]
@@ -230,6 +176,7 @@ pub fn para_text(s: &Session, block: usize) -> String {
 mod tests {
     use super::*;
     use crate::commands::new_session;
+    use crate::keys::ScriptRun;
 
     /// A script from lines; a line in capitals starting INT. or EXT. is a Scene Heading.
     fn script(text: &str) -> Session {
@@ -313,14 +260,14 @@ mod tests {
         s.doc
             .format_range(&start, &end, &|c: &mut CharProps| {
                 c.bold = Some(true);
-                c.revised = Some(1);
+                c.set_revised(Some(1));
             })
             .unwrap();
         s.run("element.reset", &json!({})).unwrap();
         let p = s.doc.para(StoryRef::Body, &Path::top(1)).unwrap();
         assert_eq!(p.props_at(1).bold, None);
-        assert_eq!(p.props_at(1).revised, Some(1));
-        assert!(p.props.bookmark.is_some());
+        assert_eq!(p.props_at(1).revised(), Some(1));
+        assert!(p.props.bookmark().is_some());
     }
 
     #[test]
@@ -338,12 +285,12 @@ mod tests {
 fn dual(s: &mut Session, _: &Value) -> CmdResult {
     let block = s.sel.focus.path.last();
     let start = crate::paginate::dual::speech_start(&s.doc, block);
-    let on = s.doc.body.get(start).and_then(|b| b.as_para()).is_some_and(|p| p.props.dual == Some(true));
+    let on = s.doc.body.get(start).and_then(|b| b.as_para()).is_some_and(|p| p.props.dual() == Some(true));
     if !on && let Some(why) = crate::paginate::dual::why_not(&s.doc, block) {
         return Err(CmdError::Failed(why.into()));
     }
     let para = s.doc.para_mut(StoryRef::Body, &Path::top(start))?;
-    para.props.dual = if on { None } else { Some(true) };
+    para.props.set_dual(if on { None } else { Some(true) });
     para.touch();
     Ok(json!({"dual": !on}))
 }

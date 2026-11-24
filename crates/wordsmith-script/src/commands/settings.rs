@@ -8,10 +8,10 @@
 
 use std::sync::Arc;
 
+use jcj_doc::props::{Align, LineSpacing, Underline};
+use jcj_doc::{Document, Style};
+use jcj_engine::{CmdError, CmdResult, CommandSpec, Session, params as p};
 use serde_json::{Value, json};
-use wordsmith_doc::props::{Align, LineSpacing, Underline};
-use wordsmith_doc::{Document, Style};
-use wordsmith_engine::{CmdError, CmdResult, CommandSpec, Session, p};
 
 use crate::element::{Casing, ElementDef, ElementKind, Elements, MAX_NAME_LEN};
 use crate::scene_heading::{MAX_INTROS, MAX_PIECE_LEN, SceneHeadingSettings};
@@ -81,7 +81,7 @@ pub fn settings_json(doc: &Document, def: &ElementDef) -> Result<Value, CmdError
         "uppercase": def.casing == Casing::Upper,
         "lowercase": def.casing == Casing::Lower,
         "strike": st.chr.strike.unwrap_or(false),
-        "color": match st.chr.color { Some(wordsmith_doc::props::TextColor::Rgb(wordsmith_doc::props::Rgb(r, g, b))) => json!(format!("#{r:02X}{g:02X}{b:02X}")), _ => Value::Null },
+        "color": match st.chr.color { Some(jcj_doc::props::TextColor::Rgb(jcj_doc::props::Rgb(r, g, b))) => json!(format!("#{r:02X}{g:02X}{b:02X}")), _ => Value::Null },
         "highlight": highlight_name(&st.chr),
         "align": align_name(st.para.align.unwrap_or_default()),
         "left": left_in(st),
@@ -198,8 +198,8 @@ fn configure(s: &mut Session, v: &Value) -> CmdResult {
         None => {}
         Some(Value::Null) => style.chr.color = None,
         Some(Value::String(c)) => {
-            let rgb = wordsmith_doc::props::Rgb::parse(c.trim()).ok_or_else(|| CmdError::Params("`color` is #RRGGBB or null".into()))?;
-            style.chr.color = Some(wordsmith_doc::props::TextColor::Rgb(rgb));
+            let rgb = jcj_doc::props::Rgb::parse(c.trim()).ok_or_else(|| CmdError::Params("`color` is #RRGGBB or null".into()))?;
+            style.chr.color = Some(jcj_doc::props::TextColor::Rgb(rgb));
         }
         Some(_) => return Err(CmdError::Params("`color` is #RRGGBB or null".into())),
     }
@@ -214,7 +214,7 @@ fn configure(s: &mut Session, v: &Value) -> CmdResult {
                 style.chr.highlight = Some(*named);
                 style.chr.shading = None;
             } else {
-                let rgb = wordsmith_doc::props::Rgb::parse(h.trim())
+                let rgb = jcj_doc::props::Rgb::parse(h.trim())
                     .ok_or_else(|| CmdError::Params("`highlight` is a highlighter name, #RRGGBB or null".into()))?;
                 style.chr.highlight = None;
                 style.chr.shading = Some(rgb);
@@ -304,26 +304,26 @@ fn configure(s: &mut Session, v: &Value) -> CmdResult {
 
 /// Every paragraph of element `id` re-cased (after the element became uppercase).
 fn recase_all(s: &mut Session, elements: &Elements, id: &str) -> Result<(), CmdError> {
-    let paths: Vec<wordsmith_doc::Path> = paragraphs_of(&s.doc, id);
+    let paths: Vec<jcj_doc::Path> = paragraphs_of(&s.doc, id);
     for path in paths {
         super::element::apply_element(s, elements, &path, id, false)?;
     }
     Ok(())
 }
 
-fn paragraphs_of(doc: &Document, id: &str) -> Vec<wordsmith_doc::Path> {
+fn paragraphs_of(doc: &Document, id: &str) -> Vec<jcj_doc::Path> {
     doc.body
         .iter()
         .enumerate()
         .filter(|(_, b)| b.as_para().is_some_and(|p| p.props.style.as_deref() == Some(id)))
-        .map(|(i, _)| wordsmith_doc::Path::top(i))
+        .map(|(i, _)| jcj_doc::Path::top(i))
         .collect()
 }
 
 /// A style change reaches every paragraph of the element: mark them all for layout again.
 fn touch_all(doc: &mut Document) {
     for block in &mut doc.body {
-        if let wordsmith_doc::Block::Para(p) = Arc::make_mut(block) {
+        if let jcj_doc::Block::Para(p) = Arc::make_mut(block) {
             p.touch();
         }
     }
@@ -379,14 +379,14 @@ fn delete(s: &mut Session, v: &Value) -> CmdResult {
 }
 
 /// An element's highlight as `element.settings` shows it: a highlighter name or `#RRGGBB`.
-fn highlight_name(c: &wordsmith_doc::props::CharProps) -> Value {
+fn highlight_name(c: &jcj_doc::props::CharProps) -> Value {
     if let Some(h) = c.highlight
         && let Some((n, _)) = super::format::HIGHLIGHTS.iter().find(|(_, x)| *x == h)
     {
         return json!(n);
     }
     match c.shading {
-        Some(wordsmith_doc::props::Rgb(r, g, b)) => json!(format!("#{r:02X}{g:02X}{b:02X}")),
+        Some(jcj_doc::props::Rgb(r, g, b)) => json!(format!("#{r:02X}{g:02X}{b:02X}")),
         None => Value::Null,
     }
 }
@@ -503,8 +503,8 @@ pub fn specs() -> Vec<CommandSpec> {
 
 #[cfg(test)]
 mod tests {
+    use jcj_engine::{CmdError, Session};
     use serde_json::json;
-    use wordsmith_engine::{CmdError, Session};
 
     use crate::commands::{new_session, text::body_lines};
 

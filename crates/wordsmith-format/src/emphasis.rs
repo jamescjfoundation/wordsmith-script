@@ -5,8 +5,9 @@
 //! version 3, revised text (`{r2}` … `{/r}`, set 2) and locked page starts (`{p7}` before the
 //! page's first character). `{` in the text is escaped as `\{`.
 
-use wordsmith_doc::Paragraph;
-use wordsmith_doc::props::{CharProps, Underline};
+use jcj_doc::Paragraph;
+use jcj_doc::props::{CharProps, Underline};
+use wordsmith_script::keys::ScriptRun;
 
 /// Text with emphasis markers and escapes for one paragraph (runs → `**`, `*`, `_`).
 #[cfg(test)]
@@ -49,21 +50,21 @@ pub(crate) fn encode_with(p: &Paragraph, marks: bool, after_note: &dyn Fn(u32) -
         }
     };
     for (range, props) in p.run_ranges() {
-        if props.note != note {
+        if props.note() != note {
             if let Some(old) = note {
                 end_note(&mut out, &mut style, old);
             }
-            if marks && let Some(new) = props.note {
+            if marks && let Some(new) = props.note() {
                 out.push_str(&format!("{{n{new}}}"));
             }
-            note = props.note;
+            note = props.note();
         }
-        if marks && props.revised != revised {
-            match props.revised {
+        if marks && props.revised() != revised {
+            match props.revised() {
                 Some(set) => out.push_str(&format!("{{r{set}}}")),
                 None => out.push_str("{/r}"),
             }
-            revised = props.revised;
+            revised = props.revised();
         }
         if marks {
             let now = extra_code(props);
@@ -84,7 +85,7 @@ pub(crate) fn encode_with(p: &Paragraph, marks: bool, after_note: &dyn Fn(u32) -
             // A locked page starts at this run's first character.
             if marks
                 && k == 0
-                && let Some(id) = props.page_lock
+                && let Some(id) = props.page_lock()
             {
                 out.push_str(&format!("{{p{id}}}"));
             }
@@ -95,7 +96,7 @@ pub(crate) fn encode_with(p: &Paragraph, marks: bool, after_note: &dyn Fn(u32) -
                 }
                 '{' if marks => out.push_str("\\{"),
                 // Inline objects (pictures, fields) are not kept in a script.
-                wordsmith_doc::para::OBJ => {}
+                jcj_doc::para::OBJ => {}
                 _ => out.push(c),
             }
         }
@@ -119,7 +120,7 @@ pub(crate) fn encode_with(p: &Paragraph, marks: bool, after_note: &dyn Fn(u32) -
 /// name; `S#RRGGBB` a highlight of any color; `F#RRGGBB` the text color; `I3` and `X3` text
 /// inserted or deleted as tracked change 3. Empty when none apply.
 pub(crate) fn extra_code(c: &CharProps) -> String {
-    use wordsmith_doc::props::{TextColor, VertAlign};
+    use jcj_doc::props::{TextColor, VertAlign};
     let mut t: Vec<String> = Vec::new();
     match c.underline {
         Some(Underline::Double) => t.push("D".into()),
@@ -141,15 +142,15 @@ pub(crate) fn extra_code(c: &CharProps) -> String {
     if c.small_caps == Some(true) {
         t.push("M".into());
     }
-    if let Some(h) = c.highlight.filter(|h| *h != wordsmith_doc::props::Highlight::None)
+    if let Some(h) = c.highlight.filter(|h| *h != jcj_doc::props::Highlight::None)
         && let Some(name) = serde_json::to_value(h).ok().and_then(|v| v.as_str().map(str::to_string))
     {
         t.push(format!("H{name}"));
     }
-    if let Some(wordsmith_doc::props::Rgb(r, g, b)) = c.shading {
+    if let Some(jcj_doc::props::Rgb(r, g, b)) = c.shading {
         t.push(format!("S#{r:02X}{g:02X}{b:02X}"));
     }
-    if let Some(TextColor::Rgb(wordsmith_doc::props::Rgb(r, g, b))) = c.color {
+    if let Some(TextColor::Rgb(jcj_doc::props::Rgb(r, g, b))) = c.color {
         t.push(format!("F#{r:02X}{g:02X}{b:02X}"));
     }
     // Tracked changes: the inserted or deleted text's record.
@@ -164,7 +165,7 @@ pub(crate) fn extra_code(c: &CharProps) -> String {
 
 /// Apply a style code ([`extra_code`]) to `c`. Unknown tokens are skipped.
 pub(crate) fn apply_extra(code: &str, c: &mut CharProps) {
-    use wordsmith_doc::props::{Rgb, TextColor, VertAlign};
+    use jcj_doc::props::{Rgb, TextColor, VertAlign};
     for tok in code.split(',') {
         let (head, rest) = tok.split_at(tok.chars().next().map_or(0, char::len_utf8));
         match head {
@@ -252,11 +253,11 @@ impl State {
             bold: self.b.then_some(true),
             italic: self.i.then_some(true),
             underline: self.u.then_some(Underline::Single),
-            note: self.note,
-            revised: self.revised,
-            page_lock: lock,
             ..CharProps::default()
         };
+        c.set_note(self.note);
+        c.set_revised(self.revised);
+        c.set_page_lock(lock);
         if let Some(code) = &self.extra {
             apply_extra(code, &mut c);
         }
@@ -370,7 +371,8 @@ mod tests {
         let src = r"Old {r0}new **bold{/r}** {p7}Page {r1}{p8}x{/r}";
         let p = super::decode_with("Action", src, false, true);
         assert_eq!(p.text, "Old new bold Page x");
-        let runs: Vec<(String, Option<u32>, Option<u32>)> = p.run_ranges().map(|(r, c)| (p.text[r].to_string(), c.revised, c.page_lock)).collect();
+        let runs: Vec<(String, Option<u32>, Option<u32>)> =
+            p.run_ranges().map(|(r, c)| (p.text[r].to_string(), c.revised(), c.page_lock())).collect();
         assert!(
             runs.contains(&("new ".into(), Some(0), None))
                 && runs.contains(&("P".into(), None, Some(7)))
@@ -385,7 +387,7 @@ mod tests {
     fn note_marks_round_trip_in_the_native_form() {
         let p = super::decode_with("Action", r"Rain {n3}hits **the**{/n} window \{n1} {oops}", false, true);
         assert_eq!(p.text, "Rain hits the window {n1} {oops}");
-        let noted: Vec<(String, Option<u32>)> = p.run_ranges().map(|(r, c)| (p.text[r].to_string(), c.note)).collect();
+        let noted: Vec<(String, Option<u32>)> = p.run_ranges().map(|(r, c)| (p.text[r].to_string(), c.note())).collect();
         assert!(noted.contains(&("hits ".to_string(), Some(3))) && noted.contains(&("the".to_string(), Some(3))), "{noted:?}");
         let again = super::encode_with(&p, true, &|_| None);
         assert_eq!(again, r"Rain {n3}hits **the{/n}** window \{n1} \{oops}");
