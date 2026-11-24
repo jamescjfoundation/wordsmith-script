@@ -39,7 +39,7 @@ and every script 0.1.2 saved opens with the same pages.
 ### The window
 
 - The app has its own mark, wordmark, icon and colors. The window and the
-  macOS and Linux bundles carry the icon (a W and a brass caret on ink);
+  macOS and Linux bundles carry the icon (an S and a brass caret on ink);
   the quick-access row starts with the mark, the File page's column is ink
   with the wordmark at its foot and a brass caret at the current page, and
   About shows the mark. The three themes take their colors from the

@@ -2,7 +2,7 @@
 //! The Wordsmith Script mark, wordmark and app icon (`assets/brand/`). The interface's colors are
 //! the design tokens (`assets/brand/script/tokens.json`); the few here are the logo's own.
 //!
-//! The mark is a W followed by a brass caret bar. The W and the wordmark's letters are drawn from
+//! The mark is an S followed by a brass caret bar. The S and the wordmark's letters are drawn from
 //! white masks tinted at paint time, so one picture serves every theme; the caret bar is a plain
 //! rectangle in brass.
 
@@ -23,17 +23,17 @@ pub const ICON_PNG: &[u8] = include_bytes!("../../../assets/brand/icon-256.png")
 const MARK_MASK: &[u8] = include_bytes!("../../../assets/brand/mark-mask.png");
 const WORDMARK_MASK: &[u8] = include_bytes!("../../../assets/brand/wordmark-mask.png");
 
-/// A picture drawn from an SVG: its view box, and where the caret bar sits in it.
+/// A picture drawn from an SVG: its view box size, and where the caret bar sits in it.
 struct Art {
     key: &'static str,
     png: &'static [u8],
     size: (f32, f32),
-    /// x, width and height of the caret bar (it starts at the top).
-    bar: (f32, f32, f32),
+    /// x, y, width and height of the caret bar, from the view box's top-left corner.
+    bar: (f32, f32, f32, f32),
 }
 
-const MARK: Art = Art { key: "mark", png: MARK_MASK, size: (313.0, 239.8), bar: (251.84, 61.20, 239.84) };
-const WORDMARK: Art = Art { key: "wordmark", png: WORDMARK_MASK, size: (977.7, 80.0), bar: (962.38, 15.30, 59.96) };
+const MARK: Art = Art { key: "mark", png: MARK_MASK, size: (313.12, 244.25), bar: (251.84, 4.40, 61.20, 239.84) };
+const WORDMARK: Art = Art { key: "wordmark", png: WORDMARK_MASK, size: (978.88, 88.62), bar: (963.48, 8.62, 15.30, 59.96) };
 
 /// The app icon for the window, decoded from its PNG.
 pub fn icon() -> Option<egui::IconData> {
@@ -71,12 +71,12 @@ fn paint(p: &Painter, art: &Art, min: Pos2, height: f32, ink: Color32, bar: Colo
     if let Some((tex, cover)) = texture(p.ctx(), art) {
         p.image(tex.id(), rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(cover.x, cover.y)), ink);
     }
-    let (x, w, h) = art.bar;
-    p.rect_filled(Rect::from_min_size(pos2(min.x + x * s, min.y), vec2(w * s, h * s)), 0.0, bar);
+    let (x, y, w, h) = art.bar;
+    p.rect_filled(Rect::from_min_size(pos2(min.x + x * s, min.y + y * s), vec2(w * s, h * s)), 0.0, bar);
     rect
 }
 
-/// Paint the mark (W and caret bar) `height` points tall from `min`; returns the rectangle it took.
+/// Paint the mark (S and caret bar) `height` points tall from `min`; returns the rectangle it took.
 pub fn paint_mark(p: &Painter, min: Pos2, height: f32, ink: Color32) -> Rect {
     paint(p, &MARK, min, height, ink, BRASS)
 }
