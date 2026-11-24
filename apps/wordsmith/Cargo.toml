@@ -18,7 +18,7 @@ serde_json.workspace = true
 raw-window-handle.workspace = true
 # Native file dialogs until the shell has its own (see src/files.rs); the version and features
 # the core's dialogs already use, so no new crate comes in.
-rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
+rfd = { version = "0.18.0", default-features = false, features = ["xdg-portal"] }
 
 [lints]
 workspace = true
