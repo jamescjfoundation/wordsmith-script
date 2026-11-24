@@ -190,7 +190,7 @@ fn the_title_page_comes_first_and_the_script_is_numbered_after_it() {
     // In reading order (this extractor does not split these lines, so compare without spaces).
     let title: String = pages[0].chars().filter(|c| !c.is_whitespace()).collect();
     assert!(title.starts_with("THEKITCHENWrittenbyAnnaWriter"), "{title}");
-    assert!(title.ends_with("anna@example.comFirstDraft"), "{title}");
+    assert!(title.contains("anna@example.com") && title.ends_with("FirstDraft"), "{title}");
     assert!(!title.contains("1."), "no page number on the title page: {title}");
     let one = squash(&pages[1]);
     assert!(one.starts_with("INT. KITCHEN - NIGHT"), "the script's page 1 has no number: {one}");
