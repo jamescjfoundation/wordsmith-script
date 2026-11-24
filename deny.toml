@@ -1,0 +1,89 @@
+# cargo-deny: licenses, security advisories, banned patterns and allowed sources for every crate
+# in Cargo.lock (decision 0001). CI runs `cargo deny --locked check`. It repeats the license check
+# of `cargo xtask licenses` with a second, independent tool and adds RustSec advisories and where
+# each crate comes from. Owned by open-source-core; `cargo xtask sync` copies it into every app.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+# An ignore needs a reason, and is reviewed at every upstream train (docs/UPSTREAM.md).
+ignore = [
+    # chrono: unmaintained notice only, no vulnerability. WordCraft's engine, docx, formats and
+    # craft-update use it for dates; replacing it is upstream's change.
+    { id = "RUSTSEC-2026-0543", reason = "unmaintained notice only; used by WordCraft and craft-libs at our pins" },
+    # proc-macro-error: unmaintained notice only, a build-time macro of winprint (craft-print, Windows).
+    { id = "RUSTSEC-2024-0370", reason = "unmaintained notice only; build-time macro under craft-print on Windows" },
+    # zip 3 (WordCraft's DOCX/ODT readers). Every one of these is in ZipArchive::extract,
+    # ZipStreamReader or AES-encrypted entries. WordCraft reads entries by name into memory and
+    # never extracts to disk or streams; the zip crate is built without its `aes` feature; the
+    # core's own zip code (jcj-project, jcj-interchange) must not call extract() or
+    # ZipStreamReader either (decision 0001). Leaves when WordCraft moves to zip >= 9.
+    { id = "RUSTSEC-2026-0367", reason = "zip extract() only; never called (docs/UPSTREAM.md)" },
+    { id = "RUSTSEC-2026-0368", reason = "zip extract() only; never called (docs/UPSTREAM.md)" },
+    { id = "RUSTSEC-2026-0369", reason = "zip extract()/ZipStreamReader only; never called (docs/UPSTREAM.md)" },
+    { id = "RUSTSEC-2026-0429", reason = "zip extract() only; never called (docs/UPSTREAM.md)" },
+    { id = "RUSTSEC-2026-0545", reason = "zip AES entries; the aes feature is not built" },
+    # zbus_names, zvariant, zvariant_derive: merged into zbus 6 (notices only, no vulnerability).
+    # They come with eframe's Linux accessibility (accesskit_unix), at the egui WordCraft pins.
+    { id = "RUSTSEC-2026-0370", reason = "zbus 5 crate merged into zbus 6; arrives with egui 0.37's accesskit_unix" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus 5 crate merged into zbus 6; arrives with egui 0.37's accesskit_unix" },
+    { id = "RUSTSEC-2026-0372", reason = "zbus 5 crate merged into zbus 6; arrives with egui 0.37's accesskit_unix" },
+    { id = "RUSTSEC-2026-0548", reason = "zip ZipStreamReader only; never called (docs/UPSTREAM.md)" },
+]
+
+[licenses]
+version = 2
+# Must match decision 0001 and template/xtask/src/spdx.rs.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "0BSD",
+    "ISC",
+    "OFL-1.1",
+    "CC0-1.0",
+    "CC-BY-4.0",
+    "CC-BY-SA-4.0",
+    "Unlicense",
+    # Reviewed exceptions (decision 0001): `REVIEWED_EXCEPTIONS` in template/xtask/src/spdx.rs.
+    "Zlib",
+    "Unicode-3.0",
+    "IJG",
+    "BSL-1.0",
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.8
+unused-allowed-license = "allow"
+
+[licenses.private]
+# Our own workspace crates (publish = false) are MIT OR Apache-2.0 and need no check.
+ignore = true
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+# Upstream, through our forks where we carry patches (docs/UPSTREAM.md), and the core itself
+# (for app repositories).
+allow-git = [
+    "https://github.com/storytold/wordcraft",
+    "https://github.com/jamescjfoundation/wordcraft",
+    "https://github.com/storytold/craft-libs",
+    "https://github.com/jamescjfoundation/craft-libs",
+    "https://github.com/storytold/egui.git",
+    "https://github.com/storytold/winit.git",
+    "https://github.com/storytold/winprint.rs",
+    "https://github.com/jamescjfoundation/open-source-core",
+]
+# A tag (a release) or an exact commit; never a moving branch.
+required-git-spec = "tag"

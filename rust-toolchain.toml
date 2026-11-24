@@ -1,0 +1,6 @@
+# The exact Rust release that builds, checks and tests open-source-core, so every
+# machine and CI runner uses the same compiler (decision 0003). Raise it on purpose,
+# in its own change. The minimum supported version is `rust-version` in Cargo.toml.
+[toolchain]
+channel = "1.100.0"
+components = ["rustfmt", "clippy"]

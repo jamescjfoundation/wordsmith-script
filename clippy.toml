@@ -1,0 +1,7 @@
+# Tests may unwrap, panic and index. Product code may not unwrap or panic: every crate root
+# denies those lints (`cargo xtask lint-roots` checks the roots).
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+cognitive-complexity-threshold = 30

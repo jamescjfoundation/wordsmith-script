@@ -1,0 +1,17 @@
+#!/bin/sh
+# Installed by `cargo xtask install-hooks` (git config core.hooksPath). Owned by open-source-core.
+# The same gate CI runs, limited to the packages this push changes, so CI is a confirmation
+# rather than the first place a mistake shows. Skip once with `git push --no-verify`.
+set -e
+remote="$1"
+base=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+    if [ -n "$remote_sha" ] && [ "$remote_sha" != "0000000000000000000000000000000000000000" ]; then
+        base="$remote_sha"
+    fi
+done
+if [ -n "$base" ] && git cat-file -e "$base" 2>/dev/null; then
+    cargo xtask ci --changed --base "$base"
+else
+    cargo xtask ci --changed
+fi

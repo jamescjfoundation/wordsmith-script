@@ -1,0 +1,88 @@
+# A foundation app on open-source-core. Started from the core's template/ (see template/README.md).
+[workspace]
+resolver = "3"
+members = ["apps/app", "xtask"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[workspace.dependencies]
+# The core, at a release tag. Apps use only jcj- interface crates (never jcj-upstream, WordCraft or
+# craft-libs); `cargo xtask layers` checks it. Move all of them together.
+jcj-doc = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
+jcj-layout = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
+jcj-engine = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
+jcj-output = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
+jcj-interchange = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
+jcj-proof = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
+jcj-project = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
+jcj-features = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
+jcj-theme = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
+jcj-board = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
+jcj-shell = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
+jcj-agents = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.0" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# The window, at the egui version the core pins (the patch block points it at the same fork).
+eframe = { version = "0.37", default-features = false, features = ["accesskit", "glow", "wayland", "x11"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+cognitive_complexity = "deny"
+wildcard_imports = "deny"
+too_many_arguments = "deny"
+dbg_macro = "warn"
+type_complexity = "allow"
+
+[profile.dev.package."*"]
+opt-level = 2
+debug = false
+
+[profile.dev]
+opt-level = 1
+debug = "line-tables-only"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 16
+debug = 0
+
+# The core's patch block: written by `cargo xtask sync`, checked by `cargo xtask sync --check`.
+# Never edit it here.
+# BEGIN jcj patch block
+[patch."https://github.com/storytold/wordcraft"]
+# Our fork's `jcj` branch: WordCraft v0.18.1 plus the patches in docs/UPSTREAM.md.
+wordcraft-geom = { git = "https://github.com/jamescjfoundation/wordcraft", rev = "73717786b6a01a93fba79892f04a2f2d3380a761" }
+wordcraft-doc = { git = "https://github.com/jamescjfoundation/wordcraft", rev = "73717786b6a01a93fba79892f04a2f2d3380a761" }
+wordcraft-fonts = { git = "https://github.com/jamescjfoundation/wordcraft", rev = "73717786b6a01a93fba79892f04a2f2d3380a761" }
+wordcraft-layout = { git = "https://github.com/jamescjfoundation/wordcraft", rev = "73717786b6a01a93fba79892f04a2f2d3380a761" }
+wordcraft-render = { git = "https://github.com/jamescjfoundation/wordcraft", rev = "73717786b6a01a93fba79892f04a2f2d3380a761" }
+wordcraft-pdf = { git = "https://github.com/jamescjfoundation/wordcraft", rev = "73717786b6a01a93fba79892f04a2f2d3380a761" }
+wordcraft-engine = { git = "https://github.com/jamescjfoundation/wordcraft", rev = "73717786b6a01a93fba79892f04a2f2d3380a761" }
+wordcraft-mcp = { git = "https://github.com/jamescjfoundation/wordcraft", rev = "73717786b6a01a93fba79892f04a2f2d3380a761" }
+wordcraft-control-key = { git = "https://github.com/jamescjfoundation/wordcraft", rev = "73717786b6a01a93fba79892f04a2f2d3380a761" }
+wordcraft-docx = { git = "https://github.com/jamescjfoundation/wordcraft", rev = "73717786b6a01a93fba79892f04a2f2d3380a761" }
+wordcraft-formats = { git = "https://github.com/jamescjfoundation/wordcraft", rev = "73717786b6a01a93fba79892f04a2f2d3380a761" }
+
+[patch.crates-io]
+# Required by craft-pdf: the backend rejects writers that failed during unwinding (as WordCraft).
+krilla = { git = "https://github.com/storytold/craft-libs", rev = "6e03f65bf45181db77ba6229716e6624db9eb25b" }
+# egui 0.37 and winit on storytold's forks, at the commits WordCraft v0.18.1 pins.
+ecolor = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+emath = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+epaint = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+egui = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+egui-winit = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+egui-wgpu = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+egui_glow = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+egui_kittest = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+eframe = { git = "https://github.com/storytold/egui.git", rev = "6d518fc799681571963842f95b55a6b68431b15a" }
+winit = { git = "https://github.com/storytold/winit.git", rev = "a517b3846ee8457d84ee4975110bfda6797c44dc" }
+# END jcj patch block
