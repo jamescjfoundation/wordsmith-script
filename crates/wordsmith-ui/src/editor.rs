@@ -1,22 +1,28 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! The script editor: pages drawn from the layout, the caret and selection, and every key press,
-//! click and menu choice turned into a command run through the session's registry.
+//! click and menu choice turned into a command run through the session's registry. The window
+//! around it (ribbon, panels, File page, dialogs, preferences, auto-save) is the shell's
+//! (`jcj_shell`); what the editor asks of it goes through [`ToShell`].
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use egui::{Color32, Event, Pos2, Rect, Sense, Stroke, TextureHandle, TextureOptions, Ui, pos2, vec2};
+use jcj_doc::StoryRef;
+use jcj_engine::Session;
+use jcj_shell::Page;
+use jcj_shell::theme::Mode;
+use jcj_shell::workspace::Side;
 use serde_json::{Value, json};
-use wordsmith_doc::StoryRef;
-use wordsmith_engine::Session;
+use wordsmith_script::keys::ScriptRun;
 use wordsmith_script::paginate::Paginated;
 use wordsmith_script::{ElementKind, Elements};
 
-use crate::autosave::AutoSave;
-use crate::dialogs::{Palette, RecoveryPrompt, SettingsDialog};
-use crate::keys;
+pub use jcj_shell::dialogs::UnsavedAnswer;
+
+use crate::dialogs::SettingsDialog;
 
 /// What to do once the writer has dealt with unsaved changes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -30,12 +36,28 @@ pub enum Then {
     CloseTab,
 }
 
-/// The writer's answer to "save changes first?".
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum UnsavedAnswer {
-    Save,
-    DontSave,
-    Cancel,
+impl Then {
+    /// The name the shell's "save changes first?" hands back.
+    pub fn key(self) -> &'static str {
+        match self {
+            Then::New => "new",
+            Then::Open => "open",
+            Then::Import => "import",
+            Then::Close => "close",
+            Then::CloseTab => "closeTab",
+        }
+    }
+
+    /// What is about to happen, as words after "before".
+    fn doing(self) -> &'static str {
+        match self {
+            Then::New => "starting a new script",
+            Then::Open => "opening another script",
+            Then::Import => "importing",
+            Then::Close => "closing",
+            Then::CloseTab => "closing its tab",
+        }
+    }
 }
 
 /// "Is this a script?", asked when importing plain text or RTF, with a guess for the default.
@@ -61,6 +83,61 @@ impl Default for Backups {
     }
 }
 
+/// A file dialog the editor needs: the window shows it (a native dialog on the desktop) and
+/// hands the answer back with [`Editor::answer_file`], which runs the command `then` with the
+/// chosen path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FileAsk {
+    /// The dialog's title.
+    pub title: String,
+    /// A save dialog (else an open dialog).
+    pub save: bool,
+    /// The file types offered: a name and its extensions.
+    pub filters: Vec<(String, Vec<String>)>,
+    /// The file name a save dialog starts with.
+    pub file_name: Option<String>,
+    /// The command the chosen path runs.
+    pub then: &'static str,
+}
+
+impl FileAsk {
+    fn open(title: &str, then: &'static str) -> Self {
+        FileAsk { title: title.into(), save: false, filters: Vec::new(), file_name: None, then }
+    }
+
+    fn save(title: &str, file_name: String, then: &'static str) -> Self {
+        FileAsk { title: title.into(), save: true, filters: Vec::new(), file_name: Some(file_name), then }
+    }
+
+    fn filter(mut self, name: &str, extensions: &[&str]) -> Self {
+        self.filters.push((name.into(), extensions.iter().map(|e| (*e).to_string()).collect()));
+        self
+    }
+}
+
+/// What the editor asks of the shell around it: passed on once a frame ([`Editor::flush`]).
+#[derive(Clone, Debug, PartialEq)]
+pub enum ToShell {
+    /// Open the File page at this page.
+    FilePage(Page),
+    /// Open the command palette.
+    Palette,
+    /// Check for a newer release now.
+    CheckForUpdates,
+    /// Use this theme.
+    Theme(Mode),
+    /// Show this panel (on its side).
+    ShowPanel(String),
+    /// Show or hide this side's panel.
+    ToggleSide(Side),
+    /// Show the copies crash recovery kept.
+    Recovery,
+    /// This script was opened or saved: first among the recent scripts.
+    Recent(String),
+    /// Run one of the shell's own commands (a key bound to it).
+    Run(jcj_shell::Cmd),
+}
+
 /// The script's name: its file's name, the name it was given, or "Untitled".
 pub fn script_name(s: &Session) -> String {
     s.path
@@ -74,7 +151,7 @@ pub fn script_name(s: &Session) -> String {
 }
 
 /// Whether the script has a native file of its own to save to.
-fn has_native_file(s: &Session) -> bool {
+pub fn has_native_file(s: &Session) -> bool {
     s.path.as_deref().and_then(|p| p.extension()).and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("wss"))
 }
 
@@ -110,14 +187,14 @@ pub enum View {
 #[derive(Clone)]
 pub struct Shown {
     /// The document shown, when it is not the paginated script's (the continuous views).
-    own: Option<Arc<wordsmith_doc::Document>>,
-    pub layout: Arc<wordsmith_layout::DocLayout>,
+    own: Option<Arc<jcj_doc::Document>>,
+    pub layout: Arc<jcj_layout::DocLayout>,
     pub pag: Option<Arc<Paginated>>,
 }
 
 impl Shown {
     /// The document this view draws.
-    pub fn doc(&self) -> &wordsmith_doc::Document {
+    pub fn doc(&self) -> &jcj_doc::Document {
         match (&self.own, &self.pag) {
             (Some(d), _) => d,
             (None, Some(p)) => &p.doc,
@@ -125,13 +202,13 @@ impl Shown {
         }
     }
 
-    pub fn to_output(&self, pos: &wordsmith_doc::Pos) -> Option<wordsmith_doc::Pos> {
+    pub fn to_output(&self, pos: &jcj_doc::Pos) -> Option<jcj_doc::Pos> {
         match &self.pag {
             Some(p) => p.to_output(pos),
             None => Some(pos.clone()),
         }
     }
-    pub fn to_source(&self, pos: &wordsmith_doc::Pos) -> Option<wordsmith_doc::Pos> {
+    pub fn to_source(&self, pos: &jcj_doc::Pos) -> Option<jcj_doc::Pos> {
         match &self.pag {
             Some(p) => p.to_source(pos),
             None => Some(pos.clone()),
@@ -164,8 +241,19 @@ pub struct FindBar {
 }
 
 impl FindBar {
+    /// The find and replace commands' parameters (elements are the paragraphs' styles).
     pub fn params(&self) -> Value {
-        json!({"query": self.query, "with": self.with, "matchCase": self.match_case, "wholeWord": self.whole_word, "elements": self.elements})
+        json!({"query": self.query, "with": self.with, "matchCase": self.match_case, "wholeWord": self.whole_word, "styles": self.elements})
+    }
+
+    /// The query, as the core's find takes it.
+    pub fn query(&self) -> jcj_engine::commands::find::Query {
+        jcj_engine::commands::find::Query {
+            text: self.query.clone(),
+            match_case: self.match_case,
+            whole_word: self.whole_word,
+            styles: self.elements.clone(),
+        }
     }
 }
 
@@ -183,29 +271,33 @@ pub struct Editor {
     pages: HashMap<(View, usize, usize), PageTexture>,
     /// Which view is showing.
     pub view: View,
-    /// Dark interface and dark pages.
+    /// The theme is dark (the shell's theme, kept here for the pages).
     pub dark: bool,
+    /// The theme is the darker of the two dark ones.
+    pub extra_dark: bool,
+    /// Crash recovery's copies from an earlier run have been offered.
+    pub(crate) offered_recovery: bool,
     /// Keep the caret's line at the middle of the window.
     pub typewriter: bool,
-    /// Hide menus, toolbar and status bar.
+    /// Hide the ribbon, side panels and status bar.
     pub focus_mode: bool,
     /// The normal view's copy of the script, for one revision.
-    normal_doc: Option<(u64, Arc<wordsmith_doc::Document>)>,
+    normal_doc: Option<(u64, Arc<jcj_doc::Document>)>,
     /// The draft view's document and layout, for one revision.
     draft: Option<(u64, Shown)>,
-    draft_cache: wordsmith_layout::LayoutCache,
+    draft_cache: jcj_layout::LayoutCache,
     /// Points on screen per document point.
     pub zoom: f32,
     /// Apply macOS key conventions.
     pub mac: bool,
-    pub palette: Option<Palette>,
+    /// The element settings window, while it shows.
     pub settings: Option<SettingsDialog>,
-    pub recovery: Option<RecoveryPrompt>,
-    pub show_about: bool,
     /// Scroll the caret into view on the next frame (after a keyboard command).
     scroll_to_caret: bool,
     /// The last error a command reported, for the status bar.
     pub message: String,
+    /// The message last handed to the shell's status bar.
+    shown_message: String,
     /// Text a copy or cut asked to put on the clipboard.
     clipboard: Option<String>,
     /// The Paste command asked the window to paste the clipboard.
@@ -229,14 +321,15 @@ pub struct Editor {
     /// Autocomplete suggestions at the caret, if any are showing.
     pub suggestions: Option<Suggestions>,
     /// Where suggestions were hidden with Escape: (revision, caret). They stay hidden there.
-    dismissed: Option<(u64, wordsmith_doc::Pos)>,
+    dismissed: Option<(u64, jcj_doc::Pos)>,
     /// The caret's rectangle on screen in the last frame, for placing the suggestion list.
     caret_screen: Option<Rect>,
-    /// Native file dialogs; each answer runs the command named with it, with the chosen path.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub dialogs: craft_dialogs::Dialogs<&'static str>,
+    /// File dialogs waiting for the window to show them ([`Editor::answer_file`]).
+    pub file_asks: Vec<FileAsk>,
     /// "Save changes first?", while it is asked, and what follows the answer.
     pub unsaved: Option<Then>,
+    /// The shell shows the question in [`Editor::unsaved`].
+    unsaved_asked: bool,
     /// "Is this a script?", while it is asked.
     pub import_question: Option<ImportQuestion>,
     /// What to do once the save under way completes (after "Save" in the unsaved prompt).
@@ -245,10 +338,7 @@ pub struct Editor {
     discard_ok: bool,
     /// The writer agreed to close the window; the app closes it.
     pub close_confirmed: bool,
-    pub autosave: AutoSave,
     pub backups: Backups,
-    /// The preferences window is open.
-    pub show_prefs: bool,
     /// The title page fields being edited, while the title page window is open.
     pub title_page: Option<Value>,
     /// The revision sets window is open.
@@ -267,14 +357,12 @@ pub struct Editor {
     pub table_view: crate::tables::View,
     /// The story board's selection, drags and beat window.
     pub board: crate::board::BoardState,
+    /// The index cards' selection.
+    pub cards_selection: jcj_board::Selection,
     /// The scene listing, for one revision.
     scene_cache: Option<(u64, Arc<Vec<Value>>)>,
-    /// The revision auto-save last saw, to notice changes.
-    seen_rev: u64,
     /// Tool windows added after v0.1 (Go To, bookmarks, checker, reformat…).
     pub tools: crate::tools::Tools,
-    /// Software updates (decision 0038): what the window shows; the desktop app does the work.
-    pub updates: crate::updates::Updates,
     /// Parameters a window adds to the command its file dialog runs.
     pub dialog_params: Option<Value>,
     /// Draw the highlighted characters' speeches.
@@ -284,25 +372,23 @@ pub struct Editor {
     pub active_tab: usize,
     /// A second view beside or below the main one.
     pub split: Option<crate::workspace::Split>,
-    /// The darker of the two dark themes.
-    pub extra_dark: bool,
-    /// The writer's own keys: shortcut → command id ("" turns a key off).
-    pub keys: std::collections::BTreeMap<String, String>,
-    /// Recently opened or saved scripts, newest first.
-    pub recent: Vec<String>,
     /// Writing statistics, the sprint timer and goals.
     pub stats: crate::workspace::Stats,
-    /// The theme last put into effect (dark, extra dark).
-    applied_theme: Option<(bool, bool)>,
-    /// Open the scripts open at the last close when the app starts.
-    pub reopen_last: bool,
-    /// The ribbon, side panels and File page.
-    pub chrome: crate::ribbon::Chrome,
+    /// The menu bar under the quick-access row (off by default).
+    pub menu_bar: bool,
+    /// The File page's print choices.
+    pub print: crate::production::PrintChoices,
     /// What the side panels keep while text is typed in them.
     pub panels: crate::sidebar::PanelState,
+    /// What the editor asks of the shell, passed on at the end of the frame.
+    pub to_shell: Vec<ToShell>,
+    /// A dialog, page or key tips of the shell has the keyboard this frame.
+    shell_busy: bool,
+    /// The frame [`Editor::frame_sync`] last ran in.
+    synced_frame: Option<u64>,
     lengths_cache: Option<(u64, Arc<Vec<u32>>)>,
     panel_cache: Option<(u64, Instant, Arc<Vec<Value>>, Arc<Vec<u32>>)>,
-    ribbon_cache: Option<((u64, wordsmith_doc::Pos), Arc<crate::ribbon::tabs::RibbonData>)>,
+    ribbon_cache: Option<((u64, jcj_doc::Pos), Arc<crate::ribbon::tabs::RibbonData>)>,
     /// The commands asked to run, with their parameters (for tests).
     #[cfg(test)]
     pub ran: Vec<(String, Value)>,
@@ -315,6 +401,8 @@ impl Editor {
             pages: HashMap::new(),
             view: View::Page,
             dark: false,
+            extra_dark: false,
+            offered_recovery: false,
             typewriter: false,
             focus_mode: false,
             normal_doc: None,
@@ -322,12 +410,10 @@ impl Editor {
             draft_cache: Default::default(),
             zoom: 1.0,
             mac: cfg!(target_os = "macos"),
-            palette: None,
             settings: None,
-            recovery: None,
-            show_about: false,
             scroll_to_caret: true,
             message: String::new(),
+            shown_message: String::new(),
             clipboard: None,
             paste_asked: false,
             find: None,
@@ -341,16 +427,14 @@ impl Editor {
             caret_screen: None,
             paginator: Default::default(),
             paginated: None,
-            #[cfg(not(target_arch = "wasm32"))]
-            dialogs: craft_dialogs::Dialogs::new(Arc::new(|| {})),
+            file_asks: Vec::new(),
             unsaved: None,
+            unsaved_asked: false,
             import_question: None,
             after_save: None,
             discard_ok: false,
             close_confirmed: false,
-            autosave: AutoSave::default(),
             backups: Backups::default(),
-            show_prefs: false,
             title_page: None,
             header_footer: None,
             show_revisions: false,
@@ -361,22 +445,20 @@ impl Editor {
             note_popover: None,
             scene_cache: None,
             board: Default::default(),
-            seen_rev: 0,
+            cards_selection: Default::default(),
             tools: Default::default(),
-            updates: Default::default(),
             dialog_params: None,
             show_highlights: true,
             tabs: vec![None],
             active_tab: 0,
             split: None,
-            extra_dark: false,
-            keys: Default::default(),
-            recent: Vec::new(),
             stats: Default::default(),
-            applied_theme: None,
-            reopen_last: false,
-            chrome: Default::default(),
+            menu_bar: false,
+            print: Default::default(),
             panels: Default::default(),
+            to_shell: Vec::new(),
+            shell_busy: false,
+            synced_frame: None,
             lengths_cache: None,
             panel_cache: None,
             ribbon_cache: None,
@@ -399,10 +481,16 @@ impl Editor {
         if let Some(then) = then
             && self.session.dirty
         {
-            self.unsaved = Some(then);
+            self.ask_unsaved(then);
             return;
         }
         self.run_now(id, params);
+    }
+
+    /// Ask "save changes first?" before `then`.
+    fn ask_unsaved(&mut self, then: Then) {
+        self.unsaved = Some(then);
+        self.unsaved_asked = false;
     }
 
     /// The caret's rectangle on screen in the last frame drawn.
@@ -479,9 +567,7 @@ impl Editor {
         if self.session.path != path_before
             && let Some(p) = self.session.path.as_ref().map(|p| p.display().to_string())
         {
-            self.recent.retain(|r| *r != p);
-            self.recent.insert(0, p);
-            self.recent.truncate(crate::workspace::MAX_RECENT);
+            self.to_shell.push(ToShell::Recent(p));
         }
         self.scroll_to_caret = true;
         self.take_ui_requests();
@@ -561,13 +647,14 @@ impl Editor {
                 Some(i) => self.switch_tab(i),
             }
         }
-        self.unsaved = Some(Then::Close);
+        self.ask_unsaved(Then::Close);
         false
     }
 
     /// The writer's answer to "save changes first?".
     pub fn answer_unsaved(&mut self, answer: UnsavedAnswer) {
         let Some(then) = self.unsaved.take() else { return };
+        self.unsaved_asked = false;
         match answer {
             UnsavedAnswer::Save => {
                 self.after_save = Some(then);
@@ -603,7 +690,7 @@ impl Editor {
                 // Another tab with unsaved changes asks next.
                 if let Some(i) = self.tabs.iter().position(|t| t.as_ref().is_some_and(|s| s.dirty)) {
                     self.switch_tab(i);
-                    self.unsaved = Some(Then::Close);
+                    self.ask_unsaved(Then::Close);
                 } else {
                     self.close_confirmed = true;
                 }
@@ -631,10 +718,9 @@ impl Editor {
         self.dismissed = None;
         self.table_edit = None;
         self.board = Default::default();
+        self.cards_selection = Default::default();
         self.structure = None;
         self.scroll_to_caret = true;
-        self.seen_rev = self.session.rev();
-        self.autosave.saved();
         self.stats.forget_counts();
     }
 
@@ -667,7 +753,7 @@ impl Editor {
             return false;
         }
         if self.session.dirty && !force {
-            self.unsaved = Some(Then::CloseTab);
+            self.ask_unsaved(Then::CloseTab);
             return false;
         }
         self.session.discard_recovery_copy();
@@ -719,10 +805,9 @@ impl Editor {
         }
     }
 
-    /// A save finished: make the backup copy, restart the auto-save clock, and carry on with
-    /// whatever waited for the save.
+    /// A save finished: make the backup copy and carry on with whatever waited for the save.
+    /// (The shell's auto-save clock restarts by itself once the script is no longer dirty.)
     fn on_saved(&mut self, path: &str) {
-        self.autosave.saved();
         #[cfg(not(target_arch = "wasm32"))]
         if self.backups.enabled
             && let Some(dir) = self.backups.dir.clone()
@@ -737,40 +822,25 @@ impl Editor {
         }
     }
 
-    /// Auto-save: notice changes, and save when one is due. Call every frame with the time;
-    /// returns how long until the next save is due, to wake the window then.
-    pub fn tick(&mut self, now: Instant) -> Option<Duration> {
-        let rev = self.session.rev();
-        if rev != self.seen_rev {
-            self.seen_rev = rev;
-            if self.session.dirty {
-                self.autosave.edited(now);
-            }
+    /// Save for auto-save: an error says why it failed.
+    pub fn autosave_now(&mut self) -> Result<(), String> {
+        self.run_now("file.save", json!({}));
+        if self.session.dirty {
+            let why = if self.message.is_empty() { "the script could not be saved".to_string() } else { std::mem::take(&mut self.message) };
+            return Err(why);
         }
-        let has_file = has_native_file(&self.session);
-        if self.autosave.due(now, self.session.dirty, has_file) {
-            self.run_now("file.save", json!({}));
-            if self.session.dirty {
-                // It failed: try again after another interval, not every frame.
-                self.message = format!("Auto-save failed: {}", self.message);
-                self.autosave.saved();
-                self.autosave.edited(now);
-            }
-        }
-        self.autosave.due_at(self.session.dirty, has_file).map(|at| at.saturating_duration_since(now))
+        Ok(())
     }
 
     /// Nothing that Escape closes or leaves is open above the find bar: no list, window, page or
     /// drop-down, and no other field has the keyboard.
-    fn nothing_above_find_bar(&self, ctx: &egui::Context) -> bool {
-        self.palette.is_none()
+    pub(crate) fn nothing_above_find_bar(&self, ctx: &egui::Context) -> bool {
+        !self.shell_busy
             && self.settings.is_none()
             && self.suggestions.is_none()
             && self.note_popover.is_none()
             && self.board.edit.is_none()
             && self.structure.is_none()
-            && self.chrome.backstage.is_none()
-            && !self.chrome.keytips
             && !crate::tools::has_keyboard(self)
             && !egui::Popup::is_any_open(ctx)
             && ctx.memory(|m| m.focused()).is_none()
@@ -798,13 +868,13 @@ impl Editor {
                 self.message = notice.to_string();
             }
             match req.get("open").and_then(Value::as_str) {
-                Some("palette") => self.palette = Some(Palette::default()),
+                Some("palette") => self.to_shell.push(ToShell::Palette),
                 Some("elementSettings") => {
                     let current = Elements::of_doc(&self.session.doc).of_para_at(&self.session).to_string();
                     self.settings = Some(SettingsDialog::new(&mut self.session, &current));
                 }
-                Some("about") => self.chrome.backstage = Some(crate::backstage::Page::About),
-                Some("recover") => self.recovery = Some(RecoveryPrompt),
+                Some("about") => self.to_shell.push(ToShell::FilePage(Page::About)),
+                Some("recover") => self.to_shell.push(ToShell::Recovery),
                 Some("exportPdf") => self.ask_export_path(),
                 Some("open" | "import" | "saveAs" | "export" | "macrosFrom" | "compare") => {
                     if req["open"] == "compare" {
@@ -818,7 +888,7 @@ impl Editor {
                     let guess = req.get("guess").and_then(Value::as_bool).unwrap_or(true);
                     self.import_question = Some(ImportQuestion { path, guess });
                 }
-                Some("preferences") => self.chrome.backstage = Some(crate::backstage::Page::Preferences),
+                Some("preferences") => self.to_shell.push(ToShell::FilePage(Page::Preferences)),
                 Some("revisions") => self.show_revisions = true,
                 Some("titlePage") => self.title_page = self.session.run("titlePage.get", &json!({})).ok(),
                 Some("headerFooter") => self.header_footer = self.session.run("headerFooter.get", &json!({})).ok(),
@@ -841,7 +911,7 @@ impl Editor {
                 Some("view.scenes") => self.structure = Some(crate::structure::Structure::Scenes),
                 Some("view.board") => self.structure = Some(crate::structure::Structure::Board),
                 Some("view.outline") => self.structure = Some(crate::structure::Structure::Outline),
-                Some("view.dark") => self.dark = !self.dark,
+                Some("view.dark") => self.to_shell.push(ToShell::Theme(if self.dark { Mode::Light } else { Mode::Dark })),
                 Some("view.typewriter") => self.typewriter = !self.typewriter,
                 Some("view.focus") => self.focus_mode = !self.focus_mode,
                 Some("find") => {
@@ -863,47 +933,29 @@ impl Editor {
         self.clipboard.as_deref()
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     fn ask_export_path(&mut self) {
-        let dialog = craft_dialogs::FileDialog::save().title("Export PDF").filter("PDF", &["pdf"]).file_name("Script.pdf");
-        self.dialogs.ask(dialog, "file.exportPdf");
+        self.file_asks.push(FileAsk::save("Export PDF", "Script.pdf".into(), "file.exportPdf").filter("PDF", &["pdf"]));
     }
 
-    #[cfg(target_arch = "wasm32")]
-    fn ask_export_path(&mut self) {
-        self.message = "Export PDF is not available in the web build yet.".into();
-    }
-
-    /// A native file dialog for a file command; its answer runs the command that takes the path.
-    #[cfg(not(target_arch = "wasm32"))]
+    /// A file dialog for a file command; its answer runs the command that takes the path.
     fn ask_file(&mut self, req: &Value) {
-        use craft_dialogs::FileDialog;
         let name = req.get("name").and_then(Value::as_str).filter(|n| !n.is_empty()).unwrap_or("Untitled");
-        let (dialog, then) = match req.get("open").and_then(Value::as_str) {
-            Some("open") => (
-                FileDialog::open()
-                    .title("Open Script")
-                    .filter("Scripts", &["wss", "wst", "fountain", "spmd"])
-                    .filter("Wordsmith Script", &["wss"])
-                    .filter("Templates", &["wst"])
-                    .filter("Fountain", &["fountain", "spmd"]),
-                "file.openPath",
-            ),
-            Some("import") => (
-                FileDialog::open()
-                    .title("Import")
-                    .filter("Text, RTF, PDF or Fountain", &["txt", "text", "rtf", "pdf", "fountain", "spmd"])
-                    .filter("Plain Text", &["txt", "text"])
-                    .filter("Rich Text (RTF)", &["rtf"])
-                    .filter("PDF", &["pdf"]),
-                "file.openPath",
-            ),
-            Some("macrosFrom") => {
-                (FileDialog::open().title("Copy Macros from a Script").filter("Scripts", &["wss", "fountain", "spmd"]), "macro.copyFromPath")
+        let ask = match req.get("open").and_then(Value::as_str) {
+            Some("open") => FileAsk::open("Open Script", "file.openPath")
+                .filter("Scripts", &["wss", "wst", "fountain", "spmd"])
+                .filter("Wordsmith Script", &["wss"])
+                .filter("Templates", &["wst"])
+                .filter("Fountain", &["fountain", "spmd"]),
+            Some("import") => FileAsk::open("Import", "file.openPath")
+                .filter("Text, RTF, PDF or Fountain", &["txt", "text", "rtf", "pdf", "fountain", "spmd"])
+                .filter("Plain Text", &["txt", "text"])
+                .filter("Rich Text (RTF)", &["rtf"])
+                .filter("PDF", &["pdf"]),
+            Some("macrosFrom") => FileAsk::open("Copy Macros from a Script", "macro.copyFromPath").filter("Scripts", &["wss", "fountain", "spmd"]),
+            Some("compare") => {
+                FileAsk::open("Compare with Another Version", "compare.withFile").filter("Scripts", &["wss", "wst", "fountain", "spmd"])
             }
-            Some("saveAs") => {
-                (FileDialog::save().title("Save Script").filter("Wordsmith Script", &["wss"]).file_name(format!("{name}.wss")), "file.saveAsPath")
-            }
+            Some("saveAs") => FileAsk::save("Save Script", format!("{name}.wss"), "file.saveAsPath").filter("Wordsmith Script", &["wss"]),
             Some("export") => {
                 let (label, ext, then) = match req.get("format").and_then(Value::as_str) {
                     Some("csv-scenes") => ("CSV", "csv", "tables.exportScenesCsv"),
@@ -921,73 +973,50 @@ impl Editor {
                     Some("pdf-cards") => ("PDF", "pdf", "cards.exportPdf"),
                     _ => ("Plain Text", "txt", "file.exportText"),
                 };
-                (FileDialog::save().title(format!("Export {label}")).filter(label, &[ext]).file_name(format!("{name}.{ext}")), then)
+                FileAsk::save(&format!("Export {label}"), format!("{name}.{ext}"), then).filter(label, &[ext])
             }
             _ => return,
         };
-        self.dialogs.ask(dialog, then);
+        self.file_asks.push(ask);
     }
 
-    #[cfg(target_arch = "wasm32")]
-    fn ask_file(&mut self, _req: &Value) {
-        self.message = "Files are not available in the web build yet.".into();
-    }
-
-    /// Show a waiting native dialog over `parent` (the window), and act on answers: each runs the
-    /// command it was asked for, with the chosen path. Call once a frame, after [`Editor::ui`].
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn native_dialogs<W: raw_window_handle::HasWindowHandle + raw_window_handle::HasDisplayHandle>(&mut self, parent: Option<&W>) {
-        self.dialogs.show_pending(parent);
-        for (then, answer) in self.dialogs.take_answers() {
-            match answer {
-                craft_dialogs::Answer::Paths(paths) => {
-                    if let Some(path) = paths.first() {
-                        let mut params = if then == "file.openPath" {
-                            json!({"path": path, "discard": std::mem::take(&mut self.discard_ok)})
-                        } else {
-                            json!({"path": path})
-                        };
-                        // Options a window set for the command the dialog runs (a report's kind).
-                        if let (Some(Value::Object(extra)), Some(p)) = (self.dialog_params.take(), params.as_object_mut()) {
-                            for (k, x) in extra {
-                                p.entry(k).or_insert(x);
-                            }
-                        }
-                        self.run_now(then, params);
-                        if then == "file.saveAsPath" && self.session.dirty {
-                            // The save failed: nothing waits on it any more.
-                            self.after_save = None;
-                        }
-                    }
-                }
-                craft_dialogs::Answer::Cancelled => {
-                    // Nothing waits on a dialog the writer closed.
-                    self.dialog_params = None;
-                    self.discard_ok = false;
-                    self.after_save = None;
-                }
-                craft_dialogs::Answer::Message(_) => {}
-                other => self.message = format!("{other:?}"),
+    /// The answer to a file dialog the editor asked for (`None`: it was cancelled): runs the
+    /// command it was asked for, with the chosen path.
+    pub fn answer_file(&mut self, then: &str, path: Option<PathBuf>) {
+        let Some(path) = path else {
+            // Nothing waits on a dialog the writer closed.
+            self.dialog_params = None;
+            self.discard_ok = false;
+            self.after_save = None;
+            return;
+        };
+        let path = path.display().to_string();
+        let mut params =
+            if then == "file.openPath" { json!({"path": path, "discard": std::mem::take(&mut self.discard_ok)}) } else { json!({"path": path}) };
+        // Options a window set for the command the dialog runs (a report's kind).
+        if let (Some(Value::Object(extra)), Some(p)) = (self.dialog_params.take(), params.as_object_mut()) {
+            for (k, x) in extra {
+                p.entry(k).or_insert(x);
             }
+        }
+        self.run_now(then, params);
+        if then == "file.saveAsPath" && self.session.dirty {
+            // The save failed: nothing waits on it any more.
+            self.after_save = None;
         }
     }
 
     /// Whether the editor should take keyboard input now (no dialog or text field has it).
     fn has_keyboard(&self, ui: &Ui) -> bool {
-        self.palette.is_none()
-            && self.settings.is_none()
-            && self.board.edit.is_none()
-            && !crate::tools::has_keyboard(self)
-            && !self.chrome.keytips
-            && self.chrome.backstage.is_none()
-            && !ui.ctx().text_edit_focused()
+        !self.shell_busy && self.settings.is_none() && self.board.edit.is_none() && !crate::tools::has_keyboard(self) && !ui.ctx().text_edit_focused()
     }
 
-    /// Turn this frame's keyboard events into commands.
-    pub fn handle_keys(&mut self, ui: &Ui) {
+    /// Turn this frame's keyboard events into commands, in the order they came. `user` holds the
+    /// writer's own keys (shortcut → command id; the shell keeps them).
+    pub fn handle_keys(&mut self, ui: &Ui, user: &BTreeMap<String, String>) {
+        let mut keys: Option<jcj_shell::keys::KeyMap> = None;
         if !self.has_keyboard(ui) {
             if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-                self.palette = None;
                 self.settings = None;
             }
             return;
@@ -1012,70 +1041,97 @@ impl Editor {
                 Event::Copy => self.run("edit.copy", json!({})),
                 Event::Cut => self.run("edit.cut", json!({})),
                 Event::Key { key, pressed: true, modifiers, .. } => {
-                    let Some(shortcut) = keys::shortcut(key, modifiers, self.mac) else { continue };
+                    let Some(shortcut) = jcj_shell::keys::shortcut(key, modifiers, self.mac) else { continue };
+                    let map = keys.get_or_insert_with(|| self.key_map(user));
                     // The window sends a paste of its own for the paste key; running Paste as
                     // well would paste twice.
-                    if self.bound_to(&shortcut) == Some("edit.paste") {
+                    if map.bound_to(&shortcut) == Some("edit.paste") {
                         continue;
                     }
                     if !self.suggestion_key(&shortcut) && !self.leave_focus(&shortcut) {
-                        self.press(&shortcut);
+                        let cmd = map.bound_to(&shortcut).map(jcj_shell::Cmd::new).or_else(|| shifted(map, &shortcut));
+                        if let Some(cmd) = cmd {
+                            self.press(cmd);
+                        }
                     }
                 }
                 _ => {}
             }
         }
         // Copy and cut put text on the clipboard through the commands' requests.
-        if let Some(text) = self.clipboard.take() {
-            ui.ctx().copy_text(text);
-        }
+        self.copy_to_clipboard(ui.ctx());
         // Tab and arrows are ours, not egui's focus navigation.
         ui.input_mut(|i| i.events.retain(|e| !matches!(e, Event::Key { key: egui::Key::Tab, .. })));
     }
 
+    /// Put text a copy or cut asked for on the clipboard.
+    pub fn copy_to_clipboard(&mut self, ctx: &egui::Context) {
+        if let Some(text) = self.clipboard.take() {
+            ctx.copy_text(text);
+        }
+    }
+
     /// After the Paste command, ask the window for the clipboard: its text comes back as a paste
     /// event, which the editor (or the text field being typed in) takes.
-    fn ask_paste(&mut self, ctx: &egui::Context) {
+    pub fn ask_paste(&mut self, ctx: &egui::Context) {
         if std::mem::take(&mut self.paste_asked) {
             ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaste);
         }
     }
 
-    /// The command id `shortcut` runs from the writer's own keys or the registry, if any.
-    fn bound_to(&self, shortcut: &str) -> Option<&str> {
-        match self.keys.get(shortcut) {
-            Some(id) => Some(id.as_str()).filter(|id| !id.is_empty()),
-            None => self.session.registry.by_shortcut(shortcut).map(|s| s.id),
+    /// Every key the window binds: the writer's own (`user`), custom elements' and macros', the
+    /// commands' and the shell's own.
+    pub fn key_map(&self, user: &BTreeMap<String, String>) -> jcj_shell::keys::KeyMap {
+        use jcj_shell::Commands;
+        let mut all = self.all_commands();
+        all.extend(jcj_shell::commands::shell_commands());
+        let mut map = jcj_shell::keys::KeyMap::from_commands(all.iter());
+        map.set_user(user);
+        map
+    }
+
+    /// Run the command a key is bound to (from [`Editor::key_map`]).
+    pub fn press(&mut self, cmd: jcj_shell::Cmd) {
+        if cmd.is_shell() {
+            self.to_shell.push(ToShell::Run(cmd));
+        } else {
+            self.run_cmd(&cmd);
         }
     }
 
-    /// Run the command bound to `shortcut`: a custom element's own shortcut first, then the
-    /// registry's.
-    pub fn press(&mut self, shortcut: &str) {
-        // The writer's own keys come first.
-        if let Some(id) = self.keys.get(shortcut).cloned() {
-            if !id.is_empty() {
-                self.run(&id, json!({}));
-            }
-            return;
+    /// Note whether the shell has the keyboard this frame (a dialog, the File page, key tips).
+    pub fn set_shell_busy(&mut self, busy: bool) {
+        self.shell_busy = busy;
+    }
+
+    /// Whether this frame's shell work ([`Editor::flush`] and the per-frame state) is still to
+    /// do: true once per egui pass.
+    pub fn first_call_this_frame(&mut self, ctx: &egui::Context) -> bool {
+        let n = ctx.cumulative_pass_nr();
+        if self.synced_frame == Some(n) {
+            return false;
         }
-        let elements = Elements::of_doc(&self.session.doc);
-        if let Some(def) =
-            elements.all().iter().find(|d| d.kind == ElementKind::Custom && d.shortcut.as_deref().is_some_and(|k| k.eq_ignore_ascii_case(shortcut)))
-        {
-            let id = def.id.clone();
-            self.run("element.set", json!({"element": id}));
-            return;
+        self.synced_frame = Some(n);
+        true
+    }
+
+    /// Whether "save changes first?" waits to be shown by the shell; marks it shown.
+    pub fn take_unsaved_question(&mut self) -> Option<(String, &'static str, &'static str)> {
+        let then = self.unsaved?;
+        if self.unsaved_asked {
+            return None;
         }
-        // A macro's shortcut.
-        if let Some(slot) = wordsmith_script::macros::Macros::of_doc(&self.session.doc).by_shortcut(shortcut) {
-            self.run("macro.run", json!({"slot": slot + 1}));
-            return;
+        self.unsaved_asked = true;
+        Some((script_name(&self.session), then.doing(), then.key()))
+    }
+
+    /// The message to show in the status bar when it changed since it was last shown.
+    pub fn take_new_message(&mut self) -> Option<String> {
+        if self.message == self.shown_message {
+            return None;
         }
-        let id = self.session.registry.by_shortcut(shortcut).map(|spec| spec.id);
-        if let Some(id) = id {
-            self.run(id, json!({}));
-        }
+        self.shown_message = self.message.clone();
+        Some(self.message.clone())
     }
 
     /// The script view in `ui` (for a split pane).
@@ -1106,11 +1162,11 @@ impl Editor {
     pub fn set_view(&mut self, view: View) {
         self.view = view;
         self.structure = None;
-        self.session.view_mode = match view {
-            View::Page => wordsmith_layout::ViewMode::Print,
-            View::Normal | View::Draft => wordsmith_layout::ViewMode::Web,
+        self.session.view.mode = match view {
+            View::Page => jcj_layout::ViewMode::Print,
+            View::Normal | View::Draft => jcj_layout::ViewMode::Web,
         };
-        self.session.view_width = text_width(&self.session.doc);
+        self.session.view.web_width = text_width(&self.session.doc);
         self.scroll_to_caret = true;
     }
 
@@ -1122,8 +1178,8 @@ impl Editor {
                 Shown { own: None, layout: pag.layout.clone(), pag: Some(pag) }
             }
             View::Normal => {
-                self.session.view_mode = wordsmith_layout::ViewMode::Web;
-                self.session.view_width = text_width(&self.session.doc);
+                self.session.view.mode = jcj_layout::ViewMode::Web;
+                self.session.view.web_width = text_width(&self.session.doc);
                 let rev = self.session.rev();
                 let doc = match &self.normal_doc {
                     Some((r, d)) if *r == rev => d.clone(),
@@ -1143,9 +1199,8 @@ impl Editor {
                     return s.clone();
                 }
                 let doc = draft_document(&self.session.doc);
-                let opts =
-                    wordsmith_layout::LayoutOptions { view: wordsmith_layout::ViewMode::Web, web_width: text_width(&doc), ..Default::default() };
-                let layout = Arc::new(wordsmith_layout::layout(&doc, &mut self.draft_cache, &opts));
+                let opts = jcj_layout::LayoutOptions { view: jcj_layout::ViewMode::Web, web_width: text_width(&doc), ..Default::default() };
+                let layout = Arc::new(jcj_layout::layout(&doc, &mut self.draft_cache, &opts));
                 let s = Shown { own: Some(Arc::new(doc)), layout, pag: None };
                 self.draft = Some((rev, s.clone()));
                 s
@@ -1155,15 +1210,7 @@ impl Editor {
 
     /// A page's texture at `scale` pixels per document point, drawn again when the document or
     /// scale changed.
-    fn texture(
-        &mut self,
-        ctx: &egui::Context,
-        doc: &wordsmith_doc::Document,
-        index: usize,
-        tile: usize,
-        page: &wordsmith_layout::Page,
-        scale: f32,
-    ) -> TextureHandle {
+    fn texture(&mut self, ctx: &egui::Context, shown: &Shown, index: usize, tile: usize, page: &jcj_layout::Page, scale: f32) -> TextureHandle {
         let rev = self.session.rev();
         let bits = scale.to_bits();
         let key = (self.view, index, tile);
@@ -1174,11 +1221,11 @@ impl Editor {
         {
             return t.texture.clone();
         }
-        let opts = wordsmith_render::RenderOptions { dark: self.dark, ..Default::default() };
+        let opts = jcj_output::RenderSettings { dark: self.dark, ..Default::default() };
         let th = tile_height(page.h);
         let top = tile as f32 * th;
-        let area = wordsmith_geom::Rect { x: 0.0, y: top, w: page.w, h: (page.h - top).clamp(1.0, th) };
-        let r = wordsmith_render::render_area(doc, page, area, scale, &opts);
+        let area = jcj_layout::Rect { x: 0.0, y: top, w: page.w, h: (page.h - top).clamp(1.0, th) };
+        let r = jcj_output::render_area(shown.doc(), &shown.layout, index, area, scale, &opts).unwrap_or_default();
         let image = egui::ColorImage::from_rgba_premultiplied([r.width as usize, r.height as usize], &r.pixels);
         let texture = match self.pages.remove(&key) {
             Some(mut t) => {
@@ -1212,11 +1259,8 @@ impl Editor {
             m.set_focus_lock_filter(response.id, egui::EventFilter { tab: true, horizontal_arrows: true, vertical_arrows: true, escape: false })
         });
         let painter = ui.painter_at(area);
-        let (desk, paper) = if self.dark {
-            (crate::theme::Tokens::of(true, self.extra_dark).canvas, Color32::from_gray(40))
-        } else {
-            (crate::theme::LIGHT.canvas, Color32::WHITE)
-        };
+        let desk = crate::theme::get(ui.ctx()).canvas;
+        let paper = if self.dark { Color32::from_gray(40) } else { Color32::WHITE };
         painter.rect_filled(area, 0.0, desk);
 
         let mut origins: Vec<Rect> = Vec::with_capacity(layout.pages.len());
@@ -1239,7 +1283,7 @@ impl Editor {
                 let h = (page.h - top).min(th);
                 let tile_rect = Rect::from_min_size(rect.min + vec2(0.0, top * zoom), vec2(rect.width(), h * zoom));
                 if ui.is_rect_visible(tile_rect) {
-                    let tex = self.texture(ui.ctx(), pag.doc(), i, tile, page, zoom * ppp);
+                    let tex = self.texture(ui.ctx(), &pag, i, tile, page, zoom * ppp);
                     painter.image(tex.id(), tile_rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
                 } else {
                     painter.rect_filled(tile_rect, 0.0, paper);
@@ -1300,7 +1344,7 @@ impl Editor {
         if response.secondary_clicked()
             && let Some(p) = response.interact_pointer_pos()
             && let Some(at) = hit(p)
-            && let Ok(pos) = serde_json::from_value::<wordsmith_doc::Pos>(at.clone())
+            && let Ok(pos) = serde_json::from_value::<jcj_doc::Pos>(at.clone())
         {
             let (a, b) = self.session.sel.ordered();
             let inside = !self.session.sel.is_collapsed() && a.path == pos.path && a.path == b.path && (a.off..=b.off).contains(&pos.off);
@@ -1314,7 +1358,7 @@ impl Editor {
             });
         }
         if let Some(at) = right_click_at {
-            let _ = self.session.run("caret.to", &json!({"pos": at}));
+            let _ = self.session.run("caret.set", &json!({"pos": at}));
         }
         let mut menu_action: Option<(&'static str, Value)> = None;
         let element_ids: Vec<(String, String)> = Elements::of_doc(&self.session.doc).all().iter().map(|d| (d.id.clone(), d.name.clone())).collect();
@@ -1351,7 +1395,7 @@ impl Editor {
                     ui.close();
                 }
                 if ui.button("Add to Dictionary").clicked() {
-                    menu_action = Some(("spelling.addWord", json!({"word": m.word})));
+                    menu_action = Some(("review.addToDictionary", json!({"word": m.word})));
                     ui.close();
                 }
             }
@@ -1364,16 +1408,17 @@ impl Editor {
             let shift = ui.input(|i| i.modifiers.shift);
             if response.double_clicked() {
                 if let Some(pos) = hit(p) {
-                    self.run("select.wordAt", json!({"pos": pos}));
+                    self.run("caret.set", json!({"pos": pos}));
+                    self.run("select.word", json!({}));
                 }
             } else if response.drag_started() || response.clicked() {
                 if let Some(pos) = hit(p) {
-                    self.run("caret.to", json!({"pos": pos, "extend": shift}));
+                    self.run("caret.set", json!({"pos": pos, "extend": shift}));
                 }
             } else if response.dragged()
                 && let Some(pos) = hit(p)
             {
-                self.run("caret.to", json!({"pos": pos, "extend": true}));
+                self.run("caret.set", json!({"pos": pos, "extend": true}));
             }
             self.scroll_to_caret = false;
         }
@@ -1389,7 +1434,7 @@ impl Editor {
         let colour = if self.dark { Color32::from_gray(150) } else { Color32::from_gray(220) };
         for (i, b) in self.session.doc.body.iter().enumerate() {
             let Some(p) = b.as_para() else { continue };
-            let at = wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(i), off: 0 };
+            let at = jcj_doc::Pos { story: StoryRef::Body, path: jcj_doc::Path::top(i), off: 0 };
             let Some(c) = pag.layout.caret(&at) else { continue };
             let Some(page) = origins.get(c.page) else { continue };
             let y = page.min.y + c.top * zoom;
@@ -1404,14 +1449,9 @@ impl Editor {
     fn draw_find_matches(&self, painter: &egui::Painter, pag: &Shown, origins: &[Rect], zoom: f32) {
         let to_screen = |page: usize, x: f32, y: f32| origins.get(page).map(|r| r.min + vec2(x * zoom, y * zoom));
         if let Some(bar) = self.find.as_ref().filter(|b| !b.query.is_empty()) {
-            let q = wordsmith_script::commands::find::Query {
-                text: bar.query.clone(),
-                match_case: bar.match_case,
-                whole_word: bar.whole_word,
-                elements: bar.elements.clone(),
-            };
+            let q = bar.query();
             let fill = Color32::from_rgba_unmultiplied(255, 210, 0, 90);
-            for (a, b) in wordsmith_script::commands::find::find_all(&self.session, &q).into_iter().take(5_000) {
+            for (a, b) in wordsmith_script::commands::find::find_all(&self.session.doc, &q).into_iter().take(5_000) {
                 let (Some(a), Some(b)) = (pag.to_output(&a), pag.to_output(&b)) else { continue };
                 for (page, r) in pag.layout.selection_rects(pag.doc(), &a, &b, 0) {
                     if let Some(min) = to_screen(page, r.x, r.y) {
@@ -1438,7 +1478,7 @@ impl Editor {
                 ElementKind::Note | ElementKind::Summary => level,
                 _ => continue,
             };
-            let at = |off| wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(block), off };
+            let at = |off| jcj_doc::Pos { story: StoryRef::Body, path: jcj_doc::Path::top(block), off };
             let (Some(a), Some(z)) = (pag.to_output(&at(0)), pag.to_output(&at(p.len()))) else { continue };
             for (page, r) in pag.layout.selection_rects(pag.doc(), &a, &z, 0) {
                 let Some(page_rect) = origins.get(page) else { continue };
@@ -1461,7 +1501,7 @@ impl Editor {
             let Some(c) = wordsmith_script::revisions::parse_color(&color) else { continue };
             let fill = Color32::from_rgba_unmultiplied(c.0, c.1, c.2, 70);
             let len = self.session.doc.body.get(last).and_then(|b| b.as_para()).map_or(0, |p| p.len());
-            let at = |block, off| wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(block), off };
+            let at = |block, off| jcj_doc::Pos { story: StoryRef::Body, path: jcj_doc::Path::top(block), off };
             let (Some(a), Some(b)) = (pag.to_output(&at(first, 0)), pag.to_output(&at(last, len))) else { continue };
             for (page, r) in pag.layout.selection_rects(pag.doc(), &a, &b, 0) {
                 if let Some(min) = to_screen(page, r.x, r.y) {
@@ -1495,8 +1535,8 @@ impl Editor {
         for (block, b) in self.session.doc.body.iter().enumerate() {
             let Some(p) = b.as_para() else { continue };
             for (range, props) in p.run_ranges() {
-                let Some(id) = props.note else { continue };
-                let at = |off| wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(block), off };
+                let Some(id) = props.note() else { continue };
+                let at = |off| jcj_doc::Pos { story: StoryRef::Body, path: jcj_doc::Path::top(block), off };
                 let (Some(a), Some(z)) = (pag.to_output(&at(range.start)), pag.to_output(&at(range.end))) else { continue };
                 for (page, r) in pag.layout.selection_rects(pag.doc(), &a, &z, 0) {
                     let Some(min) = to_screen(page, r.x, r.y) else { continue };
@@ -1520,7 +1560,7 @@ impl Editor {
             let found = wordsmith_script::spelling::check(&self.session.doc, &mut self.spell_cache);
             let red = Stroke::new(1.5, Color32::from_rgb(220, 40, 40));
             for m in &found {
-                let at = |off| wordsmith_doc::Pos { story: StoryRef::Body, path: wordsmith_doc::Path::top(m.block), off };
+                let at = |off| jcj_doc::Pos { story: StoryRef::Body, path: jcj_doc::Path::top(m.block), off };
                 let (Some(a), Some(b)) = (pag.to_output(&at(m.start)), pag.to_output(&at(m.end))) else { continue };
                 for (page, r) in pag.layout.selection_rects(pag.doc(), &a, &b, 0) {
                     let Some(min) = to_screen(page, r.x, r.y + r.h - 1.0) else { continue };
@@ -1538,71 +1578,11 @@ impl Editor {
         }
     }
 
-    /// The whole window: menus, toolbar, status bar, pages and dialogs.
-    pub fn ui(&mut self, ui: &mut Ui) {
-        let theme = if self.dark { egui::Theme::Dark } else { egui::Theme::Light };
-        if ui.ctx().theme() != theme {
-            ui.ctx().set_theme(theme);
-        }
-        if self.applied_theme != Some((self.dark, self.extra_dark)) {
-            let tokens = crate::theme::Tokens::of(self.dark, self.extra_dark);
-            tokens.set(ui.ctx());
-            ui.ctx().set_visuals(crate::theme::visuals(&tokens));
-            self.applied_theme = Some((self.dark, self.extra_dark));
-        }
-        // Tracked changes record the time.
-        self.session.now = crate::now_secs();
-        self.chrome.drawn.clear();
-        self.chrome.areas.clear();
-        // Read before the keys are handled: Escape that closes a list or a window is theirs.
-        self.escape_for_find_bar = ui.input(|i| i.key_pressed(egui::Key::Escape)) && self.nothing_above_find_bar(ui.ctx());
-        self.handle_keys(ui);
-        if !self.focus_mode {
-            crate::ribbon::show(self, ui);
-            crate::chrome::find_bar(self, ui);
-            crate::chrome::status_bar(self, ui);
-            if self.chrome.backstage.is_none() {
-                crate::sidebar::show(self, ui);
-            }
-            crate::workspace::tab_bar(self, ui);
-            crate::tables::panel(self, ui);
-            crate::strip::panel(self, ui);
-            crate::workspace::split_panel(self, ui);
-            // With neither the bar nor the Find panel showing, nothing marks matches.
-            if !self.find_bar && self.chrome.left != Some(crate::ribbon::Panel::Find) {
-                self.find = None;
-            }
-        }
-        if self.chrome.backstage.is_some() {
-            egui::CentralPanel::default().show(ui, |ui| crate::backstage::show(self, ui));
-            self.suggestion_list(ui.ctx());
-            crate::dialogs::show(self, ui.ctx());
-            self.ask_paste(ui.ctx());
-            return;
-        }
-        egui::CentralPanel::default().show(ui, |ui| match self.structure {
-            Some(crate::structure::Structure::Cards) => crate::structure::cards(self, ui),
-            Some(crate::structure::Structure::Scenes) => crate::structure::scene_view(self, ui),
-            Some(crate::structure::Structure::Board) => crate::board::view(self, ui),
-            Some(crate::structure::Structure::Outline) => crate::outline::view(self, ui),
-            None => {
-                egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| self.page_view(ui));
-            }
-        });
-        self.suggestion_list(ui.ctx());
-        crate::dialogs::show(self, ui.ctx());
-        crate::workspace::track(self);
-        if self.chrome.backstage.is_none() && !self.focus_mode {
-            crate::ribbon::tour(self, ui.ctx());
-        }
-        self.ask_paste(ui.ctx());
-    }
-
     /// The suggestion list, just below the caret. Clicking an entry accepts it.
-    fn suggestion_list(&mut self, ctx: &egui::Context) {
+    pub fn suggestion_list(&mut self, ctx: &egui::Context) {
         let (Some(sug), Some(caret)) = (self.suggestions.clone(), self.caret_screen) else { return };
         let mut chosen = None;
-        egui::Area::new(egui::Id::new("autocomplete")).order(egui::Order::Foreground).fixed_pos(caret.left_bottom() + vec2(0.0, 4.0)).show(
+        egui::Area::new(egui::Id::unique("autocomplete")).order(egui::Order::Foreground).fixed_pos(caret.left_bottom() + vec2(0.0, 4.0)).show(
             ctx,
             |ui| {
                 egui::Frame::popup(ui.style()).show(ui, |ui| {
@@ -1621,15 +1601,35 @@ impl Editor {
     }
 }
 
+/// What a shifted key with no command of its own does: a caret movement's key extends the
+/// selection, and Shift+Backspace still deletes back.
+// core-candidate: the shell's keys leave caret keys to the document; every app on the engine
+// needs this rule.
+fn shifted(map: &jcj_shell::keys::KeyMap, shortcut: &str) -> Option<jcj_shell::Cmd> {
+    let mut s = jcj_shell::keys::parse_shortcut(shortcut)?;
+    if !s.shift {
+        return None;
+    }
+    s.shift = false;
+    let id = map.bound_to(&s.to_string())?;
+    if id.starts_with("caret.") {
+        Some(jcj_shell::Cmd::with(id, json!({"extend": true})))
+    } else if id == "text.backspace" {
+        Some(jcj_shell::Cmd::new(id))
+    } else {
+        None
+    }
+}
+
 /// An empty document, for a view with nothing to show.
-fn empty_document() -> &'static wordsmith_doc::Document {
-    static EMPTY: std::sync::LazyLock<wordsmith_doc::Document> = std::sync::LazyLock::new(wordsmith_doc::Document::new);
+fn empty_document() -> &'static jcj_doc::Document {
+    static EMPTY: std::sync::LazyLock<jcj_doc::Document> = std::sync::LazyLock::new(jcj_doc::Document::new);
     &EMPTY
 }
 
 /// The text column's width, points: what the continuous views lay the script out at, so lines
 /// break as on paper.
-fn text_width(doc: &wordsmith_doc::Document) -> f32 {
+fn text_width(doc: &jcj_doc::Document) -> f32 {
     let s = &doc.last_section;
     (s.page_w - s.margin_left - s.margin_right).max(72.0)
 }
@@ -1637,7 +1637,7 @@ fn text_width(doc: &wordsmith_doc::Document) -> f32 {
 /// The draft view's document: the script with every element at the left margin, left-aligned,
 /// with no space before except before Scene Headings. Paragraphs, text and casing are the
 /// script's own, so positions are the same.
-pub fn draft_document(doc: &wordsmith_doc::Document) -> wordsmith_doc::Document {
+pub fn draft_document(doc: &jcj_doc::Document) -> jcj_doc::Document {
     let mut out = doc.clone();
     let elements = Elements::of_doc(doc);
     let sheet = Arc::make_mut(&mut out.styles);
@@ -1646,7 +1646,7 @@ pub fn draft_document(doc: &wordsmith_doc::Document) -> wordsmith_doc::Document 
         st.para.indent_left = Some(0.0);
         st.para.indent_right = Some(0.0);
         st.para.indent_first = Some(0.0);
-        st.para.align = Some(wordsmith_doc::props::Align::Left);
+        st.para.align = Some(jcj_doc::props::Align::Left);
         st.para.space_before = Some(if heading { wordsmith_script::template::LINE } else { 0.0 });
         st.para.page_break_before = Some(false);
     }

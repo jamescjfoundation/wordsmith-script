@@ -22,7 +22,7 @@ enum Act {
 fn beat_card(ui: &mut Ui, b: &Beat, pages: Option<&(usize, usize)>, act: &mut Option<Act>, lane: Option<u32>, index: usize) {
     let fill =
         wordsmith_script::revisions::parse_color(&b.color).map_or(egui::Color32::from_rgb(255, 242, 168), |c| egui::Color32::from_rgb(c.0, c.1, c.2));
-    let drag = ui.dnd_drag_source(Id::new(("outline-beat", b.id)), b.id, |ui| {
+    let drag = ui.dnd_drag_source(Id::unique(("outline-beat", b.id)), b.id, |ui| {
         egui::Frame::new().fill(fill).corner_radius(6.0).inner_margin(6.0).show(ui, |ui| {
             ui.set_min_size(CARD - vec2(12.0, 12.0));
             ui.set_max_width(CARD.x - 12.0);
@@ -150,8 +150,8 @@ pub fn view(ed: &mut Editor, ui: &mut Ui) {
         Some(Act::Run(cmd, params)) => ed.run(cmd, params),
         Some(Act::Edit(id)) => {
             if let Some(b) = Storyboard::of_doc(&ed.session.doc).beat(id) {
-                ed.board.selected = Some(id);
-                ed.board.edit = Some(crate::board::BeatEdit::of(b));
+                ed.board.selection.select(Some(jcj_board::CardId(id)));
+                ed.board.edit = Some(crate::board::edit_of(b));
             }
         }
         None => {}

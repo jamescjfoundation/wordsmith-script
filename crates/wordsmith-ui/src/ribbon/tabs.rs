@@ -6,20 +6,37 @@ use egui::Ui;
 use serde_json::json;
 use wordsmith_script::{ElementKind, Elements};
 
-use super::Tab;
-use super::widgets::{big, check, chip, choice, cmd, cmd_with, drop, group, item, item_with_key, popup_menu, small, stack, tile, tile_sized};
+use jcj_shell::workspace::Side;
+
+use super::tab;
+use super::widgets::{Rb, big, check, chip, choice, cmd, cmd_with, drop, group, item, popup_menu, small, stack, tile, tile_sized};
 use crate::editor::{Editor, View};
 
-pub fn draw(ed: &mut Editor, ui: &mut Ui) {
-    match ed.chrome.tab {
-        Tab::Write => write(ed, ui),
-        Tab::Insert => insert(ed, ui),
-        Tab::Plan => plan(ed, ui),
-        Tab::Production => production(ed, ui),
-        Tab::Review => review(ed, ui),
-        Tab::View => view(ed, ui),
-        Tab::Board => board(ed, ui),
-        Tab::Cards => cards(ed, ui),
+/// The command that turns text style `style` (as `format.state` names it) on or off.
+pub fn style_cmd(style: &str, on: bool) -> jcj_shell::Cmd {
+    let underline = |kind: &str| cmd_with("format.underline", json!({"style": kind, "value": on}));
+    match style {
+        "strike" => cmd_with("format.strikethrough", json!({"value": on})),
+        "doubleUnderline" => underline("double"),
+        "dottedUnderline" => underline("dotted"),
+        "wordUnderline" => underline("words"),
+        "caps" => cmd_with("format.allCaps", json!({"value": on})),
+        other => cmd_with(format!("format.{other}"), json!({"value": on})),
+    }
+}
+
+/// Draw tab `id`'s groups.
+pub fn draw(id: &str, ed: &mut Rb<'_>, ui: &mut Ui) {
+    match id {
+        tab::WRITE => write(ed, ui),
+        tab::INSERT => insert(ed, ui),
+        tab::PLAN => plan(ed, ui),
+        tab::PRODUCTION => production(ed, ui),
+        tab::REVIEW => review(ed, ui),
+        tab::VIEW => view(ed, ui),
+        tab::BOARD => board(ed, ui),
+        tab::CARDS => cards(ed, ui),
+        _ => {}
     }
 }
 
@@ -89,7 +106,7 @@ fn styles_on(ed: &mut Editor) -> Vec<String> {
         .collect()
 }
 
-fn write(ed: &mut Editor, ui: &mut Ui) {
+fn write(ed: &mut Rb<'_>, ui: &mut Ui) {
     group(ui, ed, "Clipboard", |ui, ed| {
         big(ui, ed, cmd("edit.paste"), "", "Paste", "Put in what the clipboard holds.", false);
         stack(ui, |ui| {
@@ -98,7 +115,7 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
             small(ui, ed, cmd("select.all"), "select", "Select All", "", false);
         });
     });
-    let data = ed.ribbon_data();
+    let data = ed.data.clone();
     let here = data.here;
     group(ui, ed, "Elements", |ui, ed| {
         let main = [
@@ -114,7 +131,7 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
             for (i, (id, kind, name)) in main.iter().enumerate() {
                 let key = data.keys.iter().find(|(k, _)| k == id).map_or(String::new(), |(_, v)| v.clone());
                 let about = data.flows.iter().find(|(k, _)| k == kind).map_or(String::new(), |(_, v)| v.clone());
-                tile(ui, ed, cmd(id), "", (name, &key), &about, here == *kind);
+                tile(ui, ed, cmd(*id), "", (name, &key), &about, here == *kind);
                 if i % 4 == 3 {
                     ui.end_row();
                 }
@@ -148,7 +165,7 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
                 small(ui, ed, cmd("format.bold"), "", "", "Bold.", is("bold"));
                 small(ui, ed, cmd("format.italic"), "", "", "Italic.", is("italic"));
                 small(ui, ed, cmd("format.underline"), "", "", "Underline.", is("underline"));
-                small(ui, ed, cmd_with("format.style", json!({"style": "strike"})), "strike", "", "Strike through.", is("strike"));
+                small(ui, ed, style_cmd("strike", !is("strike")), "strike", "", "Strike through.", is("strike"));
             });
             ui.horizontal(|ui| {
                 drop(ui, ed, "Highlight ▾", "Highlight the selection", |ui, ed| {
@@ -167,10 +184,10 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
                         ("caps", "Capitals"),
                         ("smallCaps", "Small Capitals"),
                     ] {
-                        check(ui, ed, cmd_with("format.style", json!({"style": style, "on": !is(style)})), label, is(style));
+                        check(ui, ed, style_cmd(style, !is(style)), label, is(style));
                     }
                     ui.separator();
-                    item(ui, ed, cmd("format.lowercase"), "Small Letters");
+                    item(ui, ed, cmd_with("format.changeCase", json!({"mode": "lower"})), "Small Letters");
                     ui.separator();
                     for (name, hex) in [("Black ink", "#000000"), ("Red ink", "#C0392B"), ("Blue ink", "#1F5FA8"), ("Automatic ink", "auto")] {
                         item(ui, ed, cmd_with("format.color", json!({"color": hex})), name);
@@ -193,7 +210,7 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
                 "A capital at the start of each sentence.",
                 typing.auto_capitalize,
             );
-            small(ui, ed, cmd("text.toggleCase"), "", "Toggle Case", "Capitals, or back to small letters.", false);
+            small(ui, ed, cmd("format.toggleCapitals"), "", "Toggle Case", "Capitals, or back to small letters.", false);
         });
         big(ui, ed, cmd("element.reset"), "", "Reset to Element", "Drop formatting set by hand.", false);
     });
@@ -206,15 +223,7 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
             small(ui, ed, cmd("bookmark.previous"), "bookmark", "Previous Bookmark", "", false);
         });
         stack(ui, |ui| {
-            small(
-                ui,
-                ed,
-                cmd("view.bookmarks"),
-                "",
-                "All Bookmarks",
-                "The Script panel's bookmarks.",
-                ed.chrome.left == Some(super::Panel::Bookmarks),
-            );
+            small(ui, ed, cmd("view.bookmarks"), "", "All Bookmarks", "The Script panel's bookmarks.", ed.shell.layout.is_open("bookmarks"));
             small(ui, ed, cmd("select.scene"), "select", "Select Scene", "", false);
         });
     });
@@ -225,7 +234,7 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
                 small(
                     ui,
                     ed,
-                    cmd_with("macro.run", json!({"slot": i + 1})),
+                    cmd(crate::commands::macro_id(i + 1)),
                     "macro",
                     &m.name,
                     &format!("Run this macro ({}).", m.shortcut.clone().unwrap_or_default()),
@@ -234,8 +243,7 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
             }
             drop(ui, ed, "All Macros ▾", "Run a macro", |ui, ed| {
                 for (i, m) in all.slots.iter().enumerate().filter(|(_, m)| !m.is_empty()) {
-                    let key = m.shortcut.clone().unwrap_or_default();
-                    item_with_key(ui, ed, cmd_with("macro.run", json!({"slot": i + 1})), &format!("{}. {}", i + 1, m.name), &key);
+                    item(ui, ed, cmd(crate::commands::macro_id(i + 1)), &format!("{}. {}", i + 1, m.name));
                 }
                 ui.separator();
                 item(ui, ed, cmd("view.macros"), "Edit Macros…");
@@ -244,7 +252,7 @@ fn write(ed: &mut Editor, ui: &mut Ui) {
     });
 }
 
-fn insert(ed: &mut Editor, ui: &mut Ui) {
+fn insert(ed: &mut Rb<'_>, ui: &mut Ui) {
     group(ui, ed, "Script", |ui, ed| {
         big(ui, ed, cmd("scene.insert"), "", "New Scene", "A scene heading after this scene.", false);
         big(ui, ed, cmd("text.pageBreak"), "", "Page Break", "Start a new page here.", false);
@@ -262,7 +270,7 @@ fn insert(ed: &mut Editor, ui: &mut Ui) {
     });
 }
 
-fn plan(ed: &mut Editor, ui: &mut Ui) {
+fn plan(ed: &mut Rb<'_>, ui: &mut Ui) {
     use crate::structure::Structure;
     let s = ed.structure;
     group(ui, ed, "Views", |ui, ed| {
@@ -288,7 +296,7 @@ fn plan(ed: &mut Editor, ui: &mut Ui) {
     });
 }
 
-fn production(ed: &mut Editor, ui: &mut Ui) {
+fn production(ed: &mut Rb<'_>, ui: &mut Ui) {
     let rev = wordsmith_script::revisions::Revisions::of_doc(&ed.session.doc);
     group(ui, ed, "Revisions", |ui, ed| {
         big(ui, ed, cmd("revision.mode"), "", "Revision Mode", "Mark every change in the current set.", rev.mode);
@@ -299,7 +307,7 @@ fn production(ed: &mut Editor, ui: &mut Ui) {
                     wordsmith_script::revisions::parse_color(&s.color).map_or(egui::Color32::WHITE, |c| egui::Color32::from_rgb(c.0, c.1, c.2)),
                 )
             });
-            let resp = chip(ui, ed, color, &name, "The current set. Click to choose another.");
+            let resp = chip(ui, color, &name, "The current set. Click to choose another.");
             popup_menu(ui, ed, &resp, "Revision set", |ui, ed| {
                 for set in &rev.sets {
                     choice(ui, ed, cmd_with("revision.setCurrent", json!({"name": set.name})), &set.name, set.name == rev.current);
@@ -367,7 +375,7 @@ fn production(ed: &mut Editor, ui: &mut Ui) {
     });
 }
 
-fn review(ed: &mut Editor, ui: &mut Ui) {
+fn review(ed: &mut Rb<'_>, ui: &mut Ui) {
     group(ui, ed, "Proofing", |ui, ed| {
         big(ui, ed, cmd("view.checker"), "", "Check Format", "Empty paragraphs, names with no speech…", false);
         let spelling = ed.spelling;
@@ -396,7 +404,7 @@ fn review(ed: &mut Editor, ui: &mut Ui) {
             ];
             for (i, (kind, label)) in kinds.iter().enumerate() {
                 let about = format!("The {} report.", label.to_lowercase());
-                tile_sized(ui, ed, cmd_with("view.reports", json!({"kind": kind})), "report", (label, ""), &about, false, 78.0);
+                tile_sized(ui, ed, cmd_with("view.reports", json!({"kind": kind})), "report", (label, ""), &about, 78.0);
                 if i % 4 == 3 {
                     ui.end_row();
                 }
@@ -409,12 +417,12 @@ fn review(ed: &mut Editor, ui: &mut Ui) {
     });
     group(ui, ed, "Habits", |ui, ed| {
         big(ui, ed, cmd("view.stats"), "", "Statistics", "Streaks, words, pages, time, goals.", false);
-        let on = crate::workspace::sprint_left(ed).is_some();
+        let on = crate::workspace::sprint_left(ed.ed).is_some();
         big(ui, ed, cmd("view.sprint"), "", "Sprint", "Write against the clock.", on);
     });
 }
 
-fn view(ed: &mut Editor, ui: &mut Ui) {
+fn view(ed: &mut Rb<'_>, ui: &mut Ui) {
     let v = ed.view;
     group(ui, ed, "Script View", |ui, ed| {
         big(ui, ed, cmd("view.page"), "", "Page", "Pages as they print.", v == View::Page && ed.structure.is_none());
@@ -422,14 +430,14 @@ fn view(ed: &mut Editor, ui: &mut Ui) {
         big(ui, ed, cmd("view.speed"), "", "Draft", "Plain and fast.", v == View::Draft && ed.structure.is_none());
     });
     group(ui, ed, "Panels", |ui, ed| {
-        let left = ed.chrome.left.is_some();
-        let right = ed.chrome.right.is_some();
+        let left = ed.shell.layout.open_on(Side::Left).is_some();
+        let right = ed.shell.layout.open_on(Side::Right).is_some();
         big(ui, ed, cmd("view.scriptPanel"), "", "Script Panel", "Scenes, outline, bookmarks, notes, characters, find.", left);
         big(ui, ed, cmd("view.inspector"), "", "Inspector", "The element and scene at the caret, revisions, the page…", right);
         stack(ui, |ui| {
             small(ui, ed, cmd("view.tables"), "", "Tables", "Scenes, characters and notes as tables.", ed.tables.is_some());
             small(ui, ed, cmd("view.strip"), "", "Structure Strip", "", ed.tools.strip);
-            let menu = ed.chrome.menu_bar;
+            let menu = ed.menu_bar;
             small(ui, ed, cmd("view.menuBar"), "", "Menu Bar", "The menus under the quick-access row.", menu);
         });
     });
@@ -485,12 +493,12 @@ fn view(ed: &mut Editor, ui: &mut Ui) {
     });
 }
 
-fn board(ed: &mut Editor, ui: &mut Ui) {
+fn board(ed: &mut Rb<'_>, ui: &mut Ui) {
     let sb = wordsmith_script::storyboard::Storyboard::of_doc(&ed.session.doc);
     let current = ed.board.current;
     group(ui, ed, "Beats", |ui, ed| {
         big(ui, ed, cmd_with("beat.add", json!({"board": current})), "", "Add Beat", "A new beat on this board.", false);
-        let sel = ed.board.selected;
+        let sel = ed.board.selected();
         if let Some(id) = sel {
             big(
                 ui,
@@ -505,8 +513,7 @@ fn board(ed: &mut Editor, ui: &mut Ui) {
         }
     });
     group(ui, ed, "Arrange", |ui, ed| {
-        let mut ids: Vec<u32> = ed.board.selected.into_iter().collect();
-        ids.extend(ed.board.also.iter().copied());
+        let ids = ed.board.ids();
         stack(ui, |ui| {
             small(
                 ui,
@@ -531,7 +538,7 @@ fn board(ed: &mut Editor, ui: &mut Ui) {
     });
 }
 
-fn cards(ed: &mut Editor, ui: &mut Ui) {
+fn cards(ed: &mut Rb<'_>, ui: &mut Ui) {
     group(ui, ed, "Show", |ui, ed| {
         stack(ui, |ui| {
             let per_row = ed.tools.cards.per_row;

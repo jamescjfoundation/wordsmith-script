@@ -77,7 +77,7 @@ pub fn panel(ed: &mut Editor, ui: &mut Ui) {
                     let r = Rect::from_min_max(Pos2::new(x0 + start * per_page, y + 2.0), Pos2::new(x0 + end * per_page - 1.0, y + LANE_H - 2.0));
                     let shade = if k % 2 == 0 { Color32::from_rgb(205, 218, 235) } else { Color32::from_rgb(222, 230, 242) };
                     let fill = color_of(b["color"].as_str().unwrap_or(""), shade);
-                    let resp = ui.interact(r, ui.id().with(("strip", i, k)), Sense::click());
+                    let resp = ui.interact(r, ui.scope_id().with(("strip", i, k)), Sense::click());
                     painter.rect_filled(r, 3.0, fill);
                     if resp.hovered() {
                         painter.rect_stroke(r, 3.0, Stroke::new(1.5, ui.visuals().selection.stroke.color), egui::StrokeKind::Inside);
@@ -93,7 +93,7 @@ pub fn panel(ed: &mut Editor, ui: &mut Ui) {
         });
     });
     if let Some(block) = go {
-        ed.session.sel = wordsmith_engine::Selection::caret(wordsmith_script::data::body_pos(block, 0));
+        ed.session.sel = jcj_engine::Selection::caret(wordsmith_script::data::body_pos(block, 0));
         ed.request_scroll_to_caret();
     }
 }

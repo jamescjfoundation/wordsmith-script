@@ -384,7 +384,7 @@ fn character_window(ed: &mut Editor, ctx: &Context) {
                 action = Some(("character.set", json!({"name": name, "highlightOn": on})));
             }
             let hex = info["person"]["highlight"].as_str().unwrap_or("#FFF176");
-            let c = wordsmith_script::revisions::parse_color(hex).unwrap_or(wordsmith_doc::props::Rgb(255, 241, 118));
+            let c = wordsmith_script::revisions::parse_color(hex).unwrap_or(jcj_doc::props::Rgb(255, 241, 118));
             let mut color = egui::Color32::from_rgb(c.0, c.1, c.2);
             if ui.color_edit_button_srgba(&mut color).changed() {
                 action = Some(("character.set", json!({"name": name, "highlight": format!("#{:02X}{:02X}{:02X}", color.r(), color.g(), color.b())})));

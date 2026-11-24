@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Icons for screenplay work, our own, drawn in code on a 20 × 20 grid in two colors (line work
-//! and an accent), beside the general icons copied from WordCraft (`crate::icons`). [`paint`]
-//! tries ours first, then WordCraft's, which falls back to a lettered tile.
+//! and an accent), beside the shell's general icons (`jcj_shell::icons`). [`paint`] tries ours
+//! first, then the shell's, which falls back to a lettered tile. The shell's own controls (ribbon
+//! buttons, rails, File page) draw only its general icons, so they are given the closest general
+//! one ([`generic`]).
 
 use egui::{Color32, Painter, Pos2, Rect, Shape, Stroke, pos2, vec2};
 
@@ -56,11 +58,11 @@ impl Pen<'_> {
     }
 }
 
-/// Paint icon `name` into `r`: ours, else WordCraft's general set.
+/// Paint icon `name` into `r`: ours, else the shell's general set.
 pub fn paint(p: &Painter, r: Rect, name: &str, c: Color32, accent: Color32) {
     let pen = Pen { p, r, c, a: accent };
     if !ours(&pen, name) {
-        crate::icons::paint(p, r, name, c, accent);
+        jcj_shell::icons::paint(p, r, name, c, accent);
     }
 }
 
@@ -367,7 +369,7 @@ pub fn for_command(id: &str) -> &'static str {
         "element.sequence" => "el.sequence",
         "element.outline1" | "element.outline2" | "element.outline3" | "element.summary" | "element.note" | "outline.show" => "el.outline",
         "element.reset" => "el.reset",
-        "text.toggleCase" => "el.case",
+        "text.toggleCase" | "format.toggleCapitals" | "format.changeCase" => "el.case",
         "typing.smartQuotes" => "el.quotes",
         "typing.autoCapitalize" => "el.case",
         "edit.cut" => "cut",
@@ -438,7 +440,83 @@ pub fn for_command(id: &str) -> &'static str {
         "storyboard.exportPdf" | "cards.exportPdf" => "export",
         "view.templates" | "file.saveAsTemplate" => "template",
         "file.newTab" => "newtab",
+        "select.all" | "select.scene" => "select",
+        "file.new" => "file",
+        "file.import" => "open",
+        "file.exportPdfAs" | "file.exportRevisedPdfAs" | "file.exportFountain" | "file.exportText" | "file.exportRtf" | "file.exportHtml" => "export",
+        "file.revert" => "recover",
+        "file.closeTab" => "close",
+        "app.preferences" => "options",
+        "view.keys" => "macros",
+        "help.about" => "help",
+        "help.checkForUpdates" | "file.recoverPrompt" => "recover",
+        "view.commandPalette" => "search",
+        "format.strikethrough" => "strike",
+        "format.highlight" => "highlight",
+        "format.color" => "fontcolor",
         "view.splitCards" | "view.splitBoard" | "view.splitOutline" | "view.splitScenes" | "view.splitScript" | "view.unsplit" => "view.split",
         _ => "",
+    }
+}
+
+/// The general icon (`jcj_shell::icons`) closest to icon `name`, for the shell's own controls,
+/// which draw only those. A screenplay icon with no general match is given a word whose first
+/// letter the shell's lettered tile shows.
+pub fn generic(name: &str) -> &str {
+    match name {
+        "el.sceneHeading" => "Scene",
+        "el.action" => "Action",
+        "el.character" => "Character",
+        "el.parenthetical" => "Parenthetical",
+        "el.dialogue" => "Dialogue",
+        "el.transition" => "Transition",
+        "el.shot" => "Shot",
+        "el.more" => "more",
+        "el.sequence" => "Sequence",
+        "el.outline" | "view.outlineView" => "outline",
+        "el.reset" => "clear",
+        "el.case" => "case",
+        "el.quotes" => "Quotes",
+        "view.page" => "printLayout",
+        "view.normal" => "webLayout",
+        "view.draft" => "draft",
+        "view.cards" => "multiplePages",
+        "view.scenes" => "onePage",
+        "view.board" => "canvas",
+        "view.strip" => "ruler",
+        "view.tables" => "table",
+        "view.scriptPanel" => "navPane",
+        "view.inspector" => "properties",
+        "view.split" => "split",
+        "view.focus" => "focus",
+        "view.typewriter" => "readMode",
+        "view.dark" => "darkMode",
+        "view.highlight" => "highlight",
+        "view.zoomIn" => "zoomIn",
+        "view.zoomOut" => "zoom",
+        "goto" => "next",
+        "note" => "comment",
+        "macro" => "macros",
+        "scene.new" => "addText",
+        "pagebreak" => "pageBreak",
+        "dual" => "columns",
+        "titlepage" => "coverPage",
+        "revision" => "pageColor",
+        "revision.next" => "next",
+        "lock" | "unlock" => "protect",
+        "scene.number" => "pageNumber",
+        "omit" => "eraser",
+        "track" => "trackChanges",
+        "check" | "spelling" => "checkErrors",
+        "report" => "chart",
+        "stats" => "wordCount",
+        "sprint" => "replayPlay",
+        "characters" => "user",
+        "beat" => "addNote",
+        "arrange" => "align",
+        "template" => "documentTemplate",
+        "newtab" => "newWindow",
+        "header" => "header",
+        other => other,
     }
 }

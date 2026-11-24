@@ -1,31 +1,36 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! Menus, toolbar and status bar. Every item runs a command by id; labels and shortcuts come from
-//! the registry, so menus, keys, the palette, the CLI and MCP never disagree.
+//! The menu bar, the find bar and Script's part of the status bar. Every item runs a command by
+//! id; labels and shortcuts come from the registry, so menus, keys, the palette, the CLI and MCP
+//! never disagree.
 
 use egui::Ui;
+use jcj_shell::{Cmd, Shell};
 use serde_json::json;
-use wordsmith_script::{ElementKind, Elements};
+use wordsmith_script::Elements;
 
 use crate::editor::Editor;
-use crate::ribbon::widgets::{self, Cmd, cmd, cmd_with, link, menu};
+use crate::ribbon::widgets::{self, Rb, cmd, cmd_with, link, menu};
 
 /// A menu item for command `id`, labelled and with its shortcut from the registry; greyed out
 /// when the command says it cannot run.
-fn item(ed: &mut Editor, ui: &mut Ui, id: &'static str) {
+fn item(ed: &mut Rb<'_>, ui: &mut Ui, id: &'static str) {
     let label = ed.session.registry.get(id).map_or(id, |s| s.label);
     widgets::item(ui, ed, cmd(id), label);
 }
 
-pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
+/// The menu bar (View › Menu Bar), at the top of the document area.
+pub fn menu_bar(editor: &mut Editor, ui: &mut Ui, shell: &mut Shell) {
+    let data = editor.ribbon_data();
+    let ed = &mut Rb { shell, ed: editor, data };
     egui::Panel::top("menu").show(ui, |ui| {
         egui::MenuBar::new().ui(ui, |ui| {
             menu(ui, ed, "File", |ui, ed| {
                 for id in ["file.new", "view.templates", "file.newTab", "file.open", "file.import"] {
                     item(ed, ui, id);
                 }
-                if !ed.recent.is_empty() {
+                if !ed.shell.recent.is_empty() {
                     menu(ui, ed, "Open Recent", |ui, ed| {
-                        for r in ed.recent.clone() {
+                        for r in ed.shell.recent.clone() {
                             let name = std::path::Path::new(&r).file_name().and_then(|n| n.to_str()).unwrap_or(&r).to_string();
                             widgets::item(ui, ed, cmd_with("file.openPath", json!({"path": r})), &name);
                         }
@@ -95,7 +100,7 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                     }
                 });
                 menu(ui, ed, "Text Style", |ui, ed| {
-                    let on = ed.session.run("format.state", &json!({})).ok().and_then(|v| v["styles"].as_array().cloned()).unwrap_or_default();
+                    let on = ed.data.styles.clone();
                     for (style, label) in [
                         ("bold", "Bold"),
                         ("italic", "Italic"),
@@ -110,10 +115,10 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                         ("smallCaps", "Small Capitals"),
                     ] {
                         let is = on.iter().any(|x| x == style);
-                        widgets::check(ui, ed, cmd_with("format.style", json!({"style": style, "on": !is})), label, is);
+                        widgets::check(ui, ed, crate::ribbon::tabs::style_cmd(style, !is), label, is);
                     }
                     ui.separator();
-                    item(ed, ui, "format.lowercase");
+                    widgets::item(ui, ed, cmd_with("format.changeCase", json!({"mode": "lower"})), "Small Letters");
                     item(ed, ui, "format.plain");
                 });
                 menu(ui, ed, "Highlight", |ui, ed| {
@@ -126,7 +131,8 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                         let resp = ui.color_edit_button_srgba(&mut custom);
                         widgets::record(ed, Some("format.highlight"), resp.rect);
                         if resp.changed() {
-                            ed.run("format.highlight", json!({"color": format!("#{:02X}{:02X}{:02X}", custom.r(), custom.g(), custom.b())}));
+                            let color = format!("#{:02X}{:02X}{:02X}", custom.r(), custom.g(), custom.b());
+                            ed.shell.run(Cmd::with("format.highlight", json!({"color": color})));
                         }
                     });
                     widgets::item(ui, ed, cmd_with("format.highlight", json!({"color": "none"})), "None");
@@ -145,7 +151,7 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 });
                 item(ed, ui, "dialogue.dual");
                 item(ed, ui, "element.reset");
-                item(ed, ui, "text.toggleCase");
+                item(ed, ui, "format.toggleCapitals");
                 ui.separator();
                 let typing = wordsmith_script::typing::Typing::of_doc(&ed.session.doc);
                 widgets::check(ui, ed, cmd("typing.smartQuotes"), "Smart Quotes", typing.smart_quotes);
@@ -239,10 +245,9 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                     item(ed, ui, id);
                 }
                 menu(ui, ed, "Run Macro", |ui, ed| {
-                    let all = wordsmith_script::macros::Macros::of_doc(&ed.session.doc);
+                    let all = ed.data.macros.clone();
                     for (i, m) in all.slots.iter().enumerate().filter(|(_, m)| !m.is_empty()) {
-                        let key = m.shortcut.clone().unwrap_or_default();
-                        widgets::item_with_key(ui, ed, cmd_with("macro.run", json!({"slot": i + 1})), &format!("{}. {}", i + 1, m.name), &key);
+                        widgets::item(ui, ed, cmd(crate::commands::macro_id(i + 1)), &format!("{}. {}", i + 1, m.name));
                     }
                 });
             });
@@ -250,40 +255,6 @@ pub fn menu_bar(ed: &mut Editor, ui: &mut Ui) {
                 item(ed, ui, "help.checkForUpdates");
                 item(ed, ui, "help.about");
             });
-        });
-    });
-}
-
-pub fn toolbar(ed: &mut Editor, ui: &mut Ui) {
-    egui::Panel::top("toolbar").show(ui, |ui| {
-        ui.horizontal(|ui| {
-            if ui.add_enabled(ed.session.can_undo(), egui::Button::new("Undo")).clicked() {
-                ed.run("edit.undo", json!({}));
-            }
-            if ui.add_enabled(ed.session.can_redo(), egui::Button::new("Redo")).clicked() {
-                ed.run("edit.redo", json!({}));
-            }
-            ui.separator();
-            let elements = Elements::of_doc(&ed.session.doc);
-            let current = match ed.session.doc.para_at(&ed.session.sel.focus) {
-                Some(p) => elements.of_para(p).clone(),
-                None => {
-                    elements.of_kind(ElementKind::General).cloned().unwrap_or_else(|| wordsmith_script::element::builtin_def(ElementKind::General))
-                }
-            };
-            let mut chosen = None;
-            egui::ComboBox::from_id_salt("element").selected_text(current.name.as_str()).width(160.0).show_ui(ui, |ui| {
-                for def in elements.all().iter().filter(|d| !d.kind.is_outline() || d.id == current.id) {
-                    if ui.selectable_label(def.id == current.id, def.name.as_str()).clicked() {
-                        chosen = Some(def.id.clone());
-                    }
-                }
-            });
-            if let Some(id) = chosen {
-                ed.run("element.set", json!({"element": id}));
-            }
-            ui.separator();
-            ui.label(format!("{:.0}%", ed.zoom * 100.0));
         });
     });
 }
@@ -325,7 +296,8 @@ pub fn find_bar(ed: &mut Editor, ui: &mut Ui) {
                     }
                 }
             });
-            for (label, id) in [("Previous", "find.previous"), ("Next", "find.next"), ("Replace", "replace.one"), ("Replace All", "replace.all")] {
+            for (label, id) in [("Previous", "find.previous"), ("Next", "find.next"), ("Replace", "find.replace"), ("Replace All", "find.replaceAll")]
+            {
                 if ui.button(label).clicked() {
                     action = Some(id);
                 }
@@ -341,10 +313,7 @@ pub fn find_bar(ed: &mut Editor, ui: &mut Ui) {
     });
     if close {
         ed.find_bar = false;
-        // The Find panel keeps showing its matches.
-        if ed.chrome.left != Some(crate::ribbon::Panel::Find) {
-            ed.find = None;
-        }
+        // The Find panel keeps showing its matches (the window drops them when it is closed).
         return;
     }
     if let Some(id) = action.filter(|_| !bar.query.is_empty()) {
@@ -358,122 +327,124 @@ pub fn find_bar(ed: &mut Editor, ui: &mut Ui) {
     ed.find = Some(bar);
 }
 
-pub fn status_bar(ed: &mut Editor, ui: &mut Ui) {
-    let t = crate::theme::Tokens::get(ui.ctx());
-    let frame = egui::Frame::NONE.fill(t.surface).stroke(egui::Stroke::new(1.0, t.border)).inner_margin(egui::Margin::symmetric(10, 3));
-    ed.chrome.place = crate::ribbon::Place::Status;
-    let bar = egui::Panel::bottom("status").frame(frame).show(ui, |ui| {
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 10.0;
-            let dim = |s: String| egui::RichText::new(s).color(t.text_dim).size(12.0);
-            let pag = ed.paginated();
-            let page = pag.to_output(&ed.session.sel.focus).and_then(|at| pag.layout.caret(&at)).map_or(1, |c| c.page + 1);
-            let pages = pag.layout.pages.len();
-            let page_text = match pag.labels.as_ref().and_then(|l| l.get(page - 1)) {
-                Some(label) => format!("Page {label} (locked) · {page} of {pages}"),
-                None => format!("Page {page} of {pages}"),
-            };
-            link(ui, ed, cmd("view.goto"), dim(page_text), "Go to a page or scene.");
-            let words = ed.stats.words_now.1;
-            link(ui, ed, cmd("view.stats"), dim(format!("{words} words")), "Writing statistics.");
-            let all = wordsmith_script::scenes(&ed.session.doc);
-            let here = wordsmith_script::scenes::scene_at(&all, ed.session.sel.focus.path.last()).map(|s| s.index + 1);
-            let scene_text = match here {
-                Some(n) => format!("Scene {n} of {}", all.len()),
-                None => format!("{} scenes", all.len()),
-            };
-            link(ui, ed, cmd_with("view.scriptPanel", json!({"panel": "scenes"})), dim(scene_text), "Show the scenes.");
-            ui.separator();
-            // What Return and Tab make from here (SPEC-2 3.2).
-            if let Ok(h) = ed.session.run("element.hint", &json!({})) {
-                let tab = h["tab"].as_str().unwrap_or("nothing");
-                let element = egui::RichText::new(h["element"].as_str().unwrap_or("")).font(crate::theme::medium(12.0)).color(t.text);
-                ui.add(egui::Label::new(element).selectable(false));
-                ui.add(egui::Label::new(dim(format!("Return: {}  ·  Tab: {tab}", h["enter"].as_str().unwrap_or("")))).selectable(false));
+/// Script's part of the status bar: the page, words, the scene, what Return and Tab make, what is
+/// on (revision mode, tracking), and at the right the zoom, the views, focus and the sprint. The
+/// shell adds its message and the theme switch after it.
+pub fn status_bar(editor: &mut Editor, ui: &mut Ui, shell: &mut Shell) {
+    let t = crate::theme::get(ui.ctx());
+    let dim = |s: String| egui::RichText::new(s).color(t.text_dim).size(12.0);
+    // What needs the editor itself, before the controls are drawn.
+    let pag = editor.paginated();
+    let page = pag.to_output(&editor.session.sel.focus).and_then(|at| pag.layout.caret(&at)).map_or(1, |c| c.page + 1);
+    let pages = pag.layout.pages.len();
+    let page_text = match pag.labels.as_ref().and_then(|l| l.get(page - 1)) {
+        Some(label) => format!("Page {label} (locked) · {page} of {pages}"),
+        None => format!("Page {page} of {pages}"),
+    };
+    let hint = editor.session.run("element.hint", &json!({})).ok();
+    let sprint = match crate::workspace::sprint_left(editor) {
+        Some(left) => format!("Sprint {}:{:02}", left.as_secs() / 60, left.as_secs() % 60),
+        None => "Sprint".into(),
+    };
+    // Room the shell's message and theme switch take after this part.
+    let message_w = if shell.message.is_empty() {
+        0.0
+    } else {
+        ui.painter().layout_no_wrap(shell.message.clone(), egui::FontId::proportional(12.5), t.danger).size().x + 10.0
+    };
+    let data = editor.ribbon_data();
+    let ed = &mut Rb { shell, ed: editor, data };
+    link(ui, ed, cmd("view.goto"), dim(page_text), "Go to a page or scene.");
+    let words = ed.stats.words_now.1;
+    link(ui, ed, cmd("view.stats"), dim(format!("{words} words")), "Writing statistics.");
+    let all = wordsmith_script::scenes(&ed.session.doc);
+    let here = wordsmith_script::scenes::scene_at(&all, ed.session.sel.focus.path.last()).map(|s| s.index + 1);
+    let scene_text = match here {
+        Some(n) => format!("Scene {n} of {}", all.len()),
+        None => format!("{} scenes", all.len()),
+    };
+    link(ui, ed, cmd_with("view.scriptPanel", json!({"panel": "scenes"})), dim(scene_text), "Show the scenes.");
+    ui.separator();
+    // What Return and Tab make from here (SPEC-2 3.2).
+    if let Some(h) = hint {
+        let tab = h["tab"].as_str().unwrap_or("nothing");
+        let element = egui::RichText::new(h["element"].as_str().unwrap_or("")).font(crate::theme::medium(12.0)).color(t.text);
+        ui.add(egui::Label::new(element).selectable(false));
+        ui.add(egui::Label::new(dim(format!("Return: {}  ·  Tab: {tab}", h["enter"].as_str().unwrap_or("")))).selectable(false));
+    }
+    let rev = wordsmith_script::revisions::Revisions::of_doc(&ed.session.doc);
+    // A chip says what is on; one that opens a panel runs that command.
+    let chip = |ui: &mut Ui, ed: &mut Rb<'_>, text: &str, color: egui::Color32, tip: &str, opens: Option<Cmd>| {
+        let g = ui.painter().layout_no_wrap(text.to_string(), crate::theme::regular(11.5), t.text);
+        let sense = if opens.is_some() { egui::Sense::click() } else { egui::Sense::hover() };
+        let (r, resp) = ui.allocate_exact_size(egui::vec2(g.size().x + 22.0, 18.0), sense);
+        let hovered = resp.hovered() && opens.is_some();
+        ui.painter().rect_filled(r, 9.0, if hovered { t.hover } else { t.surface_high });
+        ui.painter().rect_stroke(r, 9.0, egui::Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
+        ui.painter().circle_filled(egui::pos2(r.min.x + 9.0, r.center().y), 4.0, color);
+        ui.painter().galley(egui::pos2(r.min.x + 16.0, r.center().y - g.size().y / 2.0), g, t.text);
+        if let Some(c) = opens {
+            widgets::record(ed, Some(&c.id), r);
+            if resp.on_hover_text(widgets::tip(ed, &c.id, tip)).clicked() {
+                ed.shell.run(c);
             }
-            let rev = wordsmith_script::revisions::Revisions::of_doc(&ed.session.doc);
-            // A chip says what is on; one that opens a panel runs that command.
-            let chip = |ui: &mut Ui, ed: &mut Editor, text: &str, color: egui::Color32, tip: &str, opens: Option<Cmd>| {
-                let g = ui.painter().layout_no_wrap(text.to_string(), crate::theme::regular(11.5), t.text);
-                let sense = if opens.is_some() { egui::Sense::click() } else { egui::Sense::hover() };
-                let (r, resp) = ui.allocate_exact_size(egui::vec2(g.size().x + 22.0, 18.0), sense);
-                let hovered = resp.hovered() && opens.is_some();
-                ui.painter().rect_filled(r, 9.0, if hovered { t.hover } else { t.surface_high });
-                ui.painter().rect_stroke(r, 9.0, egui::Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
-                ui.painter().circle_filled(egui::pos2(r.min.x + 9.0, r.center().y), 4.0, color);
-                ui.painter().galley(egui::pos2(r.min.x + 16.0, r.center().y - g.size().y / 2.0), g, t.text);
-                if let Some(c) = opens {
-                    widgets::record(ed, Some(c.id), r);
-                    if resp.on_hover_text(widgets::tip(ed, c.id, tip)).clicked() {
-                        ed.run(c.id, c.params);
-                    }
-                } else {
-                    resp.on_hover_text(tip);
-                }
-            };
-            if rev.mode {
-                let color = rev
-                    .current_index()
-                    .and_then(|i| rev.set(i))
-                    .and_then(|s| wordsmith_script::revisions::parse_color(&s.color))
-                    .map_or(t.accent, |c| egui::Color32::from_rgb(c.0, c.1, c.2));
-                let opens = cmd_with("view.inspector", json!({"panel": "revisions"}));
-                chip(ui, ed, &format!("Revising: {}", rev.current), color, "Revision sets.", Some(opens));
+        } else {
+            resp.on_hover_text(tip);
+        }
+    };
+    if rev.mode {
+        let color = rev
+            .current_index()
+            .and_then(|i| rev.set(i))
+            .and_then(|s| wordsmith_script::revisions::parse_color(&s.color))
+            .map_or(t.accent, |c| egui::Color32::from_rgb(c.0, c.1, c.2));
+        let opens = cmd_with("view.inspector", json!({"panel": "revisions"}));
+        chip(ui, ed, &format!("Revising: {}", rev.current), color, "Revision sets.", Some(opens));
+    }
+    if wordsmith_script::tracking::is_on(&ed.session.doc) {
+        chip(ui, ed, "Tracking changes", t.danger, "Tracked changes.", Some(cmd_with("view.inspector", json!({"panel": "changes"}))));
+    }
+    if !wordsmith_script::paginate::dual::pairs(&ed.session.doc).is_empty() {
+        chip(ui, ed, "Dual dialogue", t.accent, "The script has speeches side by side", None);
+    }
+    if wordsmith_script::templates::is_text(&ed.session.doc) {
+        chip(ui, ed, "Text document", t.text_dim, "Prose: no screenplay pagination", None);
+    }
+    // The right side, before the shell's message and theme switch.
+    let width = (ui.available_width() - 60.0 - message_w).max(0.0);
+    let height = ui.available_height().max(18.0);
+    ui.allocate_ui_with_layout(egui::vec2(width, height), egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        ui.spacing_mut().item_spacing.x = 4.0;
+        ui.add(egui::Label::new(dim(format!("{:.0}%", ed.zoom * 100.0))).selectable(false));
+        link(ui, ed, cmd("view.zoomIn"), "+", "");
+        let mut pct = ed.zoom * 100.0;
+        let slider = ui.add(egui::Slider::new(&mut pct, 75.0..=300.0).step_by(25.0).show_value(false));
+        widgets::record(ed, Some("view.zoomTo"), slider.rect);
+        if slider.on_hover_text(widgets::tip(ed, "view.zoomTo", "")).changed() {
+            ed.shell.run(Cmd::with("view.zoomTo", json!({"percent": pct})));
+        }
+        link(ui, ed, cmd("view.zoomOut"), "−", "");
+        ui.separator();
+        for (id, icon, tip, on) in [
+            ("view.speed", "view.draft", "Draft view", ed.view == crate::editor::View::Draft),
+            ("view.normal", "view.normal", "Normal view", ed.view == crate::editor::View::Normal),
+            ("view.page", "view.page", "Page view", ed.view == crate::editor::View::Page),
+        ] {
+            let (r, resp) = ui.allocate_exact_size(egui::vec2(22.0, 20.0), egui::Sense::click());
+            let on = on && ed.structure.is_none();
+            if on {
+                ui.painter().rect_filled(r, 4.0, t.accent_soft);
+            } else if resp.hovered() {
+                ui.painter().rect_filled(r, 4.0, t.hover);
             }
-            if wordsmith_script::tracking::is_on(&ed.session.doc) {
-                chip(ui, ed, "Tracking changes", t.danger, "Tracked changes.", Some(cmd_with("view.inspector", json!({"panel": "changes"}))));
+            crate::script_icons::paint(ui.painter(), r.shrink(3.0), icon, t.text, t.accent);
+            widgets::record(ed, Some(id), r);
+            if resp.on_hover_text(widgets::tip(ed, id, tip)).clicked() {
+                ed.shell.run(Cmd::new(id));
             }
-            if !wordsmith_script::paginate::dual::pairs(&ed.session.doc).is_empty() {
-                chip(ui, ed, "Dual dialogue", t.accent, "The script has speeches side by side", None);
-            }
-            if wordsmith_script::templates::is_text(&ed.session.doc) {
-                chip(ui, ed, "Text document", t.text_dim, "Prose: no screenplay pagination", None);
-            }
-            if !ed.message.is_empty() {
-                ui.add(egui::Label::new(egui::RichText::new(ed.message.as_str()).color(t.danger)).selectable(false));
-            }
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                ui.spacing_mut().item_spacing.x = 4.0;
-                ui.add(egui::Label::new(dim(format!("{:.0}%", ed.zoom * 100.0))).selectable(false));
-                link(ui, ed, cmd("view.zoomIn"), "+", "");
-                let mut pct = ed.zoom * 100.0;
-                let slider = ui.add(egui::Slider::new(&mut pct, 75.0..=300.0).step_by(25.0).show_value(false));
-                widgets::record(ed, Some("view.zoomTo"), slider.rect);
-                if slider.on_hover_text(widgets::tip(ed, "view.zoomTo", "")).changed() {
-                    ed.run("view.zoomTo", json!({"percent": pct}));
-                }
-                link(ui, ed, cmd("view.zoomOut"), "−", "");
-                ui.separator();
-                for (id, icon, tip, on) in [
-                    ("view.speed", "view.draft", "Draft view", ed.view == crate::editor::View::Draft),
-                    ("view.normal", "view.normal", "Normal view", ed.view == crate::editor::View::Normal),
-                    ("view.page", "view.page", "Page view", ed.view == crate::editor::View::Page),
-                ] {
-                    let (r, resp) = ui.allocate_exact_size(egui::vec2(22.0, 20.0), egui::Sense::click());
-                    let on = on && ed.structure.is_none();
-                    if on {
-                        ui.painter().rect_filled(r, 4.0, t.accent_soft);
-                    } else if resp.hovered() {
-                        ui.painter().rect_filled(r, 4.0, t.hover);
-                    }
-                    crate::script_icons::paint(ui.painter(), r.shrink(3.0), icon, t.text, t.accent);
-                    widgets::record(ed, Some(id), r);
-                    if resp.on_hover_text(widgets::tip(ed, id, tip)).clicked() {
-                        ed.run(id, json!({}));
-                    }
-                }
-                ui.separator();
-                let (theme, other) = if ed.dark { ("Light", "view.lightTheme") } else { ("Dark", "view.darkTheme") };
-                link(ui, ed, cmd(other), dim(theme.to_string()), "Switch theme.");
-                link(ui, ed, cmd("view.focusMode"), dim("Focus".into()), "Only the page.");
-                let sprint = match crate::workspace::sprint_left(ed) {
-                    Some(left) => format!("Sprint {}:{:02}", left.as_secs() / 60, left.as_secs() % 60),
-                    None => "Sprint".into(),
-                };
-                link(ui, ed, cmd("view.sprint"), dim(sprint), "Start or stop a writing sprint.");
-            });
-        });
+        }
+        ui.separator();
+        link(ui, ed, cmd("view.focusMode"), dim("Focus".into()), "Only the page.");
+        link(ui, ed, cmd("view.sprint"), dim(sprint), "Start or stop a writing sprint.");
     });
-    ed.chrome.areas.push((crate::ribbon::Place::Status, bar.response.rect));
-    ed.chrome.place = crate::ribbon::Place::Other;
 }

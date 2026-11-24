@@ -249,7 +249,7 @@ fn scenes_table(ed: &mut Editor, ui: &mut Ui, view: &View, act: &mut Option<Act>
                 let text = text_of(&r, &c.key);
                 match c.key.as_str() {
                     "number" if can_drag => {
-                        let drag = ui.dnd_drag_source(Id::new(("scene-row", i)), i, |ui| ui.label(text));
+                        let drag = ui.dnd_drag_source(Id::unique(("scene-row", i)), i, |ui| ui.label(text));
                         if let Some(from) = drag.response.dnd_release_payload::<usize>() {
                             *act = Some(Act::Move { from: *from, onto: i });
                         }
@@ -568,7 +568,7 @@ pub fn panel(ed: &mut Editor, ui: &mut Ui) {
             Some(Act::Edit(e)) => ed.table_edit = Some(e),
             Some(Act::Move { from, onto }) if from != onto => {
                 let count = ed.scene_list().len();
-                ed.run("scene.move", json!({"scene": from, "before": crate::structure::drop_target(from, onto, count)}));
+                ed.run("scene.move", json!({"scene": from, "before": jcj_board::drop_target(from, onto, count)}));
             }
             Some(Act::Open(i)) => {
                 ed.structure = None;

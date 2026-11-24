@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! Interface layer for Wordsmith Script: the script editor, its menus and dialogs. Only the app
-//! crates may depend on it; `cargo xtask ci` enforces that with its layering check.
+//! Interface layer for Wordsmith Script: the script editor and its screenplay views, ribbon tabs,
+//! panels, File pages and dialogs, as an app on the foundation's shell (`jcj_shell`), which draws
+//! and runs the window around them (ribbon, panels, File page, palette, preferences, auto-save,
+//! updates). Only the app crates may depend on it; `cargo xtask ci` enforces that with its
+//! layering check.
 //!
 //! The interface owns no behavior. Every action, its own included (opening the command palette,
 //! copying), is a command in the session's registry, run by id.
@@ -8,24 +11,20 @@
 #![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
-pub mod autosave;
+pub mod app;
 pub mod backstage;
 pub mod board;
 pub mod brand;
 pub mod chrome;
+pub mod commands;
 pub mod dialogs;
 pub mod editor;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod files;
 pub mod fonts;
-pub mod icons;
-pub mod keys;
 pub mod outline;
 pub mod prefs;
 pub mod production;
 pub mod reports;
 pub mod ribbon;
-pub mod ribbon_fit;
 pub mod script_icons;
 pub mod sidebar;
 pub mod snapshot;
@@ -34,18 +33,27 @@ pub mod structure;
 pub mod tables;
 pub mod theme;
 pub mod tools;
-pub mod updates;
 pub mod workspace;
 
-use std::sync::Arc;
-
-use serde_json::{Value, json};
-use wordsmith_engine::{CmdError, CommandSpec, Registry, Session};
-
+pub use app::shell;
+pub use commands::{new_session, registry};
 pub use editor::Editor;
 
-/// Plain-text credit required by the reuse rules. Shown under Acknowledgments in the About page.
-pub const UPSTREAM_CREDIT: &str = "based on WordCraft by the ArtCraft team";
+/// Where Script's releases come from, for updates (decision 0038): this project's GitHub
+/// releases, with files named `wordsmith-script-<version>-<os>-<arch>.<ext>`.
+#[cfg(not(target_arch = "wasm32"))]
+pub const RELEASES: jcj_shell::updates::desktop::ReleaseSource = jcj_shell::updates::desktop::ReleaseSource {
+    id: app::ID,
+    name: app::NAME,
+    tagline: "Write screenplays",
+    repo: "jamescjfoundation/wordsmith-script",
+    developer: "the Wordsmith Script contributors",
+    version: wordsmith_script::VERSION,
+    // Not macOS: the updater (at the core's pin) accepts a new macOS app only when it carries the
+    // Developer ID of its makers' own team, which no copy of ours ever will. The writer gets the
+    // release page there instead.
+    installs_in_place: !cfg!(target_os = "macos"),
+};
 
 /// The About page's first lines: the name, version and license.
 pub fn about_summary() -> String {
@@ -54,166 +62,18 @@ pub fn about_summary() -> String {
 
 /// The open-source work the app is built on, for the About page's Acknowledgments.
 pub fn acknowledgments() -> String {
-    format!(
-        "This app is {UPSTREAM_CREDIT}, and built with craft-libs, egui, AccessKit, HarfRust, Skrifa, Vello CPU and kurbo. The fonts (Courier Prime, Inter, JetBrains Mono, Source Sans 3 and Source Serif 4) are under the SIL Open Font License 1.1. Spelling uses the public-domain Moby word list by Grady Ward. The license texts of the fonts and of every library the app is built from are in the licenses folder that comes with it."
-    )
+    "Built on open-source-core, and with craft-libs, egui, AccessKit, HarfRust, Skrifa, Vello CPU and kurbo. The fonts (Courier Prime, Inter, JetBrains Mono, Source Sans 3 and Source Serif 4) are under the SIL Open Font License 1.1. Spelling uses the public-domain Moby word list by Grady Ward. The license texts of the fonts and of every library the app is built from are in the licenses folder that comes with it.".to_string()
 }
 
-/// Text for the About window and `--version`: the summary, then the acknowledgments.
+/// Text for `--version`: the summary, the credit, then the acknowledgments.
 pub fn about_text() -> String {
-    format!("{}\n\nAcknowledgments\n{}", about_summary(), acknowledgments())
+    format!("{}\n{}\n\nAcknowledgments\n{}", about_summary(), app::CREDIT, acknowledgments())
 }
 
-/// Seconds since 1970, for the dates notes and statistics keep (0 in the web build).
+/// Seconds since 1970, for the dates notes and statistics keep (Script's clock, which tests fix).
 pub fn now_secs() -> u64 {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
-    }
-    #[cfg(target_arch = "wasm32")]
-    {
-        0
-    }
-}
-
-fn open(s: &mut Session, what: &str) -> Result<Value, CmdError> {
-    s.push_ui_request(json!({"open": what}));
-    Ok(Value::Null)
-}
-
-/// Ask the window for `what`, passing on the parameters named in `keep` that the command was
-/// given.
-fn open_with(s: &mut Session, what: &str, params: &Value, keep: &[&str]) -> Result<Value, CmdError> {
-    let mut req = json!({"open": what});
-    for k in keep {
-        if let Some(v) = params.get(*k) {
-            req[*k] = v.clone();
-        }
-    }
-    s.push_ui_request(req);
-    Ok(Value::Null)
-}
-
-fn zoom(s: &mut Session, by: &str) -> Result<Value, CmdError> {
-    s.push_ui_request(json!({"open": "tool.zoom", "by": by}));
-    Ok(Value::Null)
-}
-
-/// The interface's own commands. They ask the window for something through a UI request, so the
-/// palette, menus, keys and agents reach them the same way.
-pub fn ui_specs() -> Vec<CommandSpec> {
-    vec![
-        CommandSpec::new("view.commandPalette", "Command Palette", "View", |s, _| open(s, "palette")).key("Mod+Shift+P").pure(),
-        CommandSpec::new("view.normal", "Normal View", "View", |s, _| open(s, "view.normal")).key("Mod+Alt+1").pure(),
-        CommandSpec::new("view.page", "Page View", "View", |s, _| open(s, "view.page")).key("Mod+Alt+2").pure(),
-        CommandSpec::new("view.speed", "Draft View", "View", |s, _| open(s, "view.speed")).key("Mod+Alt+3").pure(),
-        CommandSpec::new("view.note", "Note…", "Edit", |s, _| open(s, "note")).key("Mod+Alt+N").pure(),
-        CommandSpec::new("view.board", "Story Board", "View", |s, _| open(s, "view.board")).key("Mod+Alt+6").pure(),
-        CommandSpec::new("view.outline", "Outline", "View", |s, _| open(s, "view.outline")).key("Mod+Alt+7").pure(),
-        CommandSpec::new("view.tables", "Tables", "View", |s, _| open(s, "view.tables")).key("Mod+Alt+T").pure(),
-        CommandSpec::new("view.cards", "Index Cards", "View", |s, _| open(s, "view.cards")).key("Mod+Alt+4").pure(),
-        CommandSpec::new("view.scenes", "Scene View", "View", |s, _| open(s, "view.scenes")).key("Mod+Alt+5").pure(),
-        CommandSpec::new("view.darkTheme", "Dark Theme", "View", |s, _| open(s, "view.dark")).pure(),
-        CommandSpec::new("view.typewriter", "Typewriter Scrolling", "View", |s, _| open(s, "view.typewriter")).pure(),
-        CommandSpec::new("view.focusMode", "Focus Mode", "View", |s, _| open(s, "view.focus")).key("Mod+Shift+F").pure(),
-        CommandSpec::new("view.find", "Find and Replace…", "Edit", |s, _| open(s, "find")).key("Mod+F").pure(),
-        CommandSpec::new("view.elementSettings", "Element Settings…", "Format › Elements", |s, _| open(s, "elementSettings")).pure(),
-        CommandSpec::new("view.titlePage", "Title Page…", "Format", |s, _| open(s, "titlePage")).pure(),
-        CommandSpec::new("view.revisions", "Revision Sets…", "Production", |s, _| open(s, "revisions")).pure(),
-        CommandSpec::new("view.headerFooter", "Header and Footer…", "Format", |s, _| open(s, "headerFooter")).pure(),
-        CommandSpec::new("help.about", "About Wordsmith Script", "Help", |s, _| open(s, "about")).pure(),
-        CommandSpec::new("help.checkForUpdates", "Check for Updates…", "Help", |s, _| open(s, "tool.checkUpdates")).pure(),
-        CommandSpec::new("file.exportPdfAs", "Export PDF…", "File", |s, _| open(s, "exportPdf")).key("Mod+Shift+E").pure(),
-        CommandSpec::new("file.recoverPrompt", "Recover Unsaved Scripts…", "File", |s, _| open(s, "recover")).pure(),
-        CommandSpec::new("view.goto", "Go To…", "Go", |s, _| open(s, "tool.goto")).key("Mod+G").pure(),
-        CommandSpec::new("view.bookmarks", "Bookmarks…", "Go", |s, _| open(s, "tool.bookmarks")).key("Mod+Shift+M").pure(),
-        CommandSpec::new("view.checker", "Check Format…", "Tools", |s, _| open(s, "tool.checker")).pure(),
-        CommandSpec::new("view.macros", "Macros…", "Tools", |s, _| open(s, "tool.macros")).pure(),
-        CommandSpec::new("view.reports", "Reports…", "Tools", |s, v| open_with(s, "tool.reports", v, &["kind"])).key("Mod+Shift+J").pure(),
-        CommandSpec::new("view.sceneProperties", "Scene Properties…", "Script", |s, _| open(s, "tool.sceneProperties")).pure(),
-        CommandSpec::new("view.character", "Character Details…", "Script", |s, _| open(s, "tool.character")).pure(),
-        CommandSpec::new("view.highlights", "Show Character Highlights", "View", |s, _| open(s, "tool.highlights")).pure(),
-        CommandSpec::new("view.strip", "Structure Strip", "View", |s, _| open(s, "tool.strip")).key("Mod+Alt+S").pure(),
-        CommandSpec::new("view.print", "Print…", "File", |s, _| open(s, "tool.print")).key("Mod+Alt+Shift+P").pure(),
-        CommandSpec::new("view.watermark", "Watermark…", "Production", |s, _| open(s, "tool.watermark")).pure(),
-        CommandSpec::new("view.sceneNumbers", "Scene Numbers…", "Production", |s, _| open(s, "tool.sceneNumbers")).pure(),
-        CommandSpec::new("view.start", "Welcome…", "File", |s, _| open(s, "tool.start")).pure(),
-        CommandSpec::new("view.templates", "New from Template…", "File", |s, _| open(s, "tool.templates")).key("Mod+Shift+O").pure(),
-        CommandSpec::new("view.keys", "Keys…", "File", |s, _| open(s, "tool.keys")).pure(),
-        CommandSpec::new("view.stats", "Writing Statistics…", "Tools", |s, _| open(s, "tool.stats")).pure(),
-        CommandSpec::new("view.sprint", "Start or Stop a Sprint", "Tools", |s, _| open(s, "tool.sprint")).pure(),
-        CommandSpec::new("view.extraDark", "Extra Dark Theme", "View", |s, _| open(s, "tool.extraDark")).pure(),
-        CommandSpec::new("file.newTab", "New Tab", "File", |s, _| open(s, "tool.newTab")).key("Mod+T").pure(),
-        CommandSpec::new("file.closeTab", "Close Tab", "File", |s, _| open(s, "tool.closeTab")).key("Mod+W").pure(),
-        CommandSpec::new("view.nextTab", "Next Tab", "View", |s, _| open(s, "tool.nextTab")).key("Mod+Alt+Right").pure(),
-        CommandSpec::new("view.zoomIn", "Zoom In", "View", |s, _| zoom(s, "in")).pure(),
-        CommandSpec::new("view.zoomOut", "Zoom Out", "View", |s, _| zoom(s, "out")).pure(),
-        CommandSpec::new("view.zoomReset", "Actual Size", "View", |s, _| zoom(s, "reset")).pure(),
-        CommandSpec::new("view.zoomTo", "Zoom To", "View", |s, v| {
-            s.push_ui_request(json!({"open": "tool.zoom", "by": "to", "percent": v.get("percent").cloned().unwrap_or(json!(100))}));
-            Ok(Value::Null)
-        })
-        .pure(),
-        CommandSpec::new("view.spelling", "Spelling Underlines", "View", |s, _| open(s, "tool.spelling")).pure(),
-        CommandSpec::new("view.scriptPanel", "Script Panel", "View", |s, v| open_with(s, "tool.scriptPanel", v, &["panel"])).pure(),
-        CommandSpec::new("view.inspector", "Inspector", "View", |s, v| open_with(s, "tool.inspector", v, &["panel"])).pure(),
-        CommandSpec::new("view.lightTheme", "Light Theme", "View", |s, _| open(s, "tool.lightTheme")).pure(),
-        CommandSpec::new("view.menuBar", "Menu Bar", "View", |s, _| open(s, "tool.menuBar")).pure(),
-        CommandSpec::new("cards.print", "Print Index Cards…", "File", |s, _| open(s, "tool.cardsPrint")).pure(),
-        CommandSpec::new("cards.perRow", "Index Cards per Row", "View › Index Cards", |s, v| open_with(s, "tool.cardsPerRow", v, &["count"])).pure(),
-        CommandSpec::new("cards.scriptText", "Script Text on Index Cards", "View › Index Cards", |s, v| {
-            open_with(s, "tool.cardsText", v, &["show"])
-        })
-        .pure(),
-        CommandSpec::new("view.splitCards", "Split: Index Cards", "View › Split", |s, _| open(s, "tool.split.cards")).pure(),
-        CommandSpec::new("view.splitBoard", "Split: Story Board", "View › Split", |s, _| open(s, "tool.split.board")).pure(),
-        CommandSpec::new("view.splitOutline", "Split: Outline", "View › Split", |s, _| open(s, "tool.split.outline")).pure(),
-        CommandSpec::new("view.splitScenes", "Split: Scene View", "View › Split", |s, _| open(s, "tool.split.scenes")).pure(),
-        CommandSpec::new("view.splitScript", "Split: Script", "View › Split", |s, _| open(s, "tool.split.script")).pure(),
-        CommandSpec::new("view.splitBelow", "Split Below or Beside", "View › Split", |s, _| open(s, "tool.split.below")).pure(),
-        CommandSpec::new("view.splitSwap", "Swap Panes", "View › Split", |s, _| open(s, "tool.split.swap")).pure(),
-        CommandSpec::new("view.unsplit", "Unsplit", "View › Split", |s, _| open(s, "tool.split.off")).pure(),
-        CommandSpec::new("view.reformat", "Reformat…", "Tools", |s, _| open(s, "tool.reformat")).pure(),
-        CommandSpec::new("app.preferences", "Preferences…", "File", |s, _| open(s, "preferences")).key("Mod+,").pure(),
-        CommandSpec::new("edit.copy", "Copy", "Edit", |s, _| {
-            let text = s.selected_text();
-            s.push_ui_request(json!({"copy": text}));
-            Ok(Value::Null)
-        })
-        .key("Mod+C")
-        .when(|s| if s.sel.is_collapsed() { Some("nothing is selected") } else { None })
-        .pure(),
-        // The window answers by reading the clipboard and sending its text as a paste, which
-        // goes in like any paste from the keyboard.
-        CommandSpec::new("edit.paste", "Paste", "Edit", |s, _| {
-            s.push_ui_request(json!({"paste": true}));
-            Ok(Value::Null)
-        })
-        .key("Mod+V")
-        .pure(),
-        CommandSpec::new("edit.cut", "Cut", "Edit", |s, v| {
-            let text = s.selected_text();
-            s.push_ui_request(json!({"copy": text}));
-            wordsmith_script::commands::text::backspace(s, v)
-        })
-        .key("Mod+X")
-        .when(|s| if s.sel.is_collapsed() { Some("nothing is selected") } else { None }),
-    ]
-}
-
-/// Every command: engine, screenplay and interface.
-pub fn registry() -> Registry {
-    let mut specs = wordsmith_script::commands::specs();
-    specs.extend(ui_specs());
-    #[cfg(not(target_arch = "wasm32"))]
-    specs.extend(files::specs());
-    wordsmith_engine::cmd::registry_with(specs)
-}
-
-/// A session on a new script with every command, for a window.
-pub fn new_session() -> Session {
-    Session::with_registry(wordsmith_script::new_script(), Arc::new(registry()))
+    wordsmith_script::clock::now()
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

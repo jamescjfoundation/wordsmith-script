@@ -10,15 +10,15 @@ publish.workspace = true
 
 [dependencies]
 wordsmith-ui.workspace = true
+jcj-shell.workspace = true
+jcj-proof.workspace = true
 eframe.workspace = true
 egui.workspace = true
-craft-dialogs.workspace = true
-wordsmith-control-key.workspace = true
-# The personal dictionary's file.
-craft-proof.workspace = true
 serde_json.workspace = true
-# Update checks and self-update (decision 0038).
-craft-update.workspace = true
+raw-window-handle.workspace = true
+# Native file dialogs until the shell has its own (see src/files.rs); the version and features
+# the core's dialogs already use, so no new crate comes in.
+rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
 
 [lints]
 workspace = true

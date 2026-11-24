@@ -5,39 +5,51 @@
 //! format checker, goals). A click on a rail icon opens its panel; a second click closes it.
 //! Every change runs a command, so undo and agents work the same.
 
+//! The side panels' contents (decision 0037): the Script panel on the left (where things are:
+//! scenes, outline, bookmarks, notes, characters, find) and the Inspector on the right (what is
+//! at the caret: element, scene, revisions, page, changes, the format checker, goals). The shell
+//! draws the rails, the panels' frames and title bars, and keeps which are open where. Every
+//! change runs a command, so undo and agents work the same.
+
 use egui::{Align2, Color32, RichText, Sense, Stroke, Ui, pos2, vec2};
+use jcj_shell::Shell;
+use jcj_shell::workspace::{PanelSpec, Side};
 use serde_json::{Value, json};
 
-use crate::editor::Editor;
+use crate::editor::{Editor, ToShell};
 use crate::reports::{Drafts, draft_field};
-use crate::ribbon::Panel;
-use crate::theme::{CAPTION, Tokens, medium, regular, semibold};
+use crate::theme::{CAPTION, medium, regular, semibold};
 
-/// The rail's width.
-pub const RAIL_W: f32 = 40.0;
-
-const LEFT: [(Panel, &str, &str); 6] = [
-    (Panel::Scenes, "view.scenes", "Scenes"),
-    (Panel::Outline, "el.outline", "Outline"),
-    (Panel::Bookmarks, "bookmark", "Bookmarks"),
-    (Panel::Notes, "note", "Notes"),
-    (Panel::Characters, "characters", "Characters"),
-    (Panel::Find, "find", "Find"),
+/// The panels: id (kept in the preferences), title, rail icon, side.
+const PANELS: [(&str, &str, &str, Side); 13] = [
+    ("scenes", "Scenes", "navPane", Side::Left),
+    ("outline", "Outline", "outline", Side::Left),
+    ("bookmarks", "Bookmarks", "bookmark", Side::Left),
+    ("notes", "Notes", "comment", Side::Left),
+    ("characters", "Characters", "user", Side::Left),
+    ("find", "Find", "find", Side::Left),
+    ("element", "Element", "styles", Side::Right),
+    ("scene", "Scene", "properties", Side::Right),
+    ("revisions", "Revisions", "pageColor", Side::Right),
+    ("page", "Page", "protect", Side::Right),
+    ("changes", "Changes", "trackChanges", Side::Right),
+    ("checker", "Check Format", "checkErrors", Side::Right),
+    ("goals", "Goals", "wordCount", Side::Right),
 ];
 
-const RIGHT: [(Panel, &str, &str); 7] = [
-    (Panel::Element, "el.action", "Element"),
-    (Panel::Scene, "scene.new", "Scene"),
-    (Panel::Revisions, "revision", "Revisions"),
-    (Panel::Page, "lock", "Page"),
-    (Panel::Changes, "track", "Changes"),
-    (Panel::Checker, "check", "Check Format"),
-    (Panel::Goals, "stats", "Goals"),
-];
+/// The side panels Script offers.
+pub fn panels() -> Vec<PanelSpec> {
+    PANELS.iter().map(|(id, title, icon, side)| PanelSpec::new(*id, *title, *icon, *side)).collect()
+}
 
-/// Whether panel `p` opens in the Script panel (the left side) rather than the Inspector.
-pub fn is_left(p: Panel) -> bool {
-    LEFT.iter().any(|(x, _, _)| *x == p)
+/// Whether panel `id` is one of the Script panel's (the left side) rather than the Inspector's.
+pub fn is_left(id: &str) -> bool {
+    PANELS.iter().any(|(p, _, _, side)| *p == id && *side == Side::Left)
+}
+
+/// Whether `id` is one of Script's panels.
+pub fn is_panel(id: &str) -> bool {
+    PANELS.iter().any(|(p, _, _, _)| *p == id)
 }
 
 /// Field drafts the panels keep while text is typed.
@@ -52,89 +64,28 @@ pub struct PanelState {
     pub ignored: Vec<(u64, String)>,
 }
 
-fn rail(ed: &mut Editor, ui: &mut Ui, items: &[(Panel, &str, &str)], left: bool) {
-    let t = Tokens::get(ui.ctx());
-    ui.add_space(6.0);
-    for (panel, icon, label) in items {
-        let open = if left { ed.chrome.left == Some(*panel) } else { ed.chrome.right == Some(*panel) };
-        let (r, resp) = ui.allocate_exact_size(vec2(RAIL_W - 6.0, 32.0), Sense::click());
-        if open {
-            ui.painter().rect_filled(r, 6.0, t.accent_soft);
-            let x = if left { r.min.x - 2.0 } else { r.max.x + 2.0 };
-            ui.painter().line_segment([pos2(x, r.min.y + 6.0), pos2(x, r.max.y - 6.0)], Stroke::new(2.5, t.accent));
-        } else if resp.hovered() {
-            ui.painter().rect_filled(r, 6.0, t.hover);
-        }
-        crate::script_icons::paint(
-            ui.painter(),
-            egui::Rect::from_center_size(r.center(), vec2(18.0, 18.0)),
-            icon,
-            if open { t.accent } else { t.text },
-            t.accent,
-        );
-        if resp.on_hover_text(*label).clicked() {
-            let slot = if left { &mut ed.chrome.left } else { &mut ed.chrome.right };
-            *slot = if open { None } else { Some(*panel) };
-        }
-        ui.add_space(2.0);
-    }
-}
-
-fn title(ui: &mut Ui, text: &str) {
-    let t = Tokens::get(ui.ctx());
-    ui.add_space(4.0);
-    ui.label(RichText::new(text).font(semibold(14.0)).color(t.text));
-    ui.add_space(2.0);
-}
-
 fn hint(ui: &mut Ui, text: &str) {
-    let t = Tokens::get(ui.ctx());
+    let t = crate::theme::get(ui.ctx());
     ui.label(RichText::new(text).font(regular(CAPTION)).color(t.text_dim));
 }
 
-/// The rails and the open panels; call before the central panel.
-pub fn show(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    let frame = egui::Frame::NONE.fill(t.surface).stroke(Stroke::new(1.0, t.border));
-    egui::Panel::left("rail-left").exact_size(RAIL_W).resizable(false).frame(frame).show(ui, |ui| rail(ed, ui, &LEFT, true));
-    egui::Panel::right("rail-right").exact_size(RAIL_W).resizable(false).frame(frame).show(ui, |ui| rail(ed, ui, &RIGHT, false));
-    let body = egui::Frame::NONE.fill(t.surface).stroke(Stroke::new(1.0, t.border)).inner_margin(egui::Margin::symmetric(10, 6));
-    if let Some(p) = ed.chrome.left {
-        let resp =
-            egui::Panel::left("script-panel").resizable(true).default_size(ed.chrome.left_w).size_range(200.0..=480.0).frame(body).show(ui, |ui| {
-                // The scene list scrolls by itself, laying out only the rows in sight.
-                if p == Panel::Scenes {
-                    scenes(ed, ui);
-                } else {
-                    egui::ScrollArea::vertical().id_salt("nav-scroll").auto_shrink(false).show(ui, |ui| panel(ed, ui, p));
-                }
-            });
-        ed.chrome.left_w = resp.response.rect.width();
-    }
-    if let Some(p) = ed.chrome.right {
-        let resp =
-            egui::Panel::right("inspector").resizable(true).default_size(ed.chrome.right_w).size_range(220.0..=480.0).frame(body).show(ui, |ui| {
-                egui::ScrollArea::vertical().id_salt("insp-scroll").auto_shrink(false).show(ui, |ui| panel(ed, ui, p));
-            });
-        ed.chrome.right_w = resp.response.rect.width();
-    }
-}
-
-fn panel(ed: &mut Editor, ui: &mut Ui, p: Panel) {
-    match p {
-        Panel::Scenes => scenes(ed, ui),
-        Panel::Outline => outline(ed, ui),
-        Panel::Bookmarks => bookmarks(ed, ui),
-        Panel::Notes => notes(ed, ui),
-        Panel::Characters => characters(ed, ui),
-        Panel::Find => find(ed, ui),
-        Panel::Element => element(ed, ui),
-        Panel::Scene => scene(ed, ui),
-        Panel::Revisions => revisions(ed, ui),
-        Panel::Page => page(ed, ui),
-        Panel::Changes => changes(ed, ui),
-        Panel::Checker => checker(ed, ui),
-        Panel::Goals => goals(ed, ui),
+/// Draw panel `id`'s contents (the shell gives it its frame and title).
+pub fn panel(ed: &mut Editor, ui: &mut Ui, _shell: &mut Shell, id: &str) {
+    match id {
+        "scenes" => scenes(ed, ui),
+        "outline" => outline(ed, ui),
+        "bookmarks" => bookmarks(ed, ui),
+        "notes" => notes(ed, ui),
+        "characters" => characters(ed, ui),
+        "find" => find(ed, ui),
+        "element" => element(ed, ui),
+        "scene" => scene(ed, ui),
+        "revisions" => revisions(ed, ui),
+        "page" => page(ed, ui),
+        "changes" => changes(ed, ui),
+        "checker" => checker(ed, ui),
+        "goals" => goals(ed, ui),
+        _ => {}
     }
 }
 
@@ -148,7 +99,7 @@ fn color_of(name: &str) -> Option<Color32> {
 
 /// Go to body block `block` in the script view.
 fn go(ed: &mut Editor, block: usize, off: usize) {
-    ed.session.sel = wordsmith_engine::Selection::caret(wordsmith_script::data::body_pos(block, off));
+    ed.session.sel = jcj_engine::Selection::caret(wordsmith_script::data::body_pos(block, off));
     ed.request_scroll_to_caret();
 }
 
@@ -156,8 +107,7 @@ fn go(ed: &mut Editor, block: usize, off: usize) {
 const SCENE_ROW: f32 = 40.0;
 
 fn scenes(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    title(ui, "Scenes");
+    let t = crate::theme::get(ui.ctx());
     ui.add(egui::TextEdit::singleline(&mut ed.panels.filter).hint_text("Filter scenes").desired_width(f32::INFINITY));
     let (list, eighths) = ed.panel_scenes();
     let here = wordsmith_script::scenes::scene_at(&wordsmith_script::scenes(&ed.session.doc), ed.session.sel.focus.path.last()).map(|s| s.index);
@@ -182,7 +132,7 @@ fn scenes(ed: &mut Editor, ui: &mut Ui) {
             let heading = sc["heading"].as_str().unwrap_or("");
             let title_text = sc["title"].as_str().unwrap_or("");
             let number = sc["number"].as_str().map_or_else(|| (i + 1).to_string(), str::to_string);
-            let drag = ui.dnd_drag_source(egui::Id::new(("nav-scene", i)), i, |ui| {
+            let drag = ui.dnd_drag_source(egui::Id::unique(("nav-scene", i)), i, |ui| {
                 let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width(), SCENE_ROW - 2.0), Sense::click());
                 let current = here == Some(i);
                 ui.painter().rect_filled(
@@ -236,7 +186,7 @@ fn scenes(ed: &mut Editor, ui: &mut Ui) {
     });
     if let Some((from, onto)) = moved.filter(|(a, b)| a != b) {
         let count = list.len();
-        ed.run("scene.move", json!({"scene": from, "before": crate::structure::drop_target(from, onto, count)}));
+        ed.run("scene.move", json!({"scene": from, "before": jcj_board::drop_target(from, onto, count)}));
     }
     if let Some((i, what)) = act {
         // Where the scene is now (the list may be a moment old while typing).
@@ -245,7 +195,7 @@ fn scenes(ed: &mut Editor, ui: &mut Ui) {
             "go" => go(ed, start, 0),
             "props" => {
                 go(ed, start, 0);
-                ed.chrome.right = Some(Panel::Scene);
+                ed.to_shell.push(ToShell::ShowPanel("scene".into()));
             }
             "omit" => ed.run("scene.omit", json!({"scene": i})),
             "recall" => ed.run("scene.recall", json!({"scene": i})),
@@ -258,8 +208,7 @@ fn scenes(ed: &mut Editor, ui: &mut Ui) {
 }
 
 fn outline(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    title(ui, "Outline");
+    let t = crate::theme::get(ui.ctx());
     let elements = wordsmith_script::Elements::of_doc(&ed.session.doc);
     let mut go_to = None;
     let mut any = false;
@@ -298,7 +247,6 @@ fn outline(ed: &mut Editor, ui: &mut Ui) {
 }
 
 fn bookmarks(ed: &mut Editor, ui: &mut Ui) {
-    title(ui, "Bookmarks");
     let mut add = false;
     ui.horizontal(|ui| {
         ui.add(egui::TextEdit::singleline(&mut ed.panels.new_name).hint_text("Name").desired_width(ui.available_width() - 60.0));
@@ -333,8 +281,7 @@ fn bookmarks(ed: &mut Editor, ui: &mut Ui) {
 }
 
 fn notes(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    title(ui, "Notes");
+    let t = crate::theme::get(ui.ctx());
     ui.horizontal(|ui| {
         if ui.button("New Note").on_hover_text("On the selected text (Mod+Alt+N)").clicked() {
             ed.run("view.note", json!({}));
@@ -384,8 +331,7 @@ fn notes(ed: &mut Editor, ui: &mut Ui) {
 }
 
 fn characters(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    title(ui, "Characters");
+    let t = crate::theme::get(ui.ctx());
     let rows = ed.session.run("character.list", &json!({})).ok().and_then(|v| v.as_array().cloned()).unwrap_or_default();
     let traits: Vec<String> = ed
         .session
@@ -431,11 +377,8 @@ fn characters(ed: &mut Editor, ui: &mut Ui) {
             ui.indent(("char", &name), |ui| {
                 ui.horizontal(|ui| {
                     hint(ui, "Highlight");
-                    let c = person
-                        .highlight
-                        .as_deref()
-                        .and_then(wordsmith_script::revisions::parse_color)
-                        .unwrap_or(wordsmith_doc::props::Rgb(255, 241, 118));
+                    let c =
+                        person.highlight.as_deref().and_then(wordsmith_script::revisions::parse_color).unwrap_or(jcj_doc::props::Rgb(255, 241, 118));
                     let mut color = Color32::from_rgb(c.0, c.1, c.2);
                     if ui.color_edit_button_srgba(&mut color).changed() {
                         act = Some((
@@ -468,7 +411,6 @@ fn characters(ed: &mut Editor, ui: &mut Ui) {
 }
 
 fn find(ed: &mut Editor, ui: &mut Ui) {
-    title(ui, "Find");
     let before = ed.find.clone().unwrap_or_default();
     let mut bar = before.clone();
     ui.add(egui::TextEdit::singleline(&mut bar.query).hint_text("Find").desired_width(f32::INFINITY));
@@ -479,7 +421,7 @@ fn find(ed: &mut Editor, ui: &mut Ui) {
     });
     let mut action = None;
     ui.horizontal(|ui| {
-        for (label, id) in [("Previous", "find.previous"), ("Next", "find.next"), ("Replace", "replace.one"), ("All", "replace.all")] {
+        for (label, id) in [("Previous", "find.previous"), ("Next", "find.next"), ("Replace", "find.replace"), ("All", "find.replaceAll")] {
             if ui.button(label).clicked() {
                 action = Some(id);
             }
@@ -507,7 +449,7 @@ fn find(ed: &mut Editor, ui: &mut Ui) {
     }
     if let Some((block, a, b)) = go_to {
         ed.session.sel =
-            wordsmith_engine::Selection { anchor: wordsmith_script::data::body_pos(block, a), focus: wordsmith_script::data::body_pos(block, b) };
+            jcj_engine::Selection { anchor: wordsmith_script::data::body_pos(block, a), focus: wordsmith_script::data::body_pos(block, b) };
         ed.request_scroll_to_caret();
     }
     // The query, shared with the find bar, also marks the matches on the pages. It is written
@@ -518,8 +460,7 @@ fn find(ed: &mut Editor, ui: &mut Ui) {
 }
 
 fn element(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    title(ui, "Element");
+    let t = crate::theme::get(ui.ctx());
     let h = ed.session.run("element.hint", &json!({})).unwrap_or(Value::Null);
     ui.label(RichText::new(h["element"].as_str().unwrap_or("")).font(semibold(16.0)).color(t.accent));
     hint(ui, &format!("Return makes {}. Tab makes {}.", h["enter"].as_str().unwrap_or(""), h["tab"].as_str().unwrap_or("nothing")));
@@ -566,8 +507,7 @@ fn element(ed: &mut Editor, ui: &mut Ui) {
 }
 
 fn scene(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    title(ui, "Scene");
+    let t = crate::theme::get(ui.ctx());
     let all = wordsmith_script::scenes(&ed.session.doc);
     let Some(sc) = wordsmith_script::scenes::scene_at(&all, ed.session.sel.focus.path.last()).cloned() else {
         hint(ui, "Put the caret in a scene to see it here.");
@@ -651,7 +591,6 @@ fn scene(ed: &mut Editor, ui: &mut Ui) {
 }
 
 fn revisions(ed: &mut Editor, ui: &mut Ui) {
-    title(ui, "Revisions");
     let rev = wordsmith_script::revisions::Revisions::of_doc(&ed.session.doc);
     let mut act: Option<(&str, Value)> = None;
     let mut mode = rev.mode;
@@ -712,8 +651,7 @@ fn revisions(ed: &mut Editor, ui: &mut Ui) {
 }
 
 fn page(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    title(ui, "Page");
+    let t = crate::theme::get(ui.ctx());
     let pag = ed.paginated();
     let page = pag.to_output(&ed.session.sel.focus).and_then(|at| pag.layout.caret(&at)).map_or(1, |c| c.page + 1);
     let label = pag.labels.as_ref().and_then(|l| l.get(page - 1).cloned());
@@ -792,8 +730,7 @@ fn page(ed: &mut Editor, ui: &mut Ui) {
 }
 
 fn changes(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    title(ui, "Changes");
+    let t = crate::theme::get(ui.ctx());
     let list = ed.session.run("track.list", &json!({})).unwrap_or(Value::Null);
     let mut act: Option<(&str, Value)> = None;
     let mut on = list["on"].as_bool().unwrap_or(false);
@@ -838,17 +775,15 @@ fn changes(ed: &mut Editor, ui: &mut Ui) {
             let text = c["text"].as_str().unwrap_or("");
             let rt = RichText::new(text).font(regular(12.0));
             if ui.add(egui::Label::new(if inserted { rt.underline() } else { rt.strikethrough() }).truncate().sense(Sense::click())).clicked() {
-                ed.session.sel = wordsmith_engine::Selection {
-                    anchor: wordsmith_script::data::body_pos(block, a),
-                    focus: wordsmith_script::data::body_pos(block, b),
-                };
+                ed.session.sel =
+                    jcj_engine::Selection { anchor: wordsmith_script::data::body_pos(block, a), focus: wordsmith_script::data::body_pos(block, b) };
                 ed.request_scroll_to_caret();
             }
         });
     }
     if let Some((block, a, b, accept)) = pick {
         ed.session.sel =
-            wordsmith_engine::Selection { anchor: wordsmith_script::data::body_pos(block, a), focus: wordsmith_script::data::body_pos(block, b) };
+            jcj_engine::Selection { anchor: wordsmith_script::data::body_pos(block, a), focus: wordsmith_script::data::body_pos(block, b) };
         act = Some((if accept { "track.accept" } else { "track.reject" }, json!({})));
     }
     if let Some((c, p)) = act {
@@ -857,7 +792,6 @@ fn changes(ed: &mut Editor, ui: &mut Ui) {
 }
 
 fn checker(ed: &mut Editor, ui: &mut Ui) {
-    title(ui, "Check Format");
     let found = ed.session.run("check.run", &json!({})).unwrap_or(Value::Null);
     let ignored = ed.panels.ignored.clone();
     let issues: Vec<Value> = found["issues"]
@@ -909,8 +843,7 @@ fn checker(ed: &mut Editor, ui: &mut Ui) {
 }
 
 fn goals(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    title(ui, "Goals");
+    let t = crate::theme::get(ui.ctx());
     let today = wordsmith_script::reports_more::date(crate::now_secs());
     let day = ed.stats.data.days.get(&today).cloned().unwrap_or_default();
     let g = ed.stats.data.goals.clone();

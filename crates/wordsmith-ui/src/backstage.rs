@@ -1,178 +1,36 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! The File page (decision 0037): a full-window page in place of the script for new, open,
-//! save, export, print, compare, preferences, keys and about. Every button runs a command.
+//! Script's part of the File page (decision 0037). The shell draws the page and what every app
+//! has (new, open and recent, save, export and print headings, preferences, keys, about); Script
+//! adds its templates and first steps to New, Import to Open, templates, revert and tabs to Save,
+//! its formats to Export, its print choices to Print, and a Compare page. Every button runs a
+//! command.
 
 use egui::{Align2, Color32, RichText, Sense, Stroke, Ui, pos2, vec2};
+use jcj_shell::backstage::{action, heading, sub};
+use jcj_shell::widgets::{self, Control};
+use jcj_shell::{Cmd, Page, Shell};
 use serde_json::json;
 
 use crate::editor::Editor;
-use crate::theme::{BODY, CAPTION, Tokens, medium, regular, semibold};
+use crate::theme::{BODY, medium, regular};
 
-/// A page of the backstage.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Page {
-    New,
-    Open,
-    Save,
-    Export,
-    Print,
-    Compare,
-    Preferences,
-    Keys,
-    About,
+/// Draw Script's part of File page `page`.
+pub fn page_ui(ed: &mut Editor, page: &Page, ui: &mut Ui, shell: &mut Shell) {
+    match page {
+        Page::New => new(ed, ui, shell),
+        Page::Open => open(ed, ui, shell),
+        Page::Save => save(ed, ui, shell),
+        Page::Export => export(ed, ui, shell),
+        Page::Print => print(ed, ui, shell),
+        Page::App(id) if id == "compare" => compare(ed, ui, shell),
+        _ => {}
+    }
 }
 
-/// The pages, and the command that opens each one where there is one.
-const PAGES: [(Page, &str, &str, Option<&str>); 9] = [
-    (Page::New, "New", "plus", Some("view.templates")),
-    (Page::Open, "Open", "open", None),
-    (Page::Save, "Save", "save", None),
-    (Page::Export, "Export", "export", None),
-    (Page::Print, "Print", "print", Some("view.print")),
-    (Page::Compare, "Compare", "compare", None),
-    (Page::Preferences, "Preferences", "options", Some("app.preferences")),
-    (Page::Keys, "Keys", "macro", Some("view.keys")),
-    (Page::About, "About", "help", Some("help.about")),
-];
-
-/// Draw the backstage in `ui` (the central panel).
-pub fn show(ed: &mut Editor, ui: &mut Ui) {
-    let Some(page) = ed.chrome.backstage else { return };
-    ed.chrome.place = crate::ribbon::Place::FilePage;
-    draw(ed, ui, page);
-    ed.chrome.place = crate::ribbon::Place::Other;
-}
-
-fn draw(ed: &mut Editor, ui: &mut Ui, page: Page) {
-    let t = Tokens::get(ui.ctx());
-    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-        ed.chrome.backstage = None;
-        return;
-    }
-    let full = ui.max_rect();
-    // The column of pages, in ink, with the wordmark at its foot.
-    let col = egui::Rect::from_min_size(full.min, vec2(200.0, full.height()));
-    ui.painter().rect_filled(col, 0.0, t.brand);
-    let mut bottom = col.min.y;
-    let mut picked = None;
-    let mut back = false;
-    ui.scope_builder(egui::UiBuilder::new().max_rect(col.shrink2(vec2(10.0, 14.0))), |ui| {
-        let ink = t.on_brand;
-        let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 34.0), Sense::click());
-        if resp.hovered() {
-            ui.painter().rect_filled(r, 6.0, Color32::from_white_alpha(30));
-        }
-        ui.painter().text(pos2(r.min.x + 10.0, r.center().y), Align2::LEFT_CENTER, "←  Back to the script", medium(BODY), ink);
-        back = resp.on_hover_text("Escape").clicked();
-        ui.add_space(10.0);
-        for (p, label, icon, opens) in PAGES {
-            let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 34.0), Sense::click());
-            if p == page {
-                ui.painter().rect_filled(r, 6.0, Color32::from_white_alpha(30));
-                // The current page is marked with the brass caret.
-                ui.painter().rect_filled(
-                    egui::Rect::from_min_size(pos2(r.min.x, r.min.y + 7.0), vec2(3.0, r.height() - 14.0)),
-                    0.0,
-                    crate::brand::BRASS,
-                );
-            } else if resp.hovered() {
-                ui.painter().rect_filled(r, 6.0, Color32::from_white_alpha(25));
-            }
-            crate::script_icons::paint(
-                ui.painter(),
-                egui::Rect::from_center_size(pos2(r.min.x + 18.0, r.center().y), vec2(18.0, 18.0)),
-                icon,
-                ink,
-                ink,
-            );
-            ui.painter().text(pos2(r.min.x + 36.0, r.center().y), Align2::LEFT_CENTER, label, medium(13.5), ink);
-            if let Some(id) = opens {
-                crate::ribbon::widgets::record(ed, Some(id), r);
-            }
-            if resp.clicked() {
-                picked = Some((p, opens));
-            }
-            bottom = r.max.y;
-        }
-    });
-    // Only where it clears the last page's row.
-    let foot = col.max.y - 34.0;
-    if foot > bottom + 24.0 {
-        crate::brand::paint_wordmark(ui.painter(), pos2(col.min.x + 20.0, foot), col.width() - 40.0, t.on_brand);
-    }
-    if back {
-        ed.chrome.backstage = None;
-        return;
-    }
-    match picked {
-        Some((_, Some(id))) => ed.run(id, json!({})),
-        Some((p, None)) => ed.chrome.backstage = Some(p),
-        None => {}
-    }
-    let content = egui::Rect::from_min_max(pos2(col.max.x + 32.0, full.min.y + 20.0), pos2(full.max.x - 24.0, full.max.y - 10.0));
-    ui.scope_builder(egui::UiBuilder::new().max_rect(content), |ui| {
-        egui::ScrollArea::vertical().id_salt("backstage").auto_shrink(false).show(ui, |ui| match page {
-            Page::New => new(ed, ui),
-            Page::Open => open(ed, ui),
-            Page::Save => save(ed, ui),
-            Page::Export => export(ed, ui),
-            Page::Print => print(ed, ui),
-            Page::Compare => compare(ed, ui),
-            Page::Preferences => {
-                heading(ui, "Preferences");
-                crate::dialogs::prefs_body(ed, ui);
-            }
-            Page::Keys => {
-                heading(ui, "Keys");
-                if ed.tools.keys.is_none() {
-                    ed.tools.keys = Some(Default::default());
-                }
-                crate::workspace::keys_body(ed, ui);
-            }
-            Page::About => about(ed, ui),
-        });
-    });
-}
-
-fn heading(ui: &mut Ui, text: &str) {
-    let t = Tokens::get(ui.ctx());
-    ui.label(RichText::new(text).font(semibold(26.0)).color(t.text));
-    ui.add_space(12.0);
-}
-
-fn sub(ui: &mut Ui, text: &str) {
-    let t = Tokens::get(ui.ctx());
-    ui.add_space(10.0);
-    ui.label(RichText::new(text).font(semibold(15.0)).color(t.text));
-    ui.add_space(4.0);
-}
-
-/// A wide button with an icon, a title and a line under it; runs `id` (closing the page).
-fn action(ed: &mut Editor, ui: &mut Ui, id: &'static str, params: serde_json::Value, title: &str, about: &str) -> bool {
-    let t = Tokens::get(ui.ctx());
-    let ok = ed.session.why_disabled(id).is_none();
-    let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width().min(560.0), 50.0), if ok { Sense::click() } else { Sense::hover() });
-    ui.painter().rect_filled(r, 8.0, if resp.hovered() && ok { t.hover } else { t.surface_high });
-    ui.painter().rect_stroke(r, 8.0, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
-    let ink = if ok { t.text } else { t.text_dim };
-    crate::script_icons::paint(
-        ui.painter(),
-        egui::Rect::from_center_size(pos2(r.min.x + 26.0, r.center().y), vec2(24.0, 24.0)),
-        crate::script_icons::for_command(id),
-        ink,
-        t.accent,
-    );
-    ui.painter().text(pos2(r.min.x + 50.0, r.min.y + 17.0), Align2::LEFT_CENTER, title, medium(13.5), ink);
-    ui.painter().text(pos2(r.min.x + 50.0, r.min.y + 35.0), Align2::LEFT_CENTER, about, regular(CAPTION), t.text_dim);
-    ui.add_space(6.0);
-    crate::ribbon::widgets::record(ed, Some(id), r);
-    let resp = resp.on_hover_text(crate::ribbon::widgets::tip(ed, id, ""));
-    if resp.clicked() && ok {
-        ed.chrome.backstage = None;
-        ed.run(id, params);
-        return true;
-    }
-    false
+/// A wide button on the page that runs `id` with `params` (closing the File page).
+fn act(ed: &Editor, ui: &mut Ui, shell: &mut Shell, id: &str, params: serde_json::Value, title: &str, about: &str) -> bool {
+    let c = Control::of(Cmd::with(id, params)).icon(crate::script_icons::generic(crate::script_icons::for_command(id))).label(title).about(about);
+    action(ui, shell, ed, &c)
 }
 
 /// The first lines of a template, as its preview (built once; templates never change).
@@ -199,42 +57,15 @@ fn preview(id: &str) -> String {
     all.get(id).cloned().unwrap_or_default()
 }
 
-fn new(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    heading(ui, "New");
+fn new(ed: &mut Editor, ui: &mut Ui, shell: &mut Shell) {
+    let t = crate::theme::get(ui.ctx());
     let mut picked: Option<&str> = None;
-    ui.horizontal(|ui| {
-        // A new script; unsaved work stays, in a tab of its own.
-        let empty = ui.add(egui::Button::new(RichText::new("New empty script").font(medium(BODY))).min_size(vec2(160.0, 30.0)));
-        crate::ribbon::widgets::record(ed, Some("file.new"), empty.rect);
-        if empty.on_hover_text(crate::ribbon::widgets::tip(ed, "file.new", "")).clicked() {
-            ed.chrome.backstage = None;
-            if ed.session.dirty {
-                ed.new_tab();
-            } else {
-                ed.run("file.new", json!({}));
-            }
-        }
-        let tab = ui.add(egui::Button::new(RichText::new("New tab").font(medium(BODY))).min_size(vec2(120.0, 30.0)));
-        crate::ribbon::widgets::record(ed, Some("file.newTab"), tab.rect);
-        if tab.on_hover_text(crate::ribbon::widgets::tip(ed, "file.newTab", "")).clicked() {
-            ed.chrome.backstage = None;
-            ed.run("file.newTab", json!({}));
-        }
-    });
-    if !ed.recent.is_empty() {
-        sub(ui, "Recent");
-        ui.horizontal_wrapped(|ui| {
-            for r in ed.recent.clone().into_iter().take(6) {
-                let name = std::path::Path::new(&r).file_name().and_then(|n| n.to_str()).unwrap_or(&r).to_string();
-                let link = ui.link(name);
-                crate::ribbon::widgets::record(ed, Some("file.openPath"), link.rect);
-                if link.on_hover_text(&r).clicked() {
-                    ed.chrome.backstage = None;
-                    ed.run("file.openPath", json!({"path": r}));
-                }
-            }
-        });
+    // A new script in a tab of its own; unsaved work stays.
+    let tab = ui.add(egui::Button::new(RichText::new("New tab").font(medium(BODY))).min_size(vec2(120.0, 30.0)));
+    widgets::record(shell, Some("file.newTab"), tab.rect);
+    if tab.on_hover_text(widgets::tip(shell, &*ed, "file.newTab", "")).clicked() {
+        shell.chrome.file_page = None;
+        ed.run("file.newTab", json!({}));
     }
     let mut cats: Vec<&str> = wordsmith_script::templates::TEMPLATES.iter().map(|x| x.category).collect();
     cats.dedup();
@@ -264,7 +95,7 @@ fn new(ed: &mut Editor, ui: &mut Ui) {
         ed.tools.show_start_on_launch = show;
     }
     if let Some(id) = picked {
-        ed.chrome.backstage = None;
+        shell.chrome.file_page = None;
         // Unsaved work stays: the new script opens in a tab of its own.
         if ed.session.dirty {
             ed.new_tab();
@@ -274,7 +105,7 @@ fn new(ed: &mut Editor, ui: &mut Ui) {
 }
 
 /// A template's card: a little page with its first lines, its name and what it is for.
-fn template_card(ui: &mut Ui, t: &Tokens, id: &str, name: &str, about: &str) -> bool {
+fn template_card(ui: &mut Ui, t: &crate::theme::Tokens, id: &str, name: &str, about: &str) -> bool {
     let (r, resp) = ui.allocate_exact_size(vec2(210.0, 140.0), Sense::click());
     ui.painter().rect_filled(r, 8.0, if resp.hovered() { t.hover } else { t.surface_high });
     ui.painter().rect_stroke(r, 8.0, Stroke::new(1.0, if resp.hovered() { t.accent } else { t.border }), egui::StrokeKind::Inside);
@@ -291,68 +122,38 @@ fn template_card(ui: &mut Ui, t: &Tokens, id: &str, name: &str, about: &str) -> 
     resp.on_hover_text(about).clicked()
 }
 
-fn open(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    heading(ui, "Open");
-    action(ed, ui, "file.open", json!({}), "Open…", "A Wordsmith Script file, a template or a Fountain script.");
-    action(ed, ui, "file.import", json!({}), "Import…", "Plain text, RTF or a PDF made from text.");
-    sub(ui, "Recent");
-    if ed.recent.is_empty() {
-        ui.label(RichText::new("Scripts you open or save show here.").color(t.text_dim));
-    }
-    let mut pick = None;
-    for r in ed.recent.clone() {
-        let name = std::path::Path::new(&r).file_name().and_then(|n| n.to_str()).unwrap_or(&r).to_string();
-        let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width().min(560.0), 38.0), Sense::click());
-        if resp.hovered() {
-            ui.painter().rect_filled(rect, 6.0, t.hover);
-        }
-        ui.painter().text(pos2(rect.min.x + 10.0, rect.min.y + 12.0), Align2::LEFT_CENTER, &name, medium(13.0), t.text);
-        ui.painter().text(pos2(rect.min.x + 10.0, rect.min.y + 28.0), Align2::LEFT_CENTER, &r, regular(10.5), t.text_dim);
-        crate::ribbon::widgets::record(ed, Some("file.openPath"), rect);
-        if resp.clicked() {
-            pick = Some(r);
-        }
-    }
-    sub(ui, "Unsaved work");
-    action(ed, ui, "file.recoverPrompt", json!({}), "Recover Unsaved Scripts…", "Copies kept when the app closed without saving.");
-    if let Some(path) = pick {
-        ed.chrome.backstage = None;
-        ed.run("file.openPath", json!({"path": path}));
+fn open(ed: &mut Editor, ui: &mut Ui, shell: &mut Shell) {
+    sub(ui, "Import");
+    act(ed, ui, shell, "file.import", json!({}), "Import…", "Plain text, RTF or a PDF made from text.");
+    if shell.dialogs.recovery.is_empty() {
+        sub(ui, "Unsaved work");
+        act(ed, ui, shell, "file.recoverPrompt", json!({}), "Recover Unsaved Scripts…", "Copies kept when the app closed without saving.");
     }
 }
 
-fn save(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    heading(ui, "Save");
-    let where_ = ed.session.path.as_ref().map_or("Not saved to a file yet.".to_string(), |p| p.display().to_string());
-    ui.label(RichText::new(where_).color(t.text_dim));
-    ui.add_space(8.0);
-    action(ed, ui, "file.save", json!({}), "Save", "Keep the changes in the script's file.");
-    action(ed, ui, "file.saveAs", json!({}), "Save As…", "Keep the script in a new file.");
-    action(ed, ui, "file.saveAsTemplate", json!({}), "Save as Template…", "Start new scripts from this one.");
-    action(ed, ui, "file.revert", json!({}), "Revert", "Put back the script as last saved.");
-    action(ed, ui, "file.closeTab", json!({}), "Close Tab", "Close this script's tab.");
+fn save(ed: &mut Editor, ui: &mut Ui, shell: &mut Shell) {
+    act(ed, ui, shell, "file.saveAsTemplate", json!({}), "Save as Template…", "Start new scripts from this one.");
+    act(ed, ui, shell, "file.revert", json!({}), "Revert", "Put back the script as last saved.");
+    act(ed, ui, shell, "file.closeTab", json!({}), "Close Tab", "Close this script's tab.");
 }
 
-fn export(ed: &mut Editor, ui: &mut Ui) {
-    heading(ui, "Export");
-    action(ed, ui, "file.exportPdfAs", json!({}), "PDF…", "The pages as they print.");
-    action(ed, ui, "file.exportRevisedPdfAs", json!({}), "Revised Pages as PDF…", "Only the pages with revised text.");
-    action(ed, ui, "file.exportFountain", json!({}), "Fountain…", "Plain-text screenplay format other apps read.");
-    action(ed, ui, "file.exportRtf", json!({}), "Rich Text (RTF)…", "For word processors.");
-    action(ed, ui, "file.exportText", json!({}), "Plain Text…", "The words alone.");
-    action(ed, ui, "file.exportHtml", json!({}), "Web Page (HTML)…", "To read in a browser.");
+fn export(ed: &mut Editor, ui: &mut Ui, shell: &mut Shell) {
+    act(ed, ui, shell, "file.exportPdfAs", json!({}), "PDF…", "The pages as they print.");
+    act(ed, ui, shell, "file.exportRevisedPdfAs", json!({}), "Revised Pages as PDF…", "Only the pages with revised text.");
+    act(ed, ui, shell, "file.exportFountain", json!({}), "Fountain…", "Plain-text screenplay format other apps read.");
+    act(ed, ui, shell, "file.exportRtf", json!({}), "Rich Text (RTF)…", "For word processors.");
+    act(ed, ui, shell, "file.exportText", json!({}), "Plain Text…", "The words alone.");
+    act(ed, ui, shell, "file.exportHtml", json!({}), "Web Page (HTML)…", "To read in a browser.");
     sub(ui, "Planning");
     let board = ed.board.current;
-    action(ed, ui, "storyboard.exportPdf", json!({"board": board}), "Story Board as PDF…", "The board showing, on one page.");
-    action(ed, ui, "cards.exportPdf", json!({}), "Index Cards as PDF…", "A grid of cards on Letter pages.");
+    act(ed, ui, shell, "storyboard.exportPdf", json!({"board": board}), "Story Board as PDF…", "The board showing, on one page.");
+    act(ed, ui, shell, "cards.exportPdf", json!({}), "Index Cards as PDF…", "A grid of cards on Letter pages.");
 }
 
-fn print(ed: &mut Editor, ui: &mut Ui) {
-    heading(ui, "Print");
+/// The print choices; the shell's Print button under them prints with them.
+fn print(ed: &mut Editor, ui: &mut Ui, shell: &mut Shell) {
     // The print choices, as the Print window has them.
-    let mut c = ed.chrome.print.clone();
+    let mut c = ed.print.clone();
     let sets: Vec<String> = wordsmith_script::revisions::Revisions::of_doc(&ed.session.doc).sets.iter().map(|s| s.name.clone()).collect();
     let characters: Vec<String> = ed
         .session
@@ -419,33 +220,16 @@ fn print(ed: &mut Editor, ui: &mut Ui) {
     });
     ui.add_space(10.0);
     let params = c.params();
-    ed.chrome.print = c;
-    action(ed, ui, "file.print", params.clone(), "Print", "Send the pages to the printer.");
-    action(ed, ui, "file.printPreview", params.clone(), "Preview", "Open the pages in your PDF viewer.");
+    ed.print = c;
+    act(ed, ui, shell, "file.printPreview", params.clone(), "Preview", "Open the pages in your PDF viewer.");
     // The PDF's file dialog runs the export with these choices.
-    if action(ed, ui, "file.exportPdfAs", params.clone(), "Save as PDF…", "Keep the pages as a PDF file.") {
-        ed.dialog_params = Some(params);
-    }
+    act(ed, ui, shell, "file.exportPdfAs", params, "Save as PDF…", "Keep the pages as a PDF file.");
 }
 
-fn compare(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
+fn compare(ed: &mut Editor, ui: &mut Ui, shell: &mut Shell) {
+    let t = crate::theme::get(ui.ctx());
     heading(ui, "Compare");
     ui.label(RichText::new("Pick an earlier version of this script. The comparison opens as a new script: added text marked as inserted, removed text as deleted, and moved scenes with a note.").color(t.text_dim));
     ui.add_space(8.0);
-    action(ed, ui, "compare.withFile", json!({}), "Compare with Another Version…", "Scenes are matched first, then their paragraphs.");
-}
-
-fn about(ed: &mut Editor, ui: &mut Ui) {
-    let t = Tokens::get(ui.ctx());
-    let (r, _) = ui.allocate_exact_size(vec2(crate::brand::mark_width(56.0), 56.0), Sense::hover());
-    crate::brand::paint_mark(ui.painter(), r.min, 56.0, t.text);
-    ui.add_space(16.0);
-    heading(ui, "About");
-    ui.label(RichText::new(crate::about_summary()).font(regular(BODY)).color(t.text));
-    sub(ui, "Acknowledgments");
-    ui.label(RichText::new(crate::acknowledgments()).font(regular(BODY)).color(t.text));
-    sub(ui, "Updates");
-    crate::updates::actions(ed, ui);
-    ui.checkbox(&mut ed.updates.check_at_start, "Check for updates when the app starts");
+    act(ed, ui, shell, "compare.withFile", json!({}), "Compare with Another Version…", "Scenes are matched first, then their paragraphs.");
 }

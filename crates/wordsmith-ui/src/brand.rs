@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! The Wordsmith Script mark, wordmark, app icon and palette (`assets/brand/`).
+//! The Wordsmith Script mark, wordmark and app icon (`assets/brand/`). The interface's colors are
+//! the design tokens (`assets/brand/script/tokens.json`); the few here are the logo's own.
 //!
 //! The mark is a W followed by a brass caret bar. The W and the wordmark's letters are drawn from
 //! white masks tinted at paint time, so one picture serves every theme; the caret bar is a plain
@@ -13,12 +14,6 @@ pub const INK: Color32 = Color32::from_rgb(0x1C, 0x23, 0x40);
 pub const PAGE_WHITE: Color32 = Color32::from_rgb(0xFA, 0xFA, 0xF7);
 /// Brad Brass: the caret bar and other small highlights.
 pub const BRASS: Color32 = Color32::from_rgb(0xB8, 0x86, 0x2B);
-/// Brass Text: brass dark enough for text on Page White.
-pub const BRASS_TEXT: Color32 = Color32::from_rgb(0x8A, 0x64, 0x18);
-/// Margin Blue: controls that are on, links, focus.
-pub const MARGIN_BLUE: Color32 = Color32::from_rgb(0x3B, 0x4F, 0xA8);
-/// Slate: secondary text.
-pub const SLATE: Color32 = Color32::from_rgb(0x5A, 0x60, 0x80);
 /// Night: the dark theme's ground.
 pub const NIGHT: Color32 = Color32::from_rgb(0x12, 0x16, 0x2B);
 
@@ -49,7 +44,7 @@ pub fn icon() -> Option<egui::IconData> {
 /// The mask's texture, loaded once per context. The second value is the share of the texture
 /// the view box covers (the PNG is rounded up to whole pixels).
 fn texture(ctx: &Context, art: &Art) -> Option<(TextureHandle, egui::Vec2)> {
-    let id = Id::new(("wordsmith-brand", art.key));
+    let id = Id::unique(("wordsmith-brand", art.key));
     let tex = match ctx.data(|d| d.get_temp::<Option<TextureHandle>>(id)) {
         Some(tex) => tex,
         None => {
@@ -118,14 +113,14 @@ mod tests {
 
     #[test]
     fn the_file_page_shows_the_mark_in_ink_and_brass() {
-        let mut ed = crate::Editor::new(crate::new_session());
-        ed.chrome.backstage = Some(crate::backstage::Page::About);
-        let pic = crate::snapshot::render(&mut ed, egui::vec2(900.0, 600.0), 1.0, Vec::new(), 3);
+        let mut w = crate::tests::window();
+        w.shell.open_file_page(jcj_shell::Page::About);
+        let pic = crate::snapshot::render(&mut w.shell, &mut w.ed, egui::vec2(900.0, 600.0), 1.0, Vec::new(), 3);
         let count = |c: Color32| {
             let want = [c.r(), c.g(), c.b(), 255];
             (0..pic.height).flat_map(|y| (0..pic.width).map(move |x| (x, y))).filter(|&(x, y)| pic.at(x, y) == want).count()
         };
-        // The column is ink; the caret bars (mark, wordmark, current page) are brass.
+        // The column is ink; the caret bars (the marks, the current page) are brass.
         assert!(count(INK) > 10_000, "no ink column");
         assert!(count(BRASS) > 500, "no brass caret");
     }

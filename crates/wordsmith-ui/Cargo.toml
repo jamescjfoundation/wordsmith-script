@@ -11,23 +11,20 @@ publish.workspace = true
 [dependencies]
 wordsmith-script.workspace = true
 wordsmith-format.workspace = true
-wordsmith-engine.workspace = true
-wordsmith-doc.workspace = true
-wordsmith-geom.workspace = true
-wordsmith-layout.workspace = true
-wordsmith-render.workspace = true
+jcj-doc.workspace = true
+jcj-engine.workspace = true
+jcj-layout.workspace = true
+jcj-output.workspace = true
+jcj-project.workspace = true
+jcj-shell.workspace = true
+jcj-theme.workspace = true
+jcj-board.workspace = true
 egui.workspace = true
-raw-window-handle.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 log.workspace = true
 # PNG files of the interface drawn offscreen (README pictures, visual checks).
 image = { workspace = true, features = ["png"] }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-craft-dialogs.workspace = true
-# Crash-safe writes of the preferences file.
-craft-atomic.workspace = true
 
 [lints]
 workspace = true

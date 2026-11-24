@@ -5,9 +5,12 @@
 use std::path::{Path, PathBuf};
 
 use egui::Vec2;
+use jcj_shell::workspace::Layout;
+use jcj_shell::{Page, Shell};
 use serde_json::json;
 use wordsmith_ui::Editor;
 use wordsmith_ui::editor::View;
+use wordsmith_ui::ribbon::tab;
 use wordsmith_ui::structure::Structure;
 
 const SIZE: Vec2 = Vec2::new(1280.0, 820.0);
@@ -40,8 +43,7 @@ fn sample() -> Result<Editor, String> {
     run(&mut ed, "lock.pages", json!({}));
     run(&mut ed, "revision.next", json!({}));
     // A revision on the first page.
-    ed.session.sel =
-        wordsmith_engine::Selection::caret(wordsmith_doc::Pos { off: 0, path: wordsmith_doc::Path::top(2), ..ed.session.sel.focus.clone() });
+    ed.session.sel = jcj_engine::Selection::caret(jcj_doc::Pos { off: 0, path: jcj_doc::Path::top(2), ..ed.session.sel.focus.clone() });
     run(&mut ed, "text.insert", json!({"text": "Morning light. "}));
     // Beats and lanes for the story board and the outline.
     run(&mut ed, "outline.template", json!({"name": "three-act"}));
@@ -59,14 +61,17 @@ fn sample() -> Result<Editor, String> {
             run(&mut ed, "beat.link", json!({"from": i, "to": i + 1}));
         }
     }
-    ed.session.sel =
-        wordsmith_engine::Selection::caret(wordsmith_doc::Pos { off: 0, path: wordsmith_doc::Path::top(4), ..ed.session.sel.focus.clone() });
+    ed.session.sel = jcj_engine::Selection::caret(jcj_doc::Pos { off: 0, path: jcj_doc::Path::top(4), ..ed.session.sel.focus.clone() });
     Ok(ed)
 }
 
-fn shot(ed: &mut Editor, out: &Path, name: &str) -> Result<(), String> {
-    ed.forget_drawn_pages();
-    let pic = wordsmith_ui::snapshot::render(ed, SIZE, PPP, Vec::new(), 4);
+/// Open panels `open` (and no others).
+fn panels(shell: &mut Shell, open: &[&str]) {
+    shell.layout = Layout::with_open(&wordsmith_ui::sidebar::panels(), open);
+}
+
+fn shot(shell: &mut Shell, ed: &mut Editor, out: &Path, name: &str) -> Result<(), String> {
+    let pic = wordsmith_ui::snapshot::render(shell, ed, SIZE, PPP, Vec::new(), 4);
     let path = out.join(format!("{name}.png"));
     std::fs::write(&path, pic.to_png()).map_err(|e| format!("{}: {e}", path.display()))?;
     println!("{}", path.display());
@@ -76,32 +81,31 @@ fn shot(ed: &mut Editor, out: &Path, name: &str) -> Result<(), String> {
 fn run(out: &Path) -> Result<(), String> {
     std::fs::create_dir_all(out).map_err(|e| format!("{}: {e}", out.display()))?;
     let mut ed = sample()?;
+    let mut shell = wordsmith_ui::shell();
+    let s = &mut shell;
     ed.set_view(View::Page);
-    ed.chrome.right = Some(wordsmith_ui::ribbon::Panel::Scene);
-    shot(&mut ed, out, "page-view")?;
-    ed.chrome.right = None;
-    ed.chrome.tab = wordsmith_ui::ribbon::Tab::Production;
-    ed.chrome.right = Some(wordsmith_ui::ribbon::Panel::Revisions);
-    shot(&mut ed, out, "ribbon-production")?;
-    ed.chrome.tab = wordsmith_ui::ribbon::Tab::Review;
-    ed.chrome.right = Some(wordsmith_ui::ribbon::Panel::Element);
-    ed.chrome.left = Some(wordsmith_ui::ribbon::Panel::Characters);
-    shot(&mut ed, out, "ribbon-review")?;
-    ed.chrome.backstage = Some(wordsmith_ui::backstage::Page::New);
-    shot(&mut ed, out, "file-page")?;
-    ed.chrome.backstage = None;
-    ed.chrome.tab = wordsmith_ui::ribbon::Tab::Write;
-    ed.chrome.right = None;
-    ed.chrome.left = Some(wordsmith_ui::ribbon::Panel::Scenes);
+    panels(s, &["scenes", "scene"]);
+    shot(s, &mut ed, out, "page-view")?;
+    s.chrome.tab = tab::PRODUCTION.into();
+    panels(s, &["scenes", "revisions"]);
+    shot(s, &mut ed, out, "ribbon-production")?;
+    s.chrome.tab = tab::REVIEW.into();
+    panels(s, &["characters", "element"]);
+    shot(s, &mut ed, out, "ribbon-review")?;
+    s.open_file_page(Page::New);
+    shot(s, &mut ed, out, "file-page")?;
+    s.chrome.file_page = None;
+    s.chrome.tab = tab::WRITE.into();
+    panels(s, &["scenes"]);
     ed.structure = Some(Structure::Cards);
-    shot(&mut ed, out, "index-cards")?;
+    shot(s, &mut ed, out, "index-cards")?;
     ed.structure = Some(Structure::Board);
-    shot(&mut ed, out, "story-board")?;
+    shot(s, &mut ed, out, "story-board")?;
     ed.structure = Some(Structure::Outline);
-    shot(&mut ed, out, "outline")?;
+    shot(s, &mut ed, out, "outline")?;
     ed.structure = None;
-    ed.dark = true;
+    s.mode = jcj_shell::theme::Mode::Dark;
     ed.set_view(View::Draft);
-    shot(&mut ed, out, "draft-view-dark")?;
+    shot(s, &mut ed, out, "draft-view-dark")?;
     Ok(())
 }

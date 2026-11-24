@@ -7,7 +7,11 @@ use egui::Context;
 use serde_json::{Value, json};
 use wordsmith_script::Elements;
 
-use crate::editor::Editor;
+use jcj_shell::Page;
+use jcj_shell::theme::Mode;
+use jcj_shell::workspace::Side;
+
+use crate::editor::{Editor, ToShell};
 
 /// The format checker's window: the issues found and the one shown.
 #[derive(Clone, Debug, Default)]
@@ -46,12 +50,8 @@ pub struct Tools {
     pub watermark: Option<Value>,
     /// The scene numbers window: the number typed for the caret's scene.
     pub scene_numbers: Option<String>,
-    /// The start window is showing; and whether it shows when the app starts.
-    pub start: bool,
+    /// Whether the File page's New page shows when the app starts with no script to open.
     pub show_start_on_launch: bool,
-    pub templates: bool,
-    /// The keys window: the filter typed, and the command waiting for a new key.
-    pub keys: Option<(String, Option<String>)>,
 }
 
 /// Act on a UI request to open a tool window. Returns whether it was one.
@@ -69,21 +69,15 @@ pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
         // A panel named shows (a panel of the other side is not one of these); none shows or hides
         // the side.
         "tool.scriptPanel" | "tool.inspector" => {
-            use crate::ribbon::Panel;
             let left = what == "tool.scriptPanel";
-            let named = req["panel"].as_str().and_then(Panel::from_key).filter(|p| crate::sidebar::is_left(*p) == left);
-            let side = if left { &mut ed.chrome.left } else { &mut ed.chrome.right };
-            *side = match (named, side.is_some()) {
-                (Some(p), _) => Some(p),
-                (None, true) => None,
-                (None, false) => Some(if left { Panel::Scenes } else { Panel::Element }),
-            };
+            let named = req["panel"].as_str().filter(|p| crate::sidebar::is_panel(p) && crate::sidebar::is_left(p) == left);
+            ed.to_shell.push(match named {
+                Some(p) => ToShell::ShowPanel(p.to_string()),
+                None => ToShell::ToggleSide(if left { Side::Left } else { Side::Right }),
+            });
         }
-        "tool.lightTheme" => {
-            ed.dark = false;
-            ed.extra_dark = false;
-        }
-        "tool.menuBar" => ed.chrome.menu_bar = !ed.chrome.menu_bar,
+        "tool.lightTheme" => ed.to_shell.push(ToShell::Theme(Mode::Light)),
+        "tool.menuBar" => ed.menu_bar = !ed.menu_bar,
         "tool.cardsPrint" => {
             // The print choices show above the cards.
             let cards = Some(crate::structure::Structure::Cards);
@@ -101,28 +95,23 @@ pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
             if let Some(i) = req["scene"].as_u64() {
                 ed.run("scene.goto", json!({"scene": i}));
             }
-            ed.chrome.right = Some(crate::ribbon::Panel::Scene);
+            ed.to_shell.push(ToShell::ShowPanel("scene".into()));
         }
         "tool.character" => {
             if let Some(name) = req["name"].as_str() {
                 ed.panels.open.push(name.to_string());
             }
-            ed.chrome.left = Some(crate::ribbon::Panel::Characters);
+            ed.to_shell.push(ToShell::ShowPanel("characters".into()));
         }
         "tool.highlights" => ed.show_highlights = !ed.show_highlights,
         "tool.strip" => ed.tools.strip = !ed.tools.strip,
         // These are pages of the File page (v0.3).
-        "tool.start" | "tool.templates" => ed.chrome.backstage = Some(crate::backstage::Page::New),
-        "tool.keys" => ed.chrome.backstage = Some(crate::backstage::Page::Keys),
-        "tool.checkUpdates" => ed.updates.check_now(),
+        "tool.start" | "tool.templates" => ed.to_shell.push(ToShell::FilePage(Page::New)),
+        "tool.keys" => ed.to_shell.push(ToShell::FilePage(Page::Keys)),
+        "tool.checkUpdates" => ed.to_shell.push(ToShell::CheckForUpdates),
         "tool.stats" => ed.stats.window = Some(("words", "week")),
         "tool.sprint" => crate::workspace::toggle_sprint(ed),
-        "tool.extraDark" => {
-            ed.extra_dark = !ed.extra_dark;
-            if ed.extra_dark {
-                ed.dark = true;
-            }
-        }
+        "tool.extraDark" => ed.to_shell.push(ToShell::Theme(if ed.extra_dark { Mode::Dark } else { Mode::ExtraDark })),
         "tool.newTab" => ed.new_tab(),
         "tool.closeTab" => {
             ed.close_tab(false);
@@ -145,7 +134,7 @@ pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
             };
         }
         w if w.starts_with("tool.split.") => crate::workspace::set_split(ed, w.trim_start_matches("tool.split.")),
-        "tool.print" => ed.chrome.backstage = Some(crate::backstage::Page::Print),
+        "tool.print" => ed.to_shell.push(ToShell::FilePage(Page::Print)),
         "tool.watermark" => ed.tools.watermark = ed.session.run("watermark.get", &json!({})).ok(),
         "tool.sceneNumbers" => ed.tools.scene_numbers = Some(String::new()),
         "tool.macroConfirm" => {
@@ -154,12 +143,12 @@ pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
         }
         "tool.goto" => ed.tools.goto = Some(Default::default()),
         // These open as side panels (v0.3).
-        "tool.bookmarks" => ed.chrome.left = Some(crate::ribbon::Panel::Bookmarks),
-        "tool.checker" => ed.chrome.right = Some(crate::ribbon::Panel::Checker),
+        "tool.bookmarks" => ed.to_shell.push(ToShell::ShowPanel("bookmarks".into())),
+        "tool.checker" => ed.to_shell.push(ToShell::ShowPanel("checker".into())),
         "tool.reformat" => {
             ed.tools.reformat = true;
-            ed.run("paragraph.next", json!({}));
-            ed.run("paragraph.previous", json!({}));
+            ed.run("select.nextParagraph", json!({}));
+            ed.run("select.previousParagraph", json!({}));
         }
         _ => return false,
     }
@@ -402,18 +391,18 @@ fn reformat_window(ed: &mut Editor, ctx: &Context) {
                 action = Some(("paragraph.delete", json!({})));
             }
             if i.key_pressed(egui::Key::ArrowDown) {
-                action = Some(("paragraph.next", json!({})));
+                action = Some(("select.nextParagraph", json!({})));
             }
             if i.key_pressed(egui::Key::ArrowUp) {
-                action = Some(("paragraph.previous", json!({})));
+                action = Some(("select.previousParagraph", json!({})));
             }
         });
         ui.horizontal(|ui| {
             if ui.button("Previous").clicked() {
-                action = Some(("paragraph.previous", json!({})));
+                action = Some(("select.previousParagraph", json!({})));
             }
             if ui.button("Next").clicked() {
-                action = Some(("paragraph.next", json!({})));
+                action = Some(("select.nextParagraph", json!({})));
             }
             if ui.button("Delete").clicked() {
                 action = Some(("paragraph.delete", json!({})));
@@ -423,11 +412,11 @@ fn reformat_window(ed: &mut Editor, ctx: &Context) {
     if let Some((cmd, params)) = action {
         ed.run(cmd, params);
         if advance {
-            ed.run("paragraph.next", json!({}));
+            ed.run("select.nextParagraph", json!({}));
         } else if cmd == "paragraph.delete" {
             // Select the paragraph that took the deleted one's place.
-            ed.run("paragraph.next", json!({}));
-            ed.run("paragraph.previous", json!({}));
+            ed.run("select.nextParagraph", json!({}));
+            ed.run("select.previousParagraph", json!({}));
         }
     }
     ed.tools.reformat = open;

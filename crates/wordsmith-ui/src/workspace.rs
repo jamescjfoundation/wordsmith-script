@@ -9,14 +9,11 @@ use std::time::{Duration, Instant};
 
 use egui::{Color32, Context, RichText, Stroke, Ui, pos2, vec2};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
 use wordsmith_script::dates::day_number;
 
 use crate::editor::Editor;
 use crate::structure::Structure;
 
-/// Most recent scripts listed.
-pub const MAX_RECENT: usize = 12;
 /// Most days of statistics kept (about ten years).
 pub const MAX_DAYS: usize = 3_700;
 /// The sprint timer's default length, minutes (decision 0036).
@@ -135,7 +132,7 @@ impl Stats {
 }
 
 /// Words in a script.
-pub fn word_count(doc: &wordsmith_doc::Document) -> usize {
+pub fn word_count(doc: &jcj_doc::Document) -> usize {
     doc.body.iter().filter_map(|b| b.as_para()).map(|p| p.text.split_whitespace().filter(|w| w.chars().any(char::is_alphanumeric)).count()).sum()
 }
 
@@ -466,180 +463,9 @@ pub fn sprint_left(ed: &Editor) -> Option<Duration> {
     ed.stats.sprint.as_ref().filter(|s| s.result.is_none()).map(|s| s.ends.saturating_duration_since(Instant::now()))
 }
 
-/// The start window: recent scripts, templates, and a few first steps.
-fn start_window(ed: &mut Editor, ctx: &Context) {
-    if !ed.tools.start {
-        return;
-    }
-    let mut open = true;
-    let mut act: Option<(&'static str, Value)> = None;
-    let mut template: Option<String> = None;
-    egui::Window::new("Welcome").open(&mut open).default_width(620.0).collapsible(false).show(ctx, |ui| {
-        ui.columns(2, |cols| {
-            cols[0].heading("Recent scripts");
-            if ed.recent.is_empty() {
-                cols[0].label("Scripts you open or save show here.");
-            }
-            for r in ed.recent.clone() {
-                let name = std::path::Path::new(&r).file_name().and_then(|n| n.to_str()).unwrap_or(&r).to_string();
-                if cols[0].link(name).on_hover_text(&r).clicked() {
-                    act = Some(("file.openPath", json!({"path": r})));
-                }
-            }
-            cols[0].add_space(8.0);
-            if cols[0].button("Open…").clicked() {
-                act = Some(("file.open", json!({})));
-            }
-            cols[1].heading("Start from");
-            template_tree(&mut cols[1], &mut template);
-        });
-        ui.separator();
-        ui.collapsing("First steps", |ui| {
-            for tip in [
-                "Return starts the next element and Tab changes this one: a heading leads to action, a name to dialogue.",
-                "Type INT, press Tab, type the place, press Tab, type the time of day.",
-                "Mod+1 to Mod+9 pick an element; the status bar says what Return and Tab will make.",
-                "View › Index Cards, Story Board and Outline show the same script in other ways.",
-                "Production › Revision Mode marks every change in the color of the current set.",
-                "Tools › Reports counts scenes, locations and characters.",
-            ] {
-                ui.label(format!("• {tip}"));
-            }
-        });
-        let mut show = ed.tools.show_start_on_launch;
-        if ui.checkbox(&mut show, "Show this window when the app starts").changed() {
-            ed.tools.show_start_on_launch = show;
-        }
-    });
-    if let Some(id) = template {
-        act = Some(("file.newFromTemplate", json!({"template": id})));
-    }
-    if let Some((cmd, params)) = act {
-        open = false;
-        if cmd == "file.newFromTemplate" && ed.session.dirty {
-            // Unsaved work stays: the template opens in a tab of its own.
-            ed.new_tab();
-        }
-        ed.run(cmd, params);
-    }
-    ed.tools.start = open;
-}
-
-/// The built-in templates as a tree of categories; a click picks one.
-pub fn template_tree(ui: &mut Ui, picked: &mut Option<String>) {
-    let mut category = "";
-    for t in &wordsmith_script::templates::TEMPLATES {
-        if t.category != category {
-            category = t.category;
-            ui.add_space(4.0);
-            ui.label(RichText::new(category).strong());
-        }
-        if ui.link(format!("  {}", t.name)).on_hover_text(t.about).clicked() {
-            *picked = Some(t.id.to_string());
-        }
-    }
-}
-
-fn templates_window(ed: &mut Editor, ctx: &Context) {
-    if !ed.tools.templates {
-        return;
-    }
-    let mut open = true;
-    let mut picked = None;
-    egui::Window::new("New from Template").open(&mut open).resizable(false).show(ctx, |ui| {
-        template_tree(ui, &mut picked);
-        ui.separator();
-        ui.label("Templates of your own (File › Save as Template) open like any script.");
-    });
-    if let Some(id) = picked {
-        open = false;
-        if ed.session.dirty {
-            ed.new_tab();
-        }
-        ed.run("file.newFromTemplate", json!({"template": id}));
-    }
-    ed.tools.templates = open;
-}
-
-/// The keys window: every command, its key, and the writer's own.
-fn keys_window(ed: &mut Editor, ctx: &Context) {
-    if ed.tools.keys.is_none() || ed.chrome.backstage == Some(crate::backstage::Page::Keys) {
-        return;
-    }
-    let mut open = true;
-    egui::Window::new("Keys").open(&mut open).default_size([560.0, 480.0]).show(ctx, |ui| keys_body(ed, ui));
-    if !open {
-        ed.tools.keys = None;
-    }
-}
-
-/// Every command with its key and the writer's own, in a window or on the File page.
-pub fn keys_body(ed: &mut Editor, ui: &mut Ui) {
-    let (mut filter, mut capturing) = ed.tools.keys.take().unwrap_or_default();
-    let mut set: Option<(String, String)> = None;
-    let mut clear: Option<String> = None;
-    let specs: Vec<(&'static str, &'static str, &'static str, &'static str)> =
-        ed.session.registry.all().iter().filter(|s| s.params == "{}").map(|s| (s.id, s.label, s.location, s.shortcut)).collect();
-    ui.horizontal(|ui| {
-        ui.label("Find");
-        ui.text_edit_singleline(&mut filter);
-    });
-    if let Some(id) = &capturing {
-        ui.colored_label(Color32::from_rgb(200, 120, 30), format!("Press the new key for {id} (Escape to cancel)"));
-        let pressed = ui.input(|i| {
-            i.events.iter().find_map(|e| match e {
-                egui::Event::Key { key, pressed: true, modifiers, .. } => Some((*key, *modifiers)),
-                _ => None,
-            })
-        });
-        if let Some((key, m)) = pressed {
-            if key == egui::Key::Escape {
-                capturing = None;
-            } else if let Some(sc) = crate::keys::shortcut(key, m, ed.mac) {
-                set = Some((sc, id.clone()));
-                capturing = None;
-            }
-        }
-    }
-    ui.separator();
-    egui::ScrollArea::vertical().id_salt("keys-list").show(ui, |ui| {
-        egui::Grid::new("keys").striped(true).num_columns(4).show(ui, |ui| {
-            let f = filter.to_lowercase();
-            for (id, label, loc, default) in &specs {
-                if !f.is_empty() && !format!("{id} {label} {loc}").to_lowercase().contains(&f) {
-                    continue;
-                }
-                ui.label(*label).on_hover_text(*id);
-                ui.label(RichText::new(*default).weak());
-                let mine: Vec<String> = ed.keys.iter().filter(|(_, c)| c.as_str() == *id).map(|(k, _)| k.clone()).collect();
-                ui.label(mine.join(", "));
-                ui.horizontal(|ui| {
-                    if ui.small_button("Set…").clicked() {
-                        capturing = Some((*id).to_string());
-                    }
-                    if !mine.is_empty() && ui.small_button("Reset").clicked() {
-                        clear = Some((*id).to_string());
-                    }
-                });
-                ui.end_row();
-            }
-        });
-    });
-    if let Some((sc, id)) = set {
-        ed.keys.insert(sc, id);
-    }
-    if let Some(id) = clear {
-        ed.keys.retain(|_, c| *c != id);
-    }
-    ed.tools.keys = Some((filter, capturing));
-}
-
 pub fn show(ed: &mut Editor, ctx: &Context) {
     stats_window(ed, ctx);
     sprint_window(ed, ctx);
-    start_window(ed, ctx);
-    templates_window(ed, ctx);
-    keys_window(ed, ctx);
 }
 
 /// The statistics file beside the preferences.
@@ -662,7 +488,7 @@ pub mod file {
     pub fn save(dir: &std::path::Path, data: &StatsData) -> Result<(), String> {
         let text = serde_json::to_string(data).map_err(|e| e.to_string())?;
         std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-        craft_atomic::atomic_write(&dir.join(NAME), text.as_bytes()).map_err(|e| e.to_string())
+        jcj_project::files::write_atomic(&dir.join(NAME), text.as_bytes()).map_err(|e| e.to_string())
     }
 }
 

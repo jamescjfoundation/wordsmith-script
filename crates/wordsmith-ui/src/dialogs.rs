@@ -1,39 +1,16 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! Dialogs: the command palette, element settings, crash recovery, About, unsaved changes,
-//! "is this a script?" and preferences. Each one changes the script only by running commands.
+//! Script's dialogs: element settings, "is this a script?", the title page, header and footer,
+//! notes, revision sets, and Script's own preferences. The shell has the general ones (the
+//! command palette, crash recovery, "save changes first?", About). Each one changes the script
+//! only by running commands.
 
 use egui::Context;
+use jcj_engine::Session;
+use jcj_shell::Shell;
 use serde_json::{Map, Value, json};
-use wordsmith_engine::{Registry, Session};
 use wordsmith_script::Elements;
 
-use crate::editor::{Editor, Then, UnsavedAnswer};
-
-/// Most commands the palette lists at once.
-const PALETTE_ROWS: usize = 40;
-
-/// The command palette: type to filter every command, Enter or click to run one.
-#[derive(Default)]
-pub struct Palette {
-    pub query: String,
-}
-
-/// Commands matching `query` (every word in the id, label or menu location), as (id, label,
-/// shortcut). Commands that need parameters are left out: the palette runs commands as they are.
-pub fn palette_matches(registry: &Registry, query: &str) -> Vec<(&'static str, &'static str, &'static str)> {
-    let words: Vec<String> = query.split_whitespace().map(str::to_lowercase).collect();
-    registry
-        .all()
-        .iter()
-        .filter(|s| s.params == "{}")
-        .filter(|s| {
-            let hay = format!("{} {} {}", s.id, s.label, s.location).to_lowercase();
-            words.iter().all(|w| hay.contains(w.as_str()))
-        })
-        .map(|s| (s.id, s.label, s.shortcut))
-        .take(PALETTE_ROWS)
-        .collect()
-}
+use crate::editor::Editor;
 
 /// The element settings being edited, as `element.settings` reports them.
 pub struct SettingsDialog {
@@ -63,10 +40,6 @@ impl SettingsDialog {
         Value::Object(out)
     }
 }
-
-/// Copies left by an earlier run, offered for recovery.
-#[derive(Default)]
-pub struct RecoveryPrompt;
 
 fn text_field(ui: &mut egui::Ui, form: &mut Value, key: &str) {
     let mut s = form.get(key).and_then(Value::as_str).unwrap_or("").to_string();
@@ -239,112 +212,6 @@ fn settings_window(ed: &mut Editor, ctx: &Context) {
     }
 }
 
-fn palette_window(ed: &mut Editor, ctx: &Context) {
-    let Some(mut palette) = ed.palette.take() else { return };
-    let mut open = true;
-    let mut chosen = None;
-    egui::Window::new("Commands").open(&mut open).collapsible(false).resizable(false).show(ctx, |ui| {
-        let edit = ui.text_edit_singleline(&mut palette.query);
-        edit.request_focus();
-        let matches = palette_matches(&ed.session.registry, &palette.query);
-        if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-            chosen = matches.first().map(|m| m.0);
-        }
-        egui::ScrollArea::vertical().max_height(320.0).show(ui, |ui| {
-            for (id, label, shortcut) in &matches {
-                let text = if shortcut.is_empty() { (*label).to_string() } else { format!("{label}    {shortcut}") };
-                if ui.selectable_label(false, text).clicked() {
-                    chosen = Some(*id);
-                }
-            }
-        });
-    });
-    if let Some(id) = chosen {
-        ed.run(id, json!({}));
-        return;
-    }
-    if open {
-        ed.palette = Some(palette);
-    }
-}
-
-fn recovery_window(ed: &mut Editor, ctx: &Context) {
-    if ed.recovery.is_none() {
-        return;
-    }
-    let copies = ed.session.recovery_documents();
-    let blank = ed.session.is_untouched_blank();
-    let mut open = true;
-    let mut action = None;
-    egui::Window::new("Recover Unsaved Scripts").open(&mut open).show(ctx, |ui| {
-        if copies.is_empty() {
-            ui.label("There are no unsaved scripts to recover.");
-        }
-        if !blank && !copies.is_empty() {
-            ui.label("Start a new script (File › New Script) to restore one here.");
-        }
-        for c in &copies {
-            ui.horizontal(|ui| {
-                ui.label(format!("{} — {}", c.name, c.saved_at));
-                if ui.add_enabled(blank, egui::Button::new("Restore")).clicked() {
-                    action = Some(json!({"restore": c.id}));
-                }
-                if ui.button("Discard").clicked() {
-                    action = Some(json!({"discard": c.id}));
-                }
-            });
-        }
-    });
-    if let Some(params) = action {
-        ed.run("file.recover", params);
-    }
-    if !open {
-        ed.recovery = None;
-    }
-}
-
-fn about_window(ed: &mut Editor, ctx: &Context) {
-    let mut open = ed.show_about;
-    egui::Window::new("About").open(&mut open).collapsible(false).resizable(false).show(ctx, |ui| {
-        for line in crate::about_text().lines() {
-            ui.label(line);
-        }
-    });
-    ed.show_about = open;
-}
-
-/// "Save changes first?" before New, Open, Import or closing the window.
-fn unsaved_window(ed: &mut Editor, ctx: &Context) {
-    let Some(then) = ed.unsaved else { return };
-    let name = crate::editor::script_name(&ed.session);
-    let doing = match then {
-        Then::New => "starting a new script",
-        Then::Open => "opening another script",
-        Then::Import => "importing",
-        Then::Close => "closing",
-        Then::CloseTab => "closing its tab",
-    };
-    let mut answer = None;
-    egui::Window::new("Unsaved Changes").collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(ctx, |ui| {
-        ui.label(format!("Save the changes to “{name}” before {doing}?"));
-        ui.label("If you don't save, your changes since the last save are lost.");
-        ui.horizontal(|ui| {
-            if ui.button("Save").clicked() {
-                answer = Some(UnsavedAnswer::Save);
-            }
-            if ui.button("Don't Save").clicked() {
-                answer = Some(UnsavedAnswer::DontSave);
-            }
-            if ui.button("Cancel").clicked() {
-                answer = Some(UnsavedAnswer::Cancel);
-            }
-        });
-    });
-    if let Some(a) = answer {
-        ed.answer_unsaved(a);
-    }
-}
-
 /// "Is this a script?" when importing plain text or RTF (SPEC: import asks and auto-formats).
 fn import_window(ed: &mut Editor, ctx: &Context) {
     let Some(q) = ed.import_question.clone() else { return };
@@ -377,31 +244,9 @@ fn import_window(ed: &mut Editor, ctx: &Context) {
     }
 }
 
-/// Preferences: auto-save and backups (the view settings are kept as they are left).
-fn prefs_window(ed: &mut Editor, ctx: &Context) {
-    let mut open = ed.show_prefs;
-    egui::Window::new("Preferences").open(&mut open).collapsible(false).resizable(false).show(ctx, |ui| prefs_body(ed, ui));
-    ed.show_prefs = open;
-}
-
-/// The preferences, in a window or on the File page.
-pub fn prefs_body(ed: &mut Editor, ui: &mut egui::Ui) {
-    ui.heading("Auto-save");
-    ui.checkbox(&mut ed.autosave.enabled, "Save scripts automatically");
-    let mut minutes = ed.autosave.every.as_secs() / 60;
-    ui.horizontal(|ui| {
-        ui.label("Every");
-        if ui.add(egui::DragValue::new(&mut minutes).range(1..=u64::from(crate::prefs::MAX_AUTOSAVE_MINUTES))).changed() {
-            ed.autosave.every = std::time::Duration::from_secs(minutes * 60);
-        }
-        ui.label("minutes, once typing pauses for");
-        let mut idle = ed.autosave.idle.as_secs();
-        if ui.add(egui::DragValue::new(&mut idle).range(1..=u64::from(crate::prefs::MAX_IDLE_SECONDS))).changed() {
-            ed.autosave.idle = std::time::Duration::from_secs(idle);
-        }
-        ui.label("seconds");
-    });
-    ui.label("Only scripts saved to a file are saved automatically; crash recovery keeps the others.");
+/// Script's own preferences, after the shell's on the Preferences page: backups, the File page
+/// at start, writing statistics.
+pub fn prefs_body(ed: &mut Editor, ui: &mut egui::Ui, _shell: &mut Shell) {
     ui.separator();
     ui.heading("Backups");
     ui.checkbox(&mut ed.backups.enabled, "Keep a backup copy of every save");
@@ -417,16 +262,8 @@ pub fn prefs_body(ed: &mut Editor, ui: &mut egui::Ui) {
         ui.label(format!("Backups folder: {}", dir.display()));
     }
     ui.separator();
-    ui.heading("Starting");
-    ui.checkbox(&mut ed.reopen_last, "Open the scripts that were open when the app last closed");
-    ui.checkbox(&mut ed.tools.show_start_on_launch, "Show the Welcome window when no script opens");
-    ui.checkbox(&mut ed.updates.check_at_start, "Check for updates when the app starts");
-    ui.separator();
-    ui.heading("Writer");
-    ui.horizontal(|ui| {
-        ui.label("Your name (notes and tracked changes)");
-        ui.text_edit_singleline(&mut ed.session.author);
-    });
+    ui.heading("Starting a script");
+    ui.checkbox(&mut ed.tools.show_start_on_launch, "Show the File page's New page when no script opens");
     ui.separator();
     ui.heading("Writing statistics");
     if ui.checkbox(&mut ed.stats.data.enabled, "Keep writing statistics").changed() {
@@ -438,9 +275,6 @@ pub fn prefs_body(ed: &mut Editor, ui: &mut egui::Ui) {
             ed.stats.dirty = true;
         }
     });
-    if ui.button("Keys…").clicked() {
-        ed.tools.keys = Some(Default::default());
-    }
 }
 
 /// The title page fields, edited as text; Apply sets them (one undo step).
@@ -536,7 +370,7 @@ fn note_popover(ed: &mut Editor, ctx: &Context) {
     let at = ed.caret_rect().map_or(egui::pos2(200.0, 200.0), |r| r.right_bottom() + egui::vec2(8.0, 8.0));
     let mut keep = true;
     let mut action: Option<(&str, Value)> = None;
-    egui::Area::new(egui::Id::new("note_popover")).order(egui::Order::Foreground).fixed_pos(at).show(ctx, |ui| {
+    egui::Area::new(egui::Id::unique("note_popover")).order(egui::Order::Foreground).fixed_pos(at).show(ctx, |ui| {
         egui::Frame::popup(ui.style()).show(ui, |ui| {
             ui.label(if id.is_some() { "Note" } else { "New note" });
             let r = ui.add(egui::TextEdit::multiline(&mut text).desired_rows(4).desired_width(260.0));
@@ -673,12 +507,6 @@ pub fn show(ed: &mut Editor, ctx: &Context) {
     note_popover(ed, ctx);
     header_footer_window(ed, ctx);
     title_page_window(ed, ctx);
-    palette_window(ed, ctx);
     settings_window(ed, ctx);
-    recovery_window(ed, ctx);
-    about_window(ed, ctx);
-    prefs_window(ed, ctx);
     import_window(ed, ctx);
-    unsaved_window(ed, ctx);
-    crate::updates::window(ed, ctx);
 }

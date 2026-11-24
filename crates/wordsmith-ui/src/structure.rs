@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! The structure views (SPEC: index cards, one per scene, reordered to reorder the script; the
 //! scene view, scenes as movable blocks of script text). Both show the one script and change it
-//! only through the scene commands, so undo puts a move back (decision 0022).
+//! only through the scene commands, so undo puts a move back (decision 0022). The index cards
+//! are the core's corkboard (`jcj_board::Corkboard`).
 //!
 //! Dragging a card or a scene onto another moves it there: before the one dropped on when it
-//! came from later in the script, after it when it came from earlier. "Open" goes to the scene in
-//! the script view.
+//! came from later in the script, after it when it came from earlier. "Open" (or a double-click
+//! on a card) goes to the scene in the script view.
 
 use egui::{Id, RichText, Ui, vec2};
+use jcj_board::{Board, BoardEvent, Card, CardId, drop_target};
 use serde_json::{Value, json};
 use wordsmith_script::{ElementKind, Elements};
 
@@ -24,41 +26,11 @@ pub enum Structure {
     Outline,
 }
 
-/// A card's text: the first few lines' worth, cut at a word.
-fn preview(text: &str) -> String {
-    const MAX: usize = 110;
-    if text.chars().count() <= MAX {
-        return text.to_string();
-    }
-    let cut: String = text.chars().take(MAX).collect();
-    let at = cut.rfind(' ').unwrap_or(cut.len());
-    format!("{}…", cut[..at].trim_end())
-}
-
-/// A card's heading: two lines' worth at most.
-fn heading_preview(text: &str) -> String {
-    if text.chars().count() <= 52 {
-        return text.to_string();
-    }
-    format!("{}…", text.chars().take(50).collect::<String>().trim_end())
-}
-
-/// A card's size, points.
-pub const CARD: egui::Vec2 = vec2(230.0, 150.0);
-
-/// The scene a drop on scene `onto` moves scene `from` before (`None`: to the end).
-pub fn drop_target(from: usize, onto: usize, count: usize) -> Option<usize> {
-    if from < onto {
-        // Dragged later: it goes after the scene dropped on.
-        (onto + 1 < count).then_some(onto + 1)
-    } else {
-        Some(onto)
-    }
-}
-
-/// What to do after drawing: move a scene, or open one.
+/// What to do after drawing: move a scene (dropped on another, or to a place in the order), or
+/// open one.
 enum Act {
     Move { from: usize, onto: usize },
+    Reorder { from: usize, before: Option<usize> },
     Open(usize),
 }
 
@@ -70,6 +42,9 @@ fn act(ed: &mut Editor, action: Option<Act>, count: usize) {
     match action {
         Some(Act::Move { from, onto }) if from != onto => {
             let before = drop_target(from, onto, count);
+            ed.run("scene.move", json!({"scene": from, "before": before}));
+        }
+        Some(Act::Reorder { from, before }) => {
             ed.run("scene.move", json!({"scene": from, "before": before}));
         }
         Some(Act::Open(i)) => {
@@ -150,87 +125,73 @@ fn cards_bar(ed: &mut Editor, ui: &mut Ui) {
     }
 }
 
+/// A pale tint of `hex` for a card (cards are pale, so their dark ink reads), or white.
+fn card_tint(hex: Option<&str>) -> String {
+    let Some(c) = hex.and_then(wordsmith_script::revisions::parse_color) else { return "#FFFFFF".into() };
+    let mix = |v: u8| (f32::from(v) * 0.45 + 255.0 * 0.55).round().clamp(0.0, 255.0) as u8;
+    format!("#{:02X}{:02X}{:02X}", mix(c.0), mix(c.1), mix(c.2))
+}
+
+/// The scenes as the corkboard's cards: the number and heading, the title, the summary (or the
+/// start of the scene's text) and who speaks in it.
+pub fn scene_cards(scenes: &[Value], script_text: bool) -> Board {
+    let cards = scenes
+        .iter()
+        .enumerate()
+        .map(|(i, sc)| {
+            let number = sc["number"].as_str().map_or_else(|| (i + 1).to_string(), str::to_string);
+            let summary = if script_text { String::new() } else { text_of(sc, "summary") };
+            let text = if summary.is_empty() { text_of(sc, "firstAction") } else { summary };
+            let who: Vec<&str> =
+                sc.get("characters").and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
+            let body = [text_of(sc, "title"), jcj_board::text::preview(&text, 110), who.join(", ")]
+                .into_iter()
+                .filter(|l| !l.is_empty())
+                .collect::<Vec<_>>()
+                .join("\n");
+            let color = wordsmith_script::scene_data::SCENE_COLORS.iter().find(|(n, _)| *n == text_of(sc, "color")).map(|c| c.1);
+            Card {
+                id: CardId(u32::try_from(i).unwrap_or(u32::MAX)),
+                title: format!("{number}  {}", text_of(sc, "heading")),
+                body,
+                color: card_tint(color),
+                ..Card::default()
+            }
+        })
+        .collect();
+    Board { cards, ..Board::default() }
+}
+
 pub fn cards(ed: &mut Editor, ui: &mut Ui) {
     let scenes = ed.scene_list();
     let count = scenes.len();
     let mut action = None;
     cards_bar(ed, ui);
-    let per_row = ed.tools.cards.per_row;
-    let script_text = ed.tools.cards.script_text;
-    let card = if per_row == 0 { CARD } else { vec2(((ui.available_width() - 24.0) / per_row as f32 - 12.0).max(120.0), CARD.y) };
-    egui::ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
-        if scenes.is_empty() {
-            ui.label("The script has no scenes yet. Each Scene Heading starts one.");
+    let selected = ed.cards_selection.primary().map(|c| c.0 as usize).filter(|i| *i < count);
+    ui.horizontal(|ui| {
+        if ui.add_enabled(selected.is_some(), egui::Button::new("Open")).on_hover_text("Go to the scene (or double-click its card)").clicked() {
+            action = selected.map(Act::Open);
         }
-        ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing = vec2(12.0, 12.0);
-            for (i, sc) in scenes.iter().enumerate() {
-                // A fixed allocation per card, so the row knows when to wrap.
-                ui.allocate_ui_with_layout(vec2(card.x, card.y + 32.0), egui::Layout::top_down(egui::Align::Min), |ui| {
-                    ui.set_width(card.x);
-                    let drag = ui.dnd_drag_source(Id::new(("scene-card", i)), i, |ui| {
-                        egui::Frame::group(ui.style()).fill(ui.visuals().extreme_bg_color).show(ui, |ui| {
-                            // Every card the same size: a long heading or summary is cut short.
-                            ui.set_min_size(card - vec2(12.0, 12.0));
-                            ui.set_max_size(card - vec2(12.0, 12.0));
-                            // The scene's color as a band along the top.
-                            if let Some(hex) =
-                                wordsmith_script::scene_data::SCENE_COLORS.iter().find(|(n, _)| *n == text_of(sc, "color")).map(|c| c.1)
-                                && let Some(c) = wordsmith_script::revisions::parse_color(hex)
-                            {
-                                let r = ui.max_rect();
-                                ui.painter().rect_filled(
-                                    egui::Rect::from_min_size(r.min - vec2(6.0, 6.0), vec2(r.width() + 12.0, 4.0)),
-                                    0.0,
-                                    egui::Color32::from_rgb(c.0, c.1, c.2),
-                                );
-                            }
-                            ui.label(
-                                RichText::new(format!(
-                                    "{}  {}",
-                                    sc["number"].as_str().map_or_else(|| (i + 1).to_string(), str::to_string),
-                                    heading_preview(&text_of(sc, "heading"))
-                                ))
-                                .strong(),
-                            );
-                            let title = text_of(sc, "title");
-                            if !title.is_empty() {
-                                ui.label(RichText::new(title).italics());
-                            }
-                            let summary = if script_text { String::new() } else { text_of(sc, "summary") };
-                            if summary.is_empty() {
-                                ui.label(RichText::new(preview(&text_of(sc, "firstAction"))).weak());
-                            } else {
-                                ui.label(preview(&summary));
-                            }
-                            let who: Vec<&str> = sc
-                                .get("characters")
-                                .and_then(Value::as_array)
-                                .map(|a| a.iter().filter_map(Value::as_str).collect())
-                                .unwrap_or_default();
-                            if !who.is_empty() {
-                                ui.label(RichText::new(who.join(", ")).small());
-                            }
-                        });
-                    });
-                    let r = &drag.response;
-                    if let Some(from) = r.dnd_release_payload::<usize>() {
-                        action = Some(Act::Move { from: *from, onto: i });
-                    } else if r.dnd_hover_payload::<usize>().is_some_and(|f| *f != i) {
-                        ui.painter().rect_stroke(r.rect, 4.0, egui::Stroke::new(2.0, ui.visuals().selection.stroke.color), egui::StrokeKind::Outside);
-                    }
-                    ui.horizontal(|ui| {
-                        if ui.small_button("Open").clicked() {
-                            action = Some(Act::Open(i));
-                        }
-                        if ui.small_button("Properties").clicked() {
-                            ed.session.push_ui_request(json!({"open": "tool.sceneProperties", "scene": i}));
-                        }
-                    });
-                });
-            }
-        });
+        if ui.add_enabled(selected.is_some(), egui::Button::new("Properties")).on_hover_text("The scene's properties").clicked()
+            && let Some(i) = selected
+        {
+            ed.session.push_ui_request(json!({"open": "tool.sceneProperties", "scene": i}));
+        }
     });
+    let board = scene_cards(&scenes, ed.tools.cards.script_text);
+    let events = jcj_board::Corkboard::new("index-cards")
+        .per_row(ed.tools.cards.per_row)
+        .empty_hint("The script has no scenes yet. Each Scene Heading starts one.")
+        .show(ui, &board, &ed.cards_selection);
+    for e in events {
+        match e {
+            BoardEvent::Select(id) => ed.cards_selection.select(id),
+            BoardEvent::Toggle(id) => ed.cards_selection.toggle(id),
+            BoardEvent::Open(id) => action = Some(Act::Open(id.0 as usize)),
+            BoardEvent::Reorder { from, before } => action = Some(Act::Reorder { from, before }),
+            _ => {}
+        }
+    }
     act(ed, action, count);
 }
 
@@ -263,7 +224,7 @@ pub fn scene_view(ed: &mut Editor, ui: &mut Ui) {
             }
             let rect = egui::Rect::from_min_size(ui.min_rect().min + vec2(0.0, top), vec2(ui.available_width().max(400.0), *h));
             ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
-                let drag = ui.dnd_drag_source(Id::new(("scene-block", i)), i, |ui| {
+                let drag = ui.dnd_drag_source(Id::unique(("scene-block", i)), i, |ui| {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new(format!("{}  {}", i + 1, text_of(sc, "heading"))).monospace().strong());
                     });
@@ -296,17 +257,4 @@ pub fn scene_view(ed: &mut Editor, ui: &mut Ui) {
         }
     });
     act(ed, action, count);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn drops_land_where_the_writer_expects() {
-        // Dragged later: after the card dropped on; earlier: before it.
-        assert_eq!(drop_target(0, 2, 4), Some(3));
-        assert_eq!(drop_target(0, 3, 4), None, "after the last: to the end");
-        assert_eq!(drop_target(3, 1, 4), Some(1));
-    }
 }
