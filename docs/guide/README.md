@@ -1,0 +1,25 @@
+# Wordsmith Script user guide
+
+0. [The window](the-window.md): the ribbon, the side panels, the File page,
+   updates and privacy.
+1. [Getting started](getting-started.md): your first scene.
+2. [Writing](writing.md): elements, Return and Tab, autocomplete, spelling,
+   find, notes.
+3. [Views](views.md): page, normal and draft views, index cards, scene view,
+   tables, focus and dark modes.
+4. [Pages and printing](pages.md): title page, headers and footers, mores
+   and continueds, PDF and printing.
+5. [Files](files.md): the native format, Fountain, imports and exports,
+   auto-save and backups.
+6. [Production](production.md): revisions, scene numbers, locked pages,
+   reports.
+7. [Outlining](outlining.md): the story board and the outline.
+8. [Command line and agents](cli-and-mcp.md).
+9. [Keyboard](keyboard.md): every key.
+10. [Editing tools](editing.md): Go To, bookmarks, reformat, the format
+    checker, typing options.
+11. [Macros and text styles](macros-and-styles.md).
+12. [Characters, scenes and reports](characters-and-reports.md).
+13. [Boards, cards and the structure strip](planning.md).
+14. [More production tools](production-more.md): dual dialogue, sides, track changes, comparing versions, watermark.
+15. [Templates, tabs and writing habits](workspace.md).

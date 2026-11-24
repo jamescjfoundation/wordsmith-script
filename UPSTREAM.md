@@ -1,0 +1,57 @@
+# Upstream tracking
+
+Where our code comes from, which exact versions we pin, and fixes worth
+offering back. Upgrade every pin together, on purpose, with tests.
+
+## Copied crates
+
+Copied from WordCraft (https://github.com/storytold/wordcraft), MIT OR
+Apache-2.0. Each copied file keeps its header; changed files add
+"Modified by the Wordsmith Script contributors".
+
+The copied crates are a fork (decision 0039): they are trimmed to what a
+screenplay uses and are no longer kept diffable against upstream. The commits
+below say where each crate came from; upstream fixes are ported by hand.
+
+| Our crate | Upstream path | Upstream commit | Copied on | Notes |
+| --- | --- | --- | --- | --- |
+| wordsmith-geom | `crates/geom` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed only |
+| wordsmith-doc | `crates/doc` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; trimmed, see decision 0039 (equations, charts and SmartArt, WordArt warps, connector routing, ruby, pictures and the media store, legacy form fields, codepages, ZIP and CFB guards, locale numbers); `props/char_props.rs` gains the `note`, `revised` and `page_lock` marks (decisions 0023, 0024, 0026); `props/para_props.rs` gains `scene_number`, `omitted` (decision 0025), `beat` (decision 0028), `bookmark` (decision 0031), `scene_id` (decision 0033), `dual` (decision 0035) and `extra_attrs` (attributes of a newer native format, kept for saving) |
+| wordsmith-fonts | `crates/fonts` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; trimmed, see decision 0039 (the OpenType MATH reader); one test ignored (needs a Thai face from craft-fonts) |
+| wordsmith-layout | `crates/layout` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; trimmed, see decision 0039 (math layout, chart and picture drawing, metafiles, text warps, ruby, enclosed characters, check boxes, picture contours, strict-export picture checks); three tests ignored (need craft-i18n language data) |
+| wordsmith-render | `crates/render` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; trimmed, see decision 0039 (picture and metafile drawing, the media cache, the icon library) |
+| wordsmith-pdf | `crates/pdf` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Renamed; PDF creator and producer say Wordsmith Script; one golden hash re-recorded (that test went with pictures); trimmed, see decision 0039 (picture, metafile and chart export) |
+| wordsmith-engine | `crates/engine` (parts) | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Trimmed to session, undo, registry, recovery and file-access confinement; see `docs/decisions/0006-engine-trim.md`. `file_access.rs` and `recovery/desktop.rs` are upstream with one-line changes; the rest is cut down from upstream files |
+| wordsmith-control-key | `crates/control-key` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Profile folder and variables renamed |
+| wordsmith-ui (`src/icons.rs`) | `crates/ui-egui/src/icons.rs` | `f8ec3cc0fa884369c4f3ebbd9ca3085398f5ec31` | 2026-11-20 | Library icons and the Discord icon cut; `wordcraft_doc` renamed (decision 0037) |
+| wordsmith-ui (`src/ribbon_fit.rs`) | `crates/ui-egui/src/ribbon_fit.rs` | `f8ec3cc0fa884369c4f3ebbd9ca3085398f5ec31` | 2026-11-20 | Tests that need WordCraft's app cut; `Id::unique` → `Id::new`; fixed language code (decision 0037) |
+| wordsmith-mcp | `crates/mcp` | `6ef13b2cc8a60e6391d7a5b92459ec47598d58a9` | 2026-11-19 | Tools trimmed, one document per session, rebranded; see `docs/decisions/0007-mcp-trim.md` |
+
+## Pinned dependencies
+
+| Source | Pin | Crates |
+| --- | --- | --- |
+| craft-libs | `rev = "93dac78c93a7f1fd66e2022edeb089233b1dc45a"` (the commit WordCraft pins) | every craft-libs crate we use, plus the patched `krilla` and the patched Hayro reader crates (`hayro-syntax`, `hayro-interpret`, `hayro-cmap`, `hayro-postscript`, `hayro-jbig2`) that craft-pdf's reader needs |
+| craft-libs v0.1.0 | no git tag exists; see `docs/decisions/0004-craft-libs-pins.md` | craft-atomic, craft-settings, craft-quit, craft-print, craft-ui (not used yet) |
+
+Build inputs WordCraft's CI supplies and we do not yet (see `docs/gaps.md`):
+
+| Input | WordCraft's pin | Used for |
+| --- | --- | --- |
+| craft-i18n (`CRAFT_I18N_DIR`) | `e56d26244bbac099bfd42e23fb12f78a4be418a7` | spelling dictionaries and hyphenation patterns in craft-proof |
+| craft-fonts (`CRAFT_FONTS_DIR`) | `b076417b5880bd4154bd22f00695b1d28c6bea83` | extra script faces (CJK, Arabic, Thai) |
+
+## Candidates to contribute back
+
+General fixes (not screenplay-specific) that should be offered to WordCraft or
+craft-libs, following their contribution rules. A maintainer decides when to
+send these.
+
+| Fix | Our commit | Upstream project | Status |
+| --- | --- | --- | --- |
+| `Document::app_data`: application data kept with a document, included in equality, `same_content` and serialization, `Arc`-shared values (decision 0008) | m1/doc-app-data | WordCraft (`crates/doc`) | candidate |
+| craft-print on Windows pulls winprint → sigstore → reqwest → webpki-root-certs (CDLA-Permissive-2.0) even with winprint's `pdfium` feature off; make sigstore optional (decision 0013) | m2/pdf | craft-libs (`crates/print`) and storytold/winprint.rs | candidate |
+
+Not used: craft-settings. It depends on `dirs` → `option-ext` (MPL-2.0, outside
+the licence allowlist); preferences are a small JSON file of our own instead
+(decision 0020).

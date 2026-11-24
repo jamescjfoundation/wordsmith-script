@@ -1,0 +1,19 @@
+name: Feature request
+description: Something the app should do.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe what you want to do as a writer, in your own words. Please do not paste text, pictures or
+        feature names from other screenwriting apps; we build our own (see CONTRIBUTING.md, "Clean room and names").
+  - type: textarea
+    id: need
+    attributes:
+      label: What you want to do
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: How you do it today

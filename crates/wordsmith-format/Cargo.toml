@@ -1,0 +1,37 @@
+[package]
+name = "wordsmith-format"
+description = "Native file format, Fountain, imports and exports for Wordsmith Script"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+wordsmith-script.workspace = true
+wordsmith-doc.workspace = true
+# The automation file gateway (paths agents may read and write).
+wordsmith-engine.workspace = true
+serde = { workspace = true }
+serde_json = { workspace = true }
+# RTF import and export.
+craft-rtf = { workspace = true }
+# Text-based PDF import: craft-pdf's guarded page interpreter.
+craft-pdf = { workspace = true, features = ["interpret"] }
+kurbo = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# Crash-safe writes for saving, exporting and backups.
+craft-atomic = { workspace = true }
+
+[dev-dependencies]
+# Round trips of generated scripts (tests/round_trips.rs).
+proptest = { workspace = true }
+hayro-syntax = "0.7.2"
+hayro-interpret = { version = "0.7.0", default-features = false, features = ["embed-fonts"] }
+hayro-cmap = "0.1"
+kurbo = { workspace = true }
+
+[lints]
+workspace = true

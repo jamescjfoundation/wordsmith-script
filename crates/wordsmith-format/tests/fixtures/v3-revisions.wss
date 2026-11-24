@@ -1,0 +1,41 @@
+Wordsmith Script 3
+=== settings ===
+{
+  "appData": {
+    "wordsmith.locks": {
+      "pages": [
+        {
+          "id": 1,
+          "label": "1",
+          "level": 1
+        }
+      ]
+    },
+    "wordsmith.revisions": {
+      "current": "Blue",
+      "sets": [
+        {
+          "color": "#A9C8F2",
+          "name": "Blue"
+        }
+      ]
+    },
+    "wordsmith.sceneNumbers": {
+      "locked": true,
+      "show": true
+    }
+  },
+  "core": {
+    "title": "Fixture 3"
+  }
+}
+=== script ===
+@SceneHeading #1
+{p1}INT. A - DAY
+
+@Action revised=0
+Rain.{r0} Hard{/r}
+
+@SceneHeading #1A
+EXT. B - NIGHT
+

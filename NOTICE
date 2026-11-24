@@ -1,0 +1,34 @@
+Wordsmith Script
+Copyright (c) 2026 the Wordsmith Script contributors
+
+Licensed under either of
+  * Apache License, Version 2.0 (LICENSE-APACHE)
+  * MIT license (LICENSE-MIT)
+at your option.
+
+Wordsmith Script is based on WordCraft by the ArtCraft team.
+Portions copyright (c) 2026 ArtCraft Team and the WordCraft contributors, MIT OR Apache-2.0.
+
+Files copied from WordCraft keep their original headers. Files we have
+changed carry the line "Modified by the Wordsmith Script contributors".
+UPSTREAM.md records the WordCraft commit each copied crate came from.
+
+The ArtCraft and WordCraft names, wordmarks and logos are not licensed to
+this project and are not used by it. The plain-text credit above is the
+only reference to them.
+
+Third-party assets (fonts, dictionaries and similar) are listed with their
+own licenses in ATTRIBUTION.md.
+
+This software is based in part on the work of the Independent JPEG Group
+(through the jpeg-encoder crate, used for JPEG image output).
+
+Some Rust dependencies are under the Zlib, Unicode-3.0 and BSL-1.0 licenses,
+as well as MIT, Apache-2.0, BSD and ISC. Each crate's license is in its own
+package; docs/decisions/0001-license-allowlist.md lists which ones and why.
+Release bundles carry every dependency's license text in
+licenses/THIRD-PARTY-LICENSES.txt, and the fonts' licenses beside it.
+
+The desktop app's update check carries Mozilla's list of root certificates
+(through the webpki-root-certs crate), shared under the Community Data License
+Agreement - Permissive, Version 2.0: https://cdla.dev/permissive-2-0/

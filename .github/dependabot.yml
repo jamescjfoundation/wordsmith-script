@@ -1,0 +1,34 @@
+# Weekly update pull requests for Rust crates and GitHub Actions (decision 0040).
+# Each update still has to pass CI, including cargo-deny's license, advisory and
+# source checks.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      # Compatible updates arrive as one pull request; anything breaking comes on its own.
+      crates:
+        update-types: [minor, patch]
+    ignore:
+      # craft-libs and the krilla and hayro crates it patches share one git revision, the
+      # one WordCraft pins; they are upgraded together and by hand (UPSTREAM.md).
+      - dependency-name: "craft-*"
+      - dependency-name: "krilla"
+      - dependency-name: "hayro-*"
+      # egui and eframe stay on 0.36.2 until craft-libs moves (decision 0038).
+      - dependency-name: "egui"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "eframe"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    groups:
+      actions:
+        patterns: ["*"]

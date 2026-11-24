@@ -1,0 +1,1672 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+//! The editor driven headlessly through egui input, the way a window drives it.
+
+use egui::{Event, Key, Modifiers, Pos2, RawInput, Rect, vec2};
+use serde_json::json;
+
+use crate::dialogs::{SettingsDialog, palette_matches};
+use crate::editor::Editor;
+
+fn ctx() -> egui::Context {
+    let ctx = egui::Context::default();
+    ctx.set_fonts(crate::fonts::definitions());
+    ctx
+}
+
+fn frame(ctx: &egui::Context, ed: &mut Editor, events: Vec<Event>) {
+    let input = RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1200.0, 900.0))), events, ..Default::default() };
+    let mut out = ctx.run_ui(input, |ui| ed.ui(ui));
+    // No GPU here to take the page textures.
+    out.textures_delta.clear();
+}
+
+fn key(k: Key, modifiers: Modifiers) -> Event {
+    Event::Key { key: k, physical_key: None, pressed: true, repeat: false, modifiers }
+}
+
+fn text(t: &str) -> Event {
+    Event::Text(t.to_string())
+}
+
+fn lines(ed: &Editor) -> Vec<(String, String)> {
+    wordsmith_script::commands::text::body_lines(&ed.session)
+}
+
+fn l(e: &str, t: &str) -> (String, String) {
+    (e.to_string(), t.to_string())
+}
+
+/// An editor with portable (Windows and Linux) key conventions, so tests read the same on every
+/// platform.
+fn editor() -> Editor {
+    let mut ed = Editor::new(crate::new_session());
+    ed.mac = false;
+    ed
+}
+
+fn cmd() -> Modifiers {
+    Modifiers { command: true, ctrl: true, ..Modifiers::NONE }
+}
+
+#[test]
+fn a_scene_typed_on_the_keyboard() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(&ctx, &mut ed, vec![text("int"), key(Key::Tab, Modifiers::NONE), text("kitchen"), key(Key::Tab, Modifiers::NONE), text("night")]);
+    frame(
+        &ctx,
+        &mut ed,
+        vec![key(Key::Enter, Modifiers::NONE), text("Rain."), key(Key::Enter, Modifiers::NONE), key(Key::Tab, Modifiers::NONE), text("anna")],
+    );
+    frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE), text("Hello.")]);
+    assert_eq!(lines(&ed), vec![l("SceneHeading", "INT. KITCHEN - NIGHT"), l("Action", "Rain."), l("Character", "ANNA"), l("Dialogue", "Hello.")]);
+    // Mod+Z undoes the typing; Mod+3 makes the paragraph a Character.
+    frame(&ctx, &mut ed, vec![key(Key::Z, cmd())]);
+    assert_eq!(lines(&ed).last(), Some(&l("Dialogue", "")));
+    frame(&ctx, &mut ed, vec![key(Key::Num2, cmd())]);
+    assert_eq!(lines(&ed).last(), Some(&l("Action", "")));
+}
+
+#[test]
+fn copy_and_cut_go_through_commands() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![key(Key::Num2, cmd()), text("Hello world")]);
+    frame(&ctx, &mut ed, vec![key(Key::A, cmd()), Event::Copy]);
+    assert_eq!(lines(&ed), vec![l("Action", "Hello world")]);
+    frame(&ctx, &mut ed, vec![Event::Cut]);
+    assert_eq!(lines(&ed), vec![l("Action", "")]);
+    frame(&ctx, &mut ed, vec![Event::Paste("Back again".into())]);
+    assert_eq!(lines(&ed), vec![l("Action", "Back again")]);
+    // Copy with nothing selected is refused and says why.
+    frame(&ctx, &mut ed, vec![Event::Copy]);
+    assert!(ed.message.contains("nothing is selected"), "{}", ed.message);
+}
+
+#[test]
+fn a_custom_element_shortcut_reaches_it() {
+    let ctx = ctx();
+    let mut ed = editor();
+    ed.session.run("element.create", &json!({"name": "Lyrics", "shortcut": "Mod+Alt+L"})).unwrap();
+    frame(&ctx, &mut ed, vec![key(Key::L, Modifiers { alt: true, ..cmd() })]);
+    assert_eq!(lines(&ed)[0].0, "Custom1");
+}
+
+#[test]
+fn dialogs_open_through_commands_and_take_the_keyboard() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![key(Key::P, Modifiers { shift: true, ..cmd() })]);
+    assert!(ed.palette.is_some());
+    // Typing goes to the palette, not the script.
+    frame(&ctx, &mut ed, vec![text("x")]);
+    frame(&ctx, &mut ed, vec![text("y")]);
+    assert_eq!(lines(&ed), vec![l("SceneHeading", "")]);
+    frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE)]);
+    assert!(ed.palette.is_none());
+    ed.run("view.elementSettings", json!({}));
+    assert_eq!(ed.settings.as_ref().map(|d| d.element.as_str()), Some("SceneHeading"));
+    ed.run("help.about", json!({}));
+    assert_eq!(ed.chrome.backstage, Some(crate::backstage::Page::About), "About is a page of the File page");
+    frame(&ctx, &mut ed, vec![]);
+}
+
+#[test]
+fn the_palette_finds_commands_by_any_word() {
+    let r = crate::registry();
+    let ids = |q: &str| palette_matches(&r, q).into_iter().map(|m| m.0).collect::<Vec<_>>();
+    assert!(ids("scene heading").contains(&"element.sceneHeading"));
+    assert!(ids("undo").contains(&"edit.undo"));
+    assert!(!ids("").contains(&"element.set"), "commands that need parameters are left out");
+    assert!(ids("zzzz no such").is_empty());
+}
+
+#[test]
+fn the_settings_dialog_sends_only_what_changed() {
+    let mut s = crate::new_session();
+    let mut d = SettingsDialog::new(&mut s, "Dialogue");
+    assert_eq!(d.changes(), json!({"element": "Dialogue"}));
+    d.form["spaceBefore"] = json!(1.0);
+    d.form["bold"] = json!(true);
+    assert_eq!(d.changes(), json!({"element": "Dialogue", "spaceBefore": 1.0, "bold": true}));
+    s.run("element.configure", &d.changes()).unwrap();
+    assert_eq!(s.run("element.settings", &json!({"element": "Dialogue"})).unwrap()["bold"], true);
+}
+
+#[test]
+fn every_screenplay_and_ui_command_is_in_one_registry() {
+    let r = crate::registry();
+    for id in ["edit.undo", "file.recover", "text.tab", "element.dialogue", "element.configure", "view.commandPalette", "edit.copy", "help.about"] {
+        assert!(r.get(id).is_some(), "{id}");
+    }
+    let mut seen = std::collections::HashSet::new();
+    for spec in r.all() {
+        assert!(seen.insert(spec.id), "{} registered twice", spec.id);
+    }
+    // The lists themselves, before the registry is built: only an engine command may be replaced.
+    let mut lists = wordsmith_script::commands::specs();
+    lists.extend(crate::ui_specs());
+    lists.extend(crate::files::specs());
+    assert!(wordsmith_engine::duplicate_ids(&lists).is_empty(), "registered twice: {:?}", wordsmith_engine::duplicate_ids(&lists));
+}
+
+#[test]
+fn about_carries_the_credit() {
+    let text = crate::about_text();
+    assert!(text.starts_with("Wordsmith Script "));
+    assert!(text.contains("\n\nAcknowledgments\n"));
+    assert!(crate::acknowledgments().contains(crate::UPSTREAM_CREDIT));
+    // Release bundles carry the license texts in this folder (`cargo xtask bundle`).
+    assert!(text.contains("licenses folder"));
+}
+
+#[test]
+fn the_tour_says_where_the_update_check_is_turned_off() {
+    let (_, last) = crate::ribbon::TOUR[crate::ribbon::TOUR.len() - 1];
+    assert!(last.contains("GitHub") && last.contains("Preferences › Starting"));
+}
+
+/// A script of `scenes` scenes, about half a page each.
+fn long_script(scenes: usize) -> wordsmith_doc::Document {
+    let mut doc = wordsmith_script::new_script();
+    let mut body = Vec::new();
+    for n in 0..scenes {
+        let mut push = |e: &str, t: String| body.push(wordsmith_doc::para_block(wordsmith_script::template::paragraph(e, &t)));
+        push("SceneHeading", format!("INT. ROOM {n} - DAY"));
+        push("Action", "The light is low and the room is quiet. Somebody has left the radio on, very softly.".into());
+        for k in 0..4 {
+            push("Character", if k % 2 == 0 { "ANNA".into() } else { "BOB".into() });
+            push("Dialogue", "I keep thinking we missed something obvious. Tell me again what you saw.".into());
+        }
+        push("Transition", "CUT TO:".into());
+    }
+    doc.body = body;
+    doc
+}
+
+#[test]
+fn the_page_view_shows_the_paginated_script() {
+    let ctx = ctx();
+    let mut ed = Editor::new(wordsmith_script::session_for(long_script(6)));
+    ed.session.registry = std::sync::Arc::new(crate::registry());
+    frame(&ctx, &mut ed, vec![]);
+    let pag = ed.paginated();
+    assert!(pag.pages.len() >= 3, "{} pages", pag.pages.len());
+    assert!(pag.matches_plan);
+    // The caret at the end of the script shows on the last page.
+    ed.run("caret.docEnd", json!({}));
+    let at = pag.to_output(&ed.session.sel.focus).unwrap();
+    assert_eq!(pag.layout.caret(&at).map(|c| c.page), Some(pag.pages.len() - 1));
+}
+
+/// Typing in a 150-page script: one frame with a typed character, which runs the command,
+/// paginates again and draws the visible pages. Record the number in docs/performance.md when
+/// it changes.
+#[test]
+#[ignore = "timing, run with --release -- --ignored --nocapture"]
+fn typing_in_a_150_page_script() {
+    let ctx = ctx();
+    let mut ed = Editor::new(wordsmith_script::session_for(long_script(300)));
+    ed.session.registry = std::sync::Arc::new(crate::registry());
+    ed.mac = false;
+    frame(&ctx, &mut ed, vec![]);
+    let pages = ed.paginated().pages.len();
+    ed.run("caret.docEnd", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    // WS_TIMING_PARTS=1 also times the frame without each part of the chrome.
+    let variants: Vec<&str> = if std::env::var("WS_TIMING_PARTS").is_ok() { vec!["all", "no-panels", "focus"] } else { vec!["all"] };
+    for v in variants {
+        ed.focus_mode = v == "focus";
+        ed.chrome.left = if v == "all" { Some(crate::ribbon::Panel::Scenes) } else { None };
+        let mut times = Vec::new();
+        for _ in 0..20 {
+            let t = std::time::Instant::now();
+            frame(&ctx, &mut ed, vec![text("x")]);
+            times.push(t.elapsed());
+        }
+        times.sort();
+        eprintln!("typing, {pages} pages ({v}): median {:?}, worst {:?} per keystroke frame", times[times.len() / 2], times[times.len() - 1]);
+    }
+}
+
+/// A window that has no handle: native dialogs are answered by an override in tests.
+struct NoWindow;
+impl raw_window_handle::HasWindowHandle for NoWindow {
+    fn window_handle(&self) -> Result<raw_window_handle::WindowHandle<'_>, raw_window_handle::HandleError> {
+        Err(raw_window_handle::HandleError::Unavailable)
+    }
+}
+impl raw_window_handle::HasDisplayHandle for NoWindow {
+    fn display_handle(&self) -> Result<raw_window_handle::DisplayHandle<'_>, raw_window_handle::HandleError> {
+        Err(raw_window_handle::HandleError::Unavailable)
+    }
+}
+
+#[test]
+fn export_pdf_asks_for_a_path_and_writes_the_file() {
+    let dir = std::env::temp_dir().join(format!("wordsmith-ui-export-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let target = dir.join("chosen.pdf");
+    let answer = target.clone();
+    let mut ed = editor();
+    ed.dialogs.set_override(Some(Box::new(move |_| craft_dialogs::Answer::Paths(vec![answer.clone()]))));
+    ed.run("file.exportPdfAs", json!({}));
+    for _ in 0..50 {
+        ed.native_dialogs(Some(&NoWindow));
+        if target.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(std::fs::read(&target).unwrap().starts_with(b"%PDF-"), "{}", ed.message);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn suggestions_show_and_tab_or_enter_accepts_but_typing_ignores() {
+    let ctx = ctx();
+    let mut ed = editor();
+    ed.session.run("autocomplete.add", &json!({"list": "characters", "term": "BOB"})).unwrap();
+    frame(&ctx, &mut ed, vec![key(Key::Num3, cmd()), text("b")]);
+    assert_eq!(ed.suggestions.as_ref().map(|s| s.candidates.clone()), Some(vec!["BOB".to_string()]));
+    // Typing on narrows to nothing: the list goes, the typed text stays.
+    frame(&ctx, &mut ed, vec![text("x")]);
+    assert!(ed.suggestions.is_none());
+    assert_eq!(lines(&ed)[0], l("Character", "BX"));
+    // Back to "B": Enter accepts instead of starting a new paragraph.
+    frame(&ctx, &mut ed, vec![key(Key::Backspace, Modifiers::NONE)]);
+    assert!(ed.suggestions.is_some());
+    frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE)]);
+    assert_eq!(lines(&ed), vec![l("Character", "BOB")]);
+    // Escape hides it; Enter then is Return again.
+    frame(
+        &ctx,
+        &mut ed,
+        vec![key(Key::Enter, Modifiers::NONE), text("Hi."), key(Key::Enter, Modifiers::NONE), key(Key::Tab, Modifiers::NONE), text("b")],
+    );
+    assert!(ed.suggestions.is_some());
+    frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE)]);
+    assert!(ed.suggestions.is_none());
+    frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE)]);
+    assert_eq!(lines(&ed).last(), Some(&l("Dialogue", "")), "Return after the Character");
+    assert_eq!(lines(&ed)[lines(&ed).len() - 2], l("Character", "B"));
+}
+
+#[test]
+fn up_and_down_move_through_suggestions() {
+    let ctx = ctx();
+    let mut ed = editor();
+    for n in ["ANNA", "ABE", "ALEX"] {
+        ed.session.run("autocomplete.add", &json!({"list": "characters", "term": n})).unwrap();
+    }
+    frame(&ctx, &mut ed, vec![key(Key::Num3, cmd()), text("a")]);
+    assert_eq!(ed.suggestions.as_ref().map(|s| s.candidates.len()), Some(3));
+    frame(&ctx, &mut ed, vec![key(Key::ArrowDown, Modifiers::NONE), key(Key::ArrowDown, Modifiers::NONE), key(Key::Tab, Modifiers::NONE)]);
+    assert_eq!(lines(&ed)[0], l("Character", "ANNA"), "third alphabetically: ABE, ALEX, ANNA");
+}
+
+#[test]
+fn misspellings_are_checked_in_the_page_view() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![key(Key::Num2, cmd()), text("A dragn sleeps.")]);
+    let found = ed.session.run("spelling.check", &json!({})).unwrap();
+    assert_eq!(found["misspellings"][0]["word"], "dragn");
+    // Drawing the underlines runs every frame without trouble; switching them off too.
+    frame(&ctx, &mut ed, vec![]);
+    ed.spelling = false;
+    frame(&ctx, &mut ed, vec![]);
+}
+
+#[test]
+fn the_find_bar_opens_with_the_selection_and_runs_commands() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![key(Key::Num2, cmd()), text("The dog and the dog.")]);
+    ed.run("caret.docStart", json!({}));
+    ed.run("select.wordRight", json!({}));
+    frame(&ctx, &mut ed, vec![key(Key::F, cmd())]);
+    assert_eq!(ed.find.as_ref().map(|b| b.query.as_str()), Some("The "));
+    let bar = crate::editor::FindBar { query: "dog".into(), with: "cat".into(), ..Default::default() };
+    ed.find = Some(bar.clone());
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.find.as_ref().and_then(|b| b.count), Some(2));
+    ed.run("replace.all", bar.params());
+    assert_eq!(lines(&ed)[0].1, "The cat and the cat.");
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.find.as_ref().and_then(|b| b.count), Some(0));
+}
+
+#[test]
+fn the_three_views_show_the_same_script() {
+    use crate::editor::View;
+    let ctx = ctx();
+    let mut ed = Editor::new(wordsmith_script::session_for(long_script(6)));
+    ed.session.registry = std::sync::Arc::new(crate::registry());
+    ed.mac = false;
+    frame(&ctx, &mut ed, vec![]);
+    let page = ed.shown();
+    assert!(page.layout.pages.len() >= 3);
+    frame(&ctx, &mut ed, vec![key(Key::Num1, Modifiers { alt: true, ..cmd() })]);
+    assert_eq!(ed.view, View::Normal);
+    let normal = ed.shown();
+    assert_eq!(normal.layout.pages.len(), 1, "one continuous column");
+    assert!(normal.pag.is_none(), "the script itself, no (MORE)/(CONT'D)");
+    frame(&ctx, &mut ed, vec![key(Key::Num3, Modifiers { alt: true, ..cmd() })]);
+    assert_eq!(ed.view, View::Draft);
+    let draft = ed.shown();
+    // Every element sits at the left margin in the draft view.
+    let x = |s: &crate::editor::Shown, block: usize| {
+        let at = wordsmith_doc::Pos { story: wordsmith_doc::StoryRef::Body, path: wordsmith_doc::Path::top(block), off: 0 };
+        s.layout.caret(&at).map(|c| c.x).unwrap_or(f32::NAN)
+    };
+    assert!((x(&draft, 2) - x(&draft, 1)).abs() < 0.5, "Character and Action line up");
+    assert!((x(&normal, 2) - x(&normal, 1)).abs() > 100.0, "but not in the normal view");
+    // Typing works the same in each view.
+    ed.run("caret.docEnd", json!({}));
+    frame(&ctx, &mut ed, vec![text("!")]);
+    assert!(lines(&ed).last().map(|l| l.1.ends_with('!')).unwrap_or(false));
+    frame(&ctx, &mut ed, vec![key(Key::Num2, Modifiers { alt: true, ..cmd() })]);
+    assert_eq!(ed.view, View::Page);
+}
+
+#[test]
+fn dark_theme_typewriter_and_focus_mode() {
+    let ctx = ctx();
+    let mut ed = editor();
+    ed.run("view.darkTheme", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.dark && ctx.theme() == egui::Theme::Dark);
+    ed.run("view.typewriter", json!({}));
+    assert!(ed.typewriter);
+    frame(&ctx, &mut ed, vec![key(Key::F, Modifiers { shift: true, ..cmd() })]);
+    assert!(ed.focus_mode);
+    // Typing still works in focus mode; Escape leaves it.
+    frame(&ctx, &mut ed, vec![text("int")]);
+    assert_eq!(lines(&ed)[0].1, "INT");
+    frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE), key(Key::Escape, Modifiers::NONE)]);
+    assert!(!ed.focus_mode);
+}
+
+/// A fresh folder for one test.
+fn temp_dir(name: &str) -> std::path::PathBuf {
+    let n = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+    let dir = std::env::temp_dir().join(format!("wordsmith-ui-{name}-{}-{n}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+/// Type a little script with the keyboard.
+fn type_scene(ctx: &egui::Context, ed: &mut Editor) {
+    frame(ctx, ed, vec![]);
+    frame(ctx, ed, vec![text("int"), key(Key::Tab, Modifiers::NONE), text("kitchen"), key(Key::Enter, Modifiers::NONE), text("Rain.")]);
+}
+
+#[test]
+fn save_as_open_and_the_window_title() {
+    let ctx = ctx();
+    let dir = temp_dir("save");
+    let mut ed = editor();
+    assert_eq!(ed.window_title(), "Untitled — Wordsmith Script");
+    type_scene(&ctx, &mut ed);
+    assert_eq!(ed.window_title(), "Untitled • — Wordsmith Script");
+    // Save with no file asks for one.
+    frame(&ctx, &mut ed, vec![key(Key::S, cmd())]);
+    assert!(ed.session.dirty, "nothing saved yet: a dialog was asked for");
+    let path = dir.join("Kitchen");
+    ed.run("file.saveAsPath", json!({"path": path}));
+    assert_eq!(ed.message, "");
+    assert!(!ed.session.dirty);
+    assert_eq!(ed.window_title(), "Kitchen — Wordsmith Script");
+    assert!(dir.join("Kitchen.wss").exists(), ".wss is added");
+    let saved = lines(&ed);
+    // Ctrl+S now saves to the file without asking.
+    frame(&ctx, &mut ed, vec![text(" More.")]);
+    frame(&ctx, &mut ed, vec![key(Key::S, cmd())]);
+    assert!(!ed.session.dirty);
+    let mut other = editor();
+    other.run("file.openPath", json!({"path": dir.join("Kitchen.wss")}));
+    assert_eq!(other.message, "");
+    assert_eq!(lines(&other), lines(&ed));
+    assert_ne!(lines(&other), saved);
+    assert_eq!(other.window_title(), "Kitchen — Wordsmith Script");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn unsaved_changes_are_never_lost_without_asking() {
+    let ctx = ctx();
+    let mut ed = editor();
+    type_scene(&ctx, &mut ed);
+    let before = lines(&ed);
+    // New over unsaved changes asks; Cancel keeps everything.
+    frame(&ctx, &mut ed, vec![key(Key::N, cmd())]);
+    assert_eq!(ed.unsaved, Some(crate::editor::Then::New));
+    assert_eq!(lines(&ed), before);
+    ed.answer_unsaved(crate::editor::UnsavedAnswer::Cancel);
+    assert_eq!(lines(&ed), before);
+    assert!(ed.session.dirty);
+    // Opening over them by command is refused unless told to discard.
+    let dir = temp_dir("unsaved");
+    let other = dir.join("Other.wss");
+    wordsmith_format::files::save(&other, &wordsmith_script::new_script()).unwrap();
+    ed.run("file.openPath", json!({"path": other}));
+    assert!(ed.message.contains("unsaved changes"), "{}", ed.message);
+    assert_eq!(lines(&ed), before);
+    // Closing asks too; Don't Save lets it close.
+    assert!(!ed.may_close());
+    assert_eq!(ed.unsaved, Some(crate::editor::Then::Close));
+    ed.answer_unsaved(crate::editor::UnsavedAnswer::DontSave);
+    assert!(ed.close_confirmed);
+    // Don't Save before New starts the new script.
+    let mut ed = editor();
+    type_scene(&ctx, &mut ed);
+    ed.run("file.new", json!({}));
+    ed.answer_unsaved(crate::editor::UnsavedAnswer::DontSave);
+    assert!(!ed.session.dirty);
+    assert_eq!(lines(&ed).len(), 1);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn save_in_the_prompt_saves_then_carries_on() {
+    let ctx = ctx();
+    let dir = temp_dir("prompt-save");
+    let mut ed = editor();
+    type_scene(&ctx, &mut ed);
+    ed.run("file.saveAsPath", json!({"path": dir.join("Draft.wss")}));
+    frame(&ctx, &mut ed, vec![text(" Again.")]);
+    let typed = lines(&ed);
+    ed.run("file.new", json!({}));
+    ed.answer_unsaved(crate::editor::UnsavedAnswer::Save);
+    assert_eq!(lines(&ed).len(), 1, "saved, then a new script");
+    let mut back = editor();
+    back.run("file.openPath", json!({"path": dir.join("Draft.wss")}));
+    assert_eq!(lines(&back), typed);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn importing_text_asks_whether_it_is_a_script() {
+    let dir = temp_dir("import");
+    let path = dir.join("notes.txt");
+    std::fs::write(&path, "INT. KITCHEN - NIGHT\n\nRain.\n\nANNA\nHello.\n").unwrap();
+    let mut ed = editor();
+    ed.run("file.openPath", json!({"path": path}));
+    let q = ed.import_question.clone().unwrap();
+    assert!(q.guess, "it looks like a script");
+    assert_eq!(lines(&ed).len(), 1, "nothing imported before the answer");
+    ed.answer_import(Some(true));
+    assert_eq!(lines(&ed), [l("SceneHeading", "INT. KITCHEN - NIGHT"), l("Action", "Rain."), l("Character", "ANNA"), l("Dialogue", "Hello.")]);
+    assert!(ed.session.dirty, "an import is a new, unsaved script");
+    assert_eq!(ed.window_title(), "notes • — Wordsmith Script");
+    assert!(ed.session.path.is_none(), "Save asks where: the text file is not overwritten");
+    let mut plain = editor();
+    plain.run("file.openPath", json!({"path": path}));
+    plain.answer_import(Some(false));
+    assert!(lines(&plain).iter().all(|(e, _)| e == "Action"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn exports_write_each_format() {
+    let ctx = ctx();
+    let dir = temp_dir("export");
+    let mut ed = editor();
+    type_scene(&ctx, &mut ed);
+    for (id, ext) in [("file.exportFountain", "fountain"), ("file.exportText", "txt"), ("file.exportRtf", "rtf"), ("file.exportHtml", "html")] {
+        ed.run(id, json!({"path": dir.join("Out")}));
+        assert_eq!(ed.message, "", "{id}");
+        assert!(dir.join(format!("Out.{ext}")).exists(), "{id}");
+    }
+    assert!(ed.session.dirty, "exporting is not saving");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn saves_make_backups_and_auto_save_waits_for_a_pause() {
+    let ctx = ctx();
+    let dir = temp_dir("autosave");
+    let mut ed = editor();
+    ed.backups.dir = Some(dir.join("Backups"));
+    type_scene(&ctx, &mut ed);
+    ed.run("file.saveAsPath", json!({"path": dir.join("Draft.wss")}));
+    assert_eq!(wordsmith_format::files::backups_of(&dir.join("Backups"), "Draft").len(), 1);
+    let t0 = std::time::Instant::now();
+    ed.tick(t0);
+    frame(&ctx, &mut ed, vec![text(" Typed.")]);
+    let wait = ed.tick(t0);
+    assert_eq!(wait, Some(std::time::Duration::from_secs(15 * 60)));
+    ed.tick(t0 + std::time::Duration::from_secs(14 * 60));
+    assert!(ed.session.dirty);
+    ed.tick(t0 + std::time::Duration::from_secs(15 * 60 + 1));
+    assert!(!ed.session.dirty, "auto-saved");
+    assert_eq!(wordsmith_format::files::backups_of(&dir.join("Backups"), "Draft").len(), 2);
+    let mut back = editor();
+    back.run("file.openPath", json!({"path": dir.join("Draft.wss")}));
+    assert_eq!(lines(&back), lines(&ed));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn preferences_round_trip_through_their_file() {
+    use crate::prefs::{Prefs, PrefsFile};
+    let dir = temp_dir("prefs");
+    let mut ed = editor();
+    ed.set_view(crate::editor::View::Draft);
+    ed.dark = true;
+    ed.autosave.every = std::time::Duration::from_secs(5 * 60);
+    ed.backups.keep = 50;
+    let t0 = std::time::Instant::now();
+    {
+        let (mut file, shown, problem) = PrefsFile::open(&dir);
+        assert!(problem.is_none() && shown == Prefs::default(), "no file yet: the defaults");
+        assert_eq!(file.save(&shown.of(&ed), t0, false), Ok(None));
+        // A second change within the interval waits; forcing writes it.
+        ed.dark = false;
+        assert!(file.save(&shown.of(&ed), t0, false).unwrap().is_some());
+        ed.dark = true;
+        assert_eq!(file.save(&shown.of(&ed), t0, true), Ok(None));
+    }
+    let (_, read, problem) = PrefsFile::open(&dir);
+    assert!(problem.is_none());
+    let mut fresh = editor();
+    read.apply(&mut fresh);
+    assert_eq!(fresh.view, crate::editor::View::Draft);
+    assert!(fresh.dark);
+    assert_eq!(fresh.autosave.every, std::time::Duration::from_secs(5 * 60));
+    assert_eq!(fresh.backups.keep, 50);
+    // Values out of range are brought back in.
+    let mut wild = Prefs::default();
+    wild.autosave.minutes = 0;
+    wild.backups.keep = 99_999;
+    wild.view.zoom = f32::NAN;
+    wild.apply(&mut fresh);
+    assert_eq!(fresh.autosave.every, std::time::Duration::from_secs(60));
+    assert_eq!(fresh.backups.keep, 10_000);
+    assert_eq!(fresh.zoom, 1.0);
+    // A missing key takes its default; a damaged file is moved aside.
+    std::fs::write(dir.join(PrefsFile::NAME), r#"{"view": {"dark": true}}"#).unwrap();
+    let (_, partial, problem) = PrefsFile::open(&dir);
+    assert!(problem.is_none() && partial.view.dark && partial.autosave == crate::prefs::AutoSavePrefs::default());
+    // A file from before decision 0041 names the draft view "speed"; it still opens in it, and
+    // is written back with the new name.
+    std::fs::write(dir.join(PrefsFile::NAME), r#"{"view": {"view": "speed"}}"#).unwrap();
+    let (_, old, problem) = PrefsFile::open(&dir);
+    assert!(problem.is_none());
+    let mut reopened = editor();
+    old.apply(&mut reopened);
+    assert_eq!(reopened.view, crate::editor::View::Draft);
+    assert_eq!(old.of(&reopened).view.view, "draft");
+    std::fs::write(dir.join(PrefsFile::NAME), "{ not json").unwrap();
+    let (_, damaged, problem) = PrefsFile::open(&dir);
+    assert!(problem.is_some() && damaged == Prefs::default());
+    assert!(dir.join("preferences.json.damaged").exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_title_page_window_edits_the_fields() {
+    let ctx = ctx();
+    let mut ed = editor();
+    ed.run("view.titlePage", json!({}));
+    let form = ed.title_page.as_mut().unwrap();
+    form["title"] = json!("THE TEST");
+    form["authors"] = json!("Anna Writer");
+    let form = form.clone();
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.title_page.is_some(), "the window stays open");
+    ed.run("titlePage.set", form);
+    assert_eq!(ed.session.doc.core.title, "THE TEST");
+    assert_eq!(wordsmith_script::title_page::TitlePage::of_doc(&ed.session.doc).authors, "Anna Writer");
+    assert!(ed.session.dirty);
+}
+
+#[test]
+fn the_header_and_footer_window_sets_the_bands() {
+    let ctx = ctx();
+    let mut ed = editor();
+    ed.run("view.headerFooter", json!({}));
+    let form = ed.header_footer.as_mut().unwrap();
+    assert_eq!(form["header"]["right"], "{page}.");
+    form["footer"]["center"] = json!("{title}");
+    let form = form.clone();
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("headerFooter.set", form);
+    assert_eq!(ed.message, "");
+    assert_eq!(wordsmith_script::header_footer::HeaderFooter::of_doc(&ed.session.doc).footer.center, "{title}");
+}
+
+#[test]
+fn index_cards_and_the_scene_view_show_the_script_and_keep_typing_out() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(
+        &ctx,
+        &mut ed,
+        vec![
+            text("int"),
+            key(Key::Tab, Modifiers::NONE),
+            text("kitchen"),
+            key(Key::Enter, Modifiers::NONE),
+            text("Rain."),
+            key(Key::Enter, Modifiers::NONE),
+            key(Key::Enter, Modifiers::NONE),
+        ],
+    );
+    ed.run("element.sceneHeading", json!({}));
+    frame(&ctx, &mut ed, vec![text("ext. yard"), key(Key::Enter, Modifiers::NONE), text("Sun.")]);
+    let before = lines(&ed);
+    let alt = Modifiers { alt: true, ..cmd() };
+    frame(&ctx, &mut ed, vec![key(Key::Num4, alt)]);
+    assert_eq!(ed.structure, Some(crate::structure::Structure::Cards));
+    assert_eq!(ed.scene_list().len(), 2);
+    frame(&ctx, &mut ed, vec![text("typed"), key(Key::Enter, Modifiers::NONE), key(Key::Backspace, Modifiers::NONE)]);
+    assert_eq!(lines(&ed), before, "typing in the cards does not reach the script");
+    // A card dropped on the first moves its scene there; undo puts it back.
+    ed.run("scene.move", json!({"scene": 1, "before": crate::structure::drop_target(1, 0, 2)}));
+    assert_eq!(ed.scene_list()[0]["heading"], "EXT. YARD");
+    frame(&ctx, &mut ed, vec![key(Key::Num5, alt)]);
+    assert_eq!(ed.structure, Some(crate::structure::Structure::Scenes));
+    frame(&ctx, &mut ed, vec![key(Key::Z, cmd())]);
+    assert_eq!(lines(&ed), before, "undo works from the scene view");
+    frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE)]);
+    assert_eq!(ed.structure, None);
+}
+
+#[test]
+fn the_tables_panel_edits_the_script_and_exports_csv() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(
+        &ctx,
+        &mut ed,
+        vec![
+            text("int"),
+            key(Key::Tab, Modifiers::NONE),
+            text("kitchen"),
+            key(Key::Enter, Modifiers::NONE),
+            text("Anna waits."),
+            key(Key::Enter, Modifiers::NONE),
+        ],
+    );
+    ed.run("element.character", json!({}));
+    frame(&ctx, &mut ed, vec![text("anna"), key(Key::Enter, Modifiers::NONE), text("Hello.")]);
+    ed.run("view.tables", json!({}));
+    assert_eq!(ed.tables, Some(crate::tables::Table::Scenes));
+    frame(&ctx, &mut ed, vec![]);
+    // A finished heading edit sets the heading; a finished name edit renames everywhere.
+    let mut e = crate::tables::CellEdit::new(crate::tables::Table::Scenes, 0, "heading", "INT. KITCHEN");
+    e.text = "ext. garden".into();
+    let (id, params) = crate::tables::commit(&e).unwrap();
+    ed.run(id, params);
+    assert_eq!(ed.scene_list()[0]["heading"], "EXT. GARDEN");
+    ed.tables = Some(crate::tables::Table::Characters);
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("character.rename", json!({"from": "ANNA", "to": "Zoe"}));
+    assert_eq!(lines(&ed)[1].1, "Zoe waits.");
+    assert_eq!(lines(&ed)[2].1, "ZOE");
+    let dir = temp_dir("csv");
+    ed.run("tables.exportCharactersCsv", json!({"path": dir.join("Cast")}));
+    assert_eq!(std::fs::read_to_string(dir.join("Cast.csv")).unwrap(), "Character,Speeches,Scenes,First scene\r\nZOE,1,1,1\r\n");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn notes_in_the_editor() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("element.action", json!({}));
+    frame(&ctx, &mut ed, vec![text("Rain hits the window.")]);
+    // Select "Rain" and open a new note.
+    frame(
+        &ctx,
+        &mut ed,
+        vec![
+            key(Key::Home, Modifiers::NONE),
+            key(Key::ArrowRight, Modifiers::SHIFT),
+            key(Key::ArrowRight, Modifiers::SHIFT),
+            key(Key::ArrowRight, Modifiers::SHIFT),
+            key(Key::ArrowRight, Modifiers::SHIFT),
+        ],
+    );
+    let alt = Modifiers { alt: true, ..cmd() };
+    frame(&ctx, &mut ed, vec![key(Key::N, alt)]);
+    assert_eq!(ed.note_popover, Some((None, String::new())), "a new note");
+    frame(&ctx, &mut ed, vec![]);
+    ed.note_popover = None;
+    ed.run("note.add", json!({"text": "Snow?"}));
+    // With the caret in the noted text, the same command opens that note.
+    frame(&ctx, &mut ed, vec![key(Key::Home, Modifiers::NONE), key(Key::ArrowRight, Modifiers::NONE)]);
+    frame(&ctx, &mut ed, vec![key(Key::N, alt)]);
+    assert_eq!(ed.note_popover.as_ref().map(|p| p.1.as_str()), Some("Snow?"));
+    frame(&ctx, &mut ed, vec![]);
+    // The Notes table lists it; editing its cell edits the note.
+    ed.tables = Some(crate::tables::Table::Notes);
+    frame(&ctx, &mut ed, vec![]);
+    let mut e = crate::tables::CellEdit::new(crate::tables::Table::Notes, 1, "text", "Snow?");
+    e.text = "Hail.".into();
+    let (id, params) = crate::tables::commit(&e).unwrap();
+    ed.run(id, params);
+    assert_eq!(ed.session.run("note.list", &json!({})).unwrap()[0]["text"], "Hail.");
+}
+
+#[test]
+fn revision_mode_from_the_editor() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("element.action", json!({}));
+    frame(&ctx, &mut ed, vec![text("Rain.")]);
+    ed.run("revision.next", json!({}));
+    ed.run("view.revisions", json!({}));
+    assert!(ed.show_revisions);
+    frame(&ctx, &mut ed, vec![text(" Snow.")]);
+    let pag = ed.paginated();
+    assert_eq!(pag.page_revisions, [Some(0)], "the page is revised in Blue");
+    frame(&ctx, &mut ed, vec![]);
+}
+
+#[test]
+fn revised_pages_and_the_character_report_export() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("element.character", json!({}));
+    frame(&ctx, &mut ed, vec![text("anna"), key(Key::Enter, Modifiers::NONE), text("Hello there.")]);
+    let dir = temp_dir("revised");
+    ed.run("file.exportRevisedPdf", json!({"path": dir.join("R.pdf").display().to_string()}));
+    assert!(ed.message.contains("no page has revised text"), "{}", ed.message);
+    ed.run("revision.next", json!({}));
+    frame(&ctx, &mut ed, vec![text(" Again.")]);
+    ed.run("file.exportRevisedPdf", json!({"path": dir.join("R.pdf").display().to_string()}));
+    assert_eq!(ed.message, "");
+    assert!(dir.join("R.pdf").exists());
+    ed.run("report.exportCharacters", json!({"path": dir.join("Cast")}));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("Cast.csv")).unwrap(),
+        "Character,Speeches,Words,Scenes,First scene,Last scene,Pages\r\nANNA,1,3,0,,,1\r\n"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_story_board_adds_edits_and_sends_beats() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    let alt = Modifiers { alt: true, ..cmd() };
+    frame(&ctx, &mut ed, vec![key(Key::Num6, alt)]);
+    assert_eq!(ed.structure, Some(crate::structure::Structure::Board));
+    ed.run("beat.add", json!({"title": "Anna arrives"}));
+    ed.run("beat.add", json!({"title": "The fight", "x": 400, "y": 40}));
+    ed.run("beat.link", json!({"from": 1, "to": 2}));
+    frame(&ctx, &mut ed, vec![]);
+    // Editing: Tab moves between the fields; Save writes them.
+    ed.board.selected = Some(1);
+    let b = wordsmith_script::storyboard::Storyboard::of_doc(&ed.session.doc).beat(1).cloned().unwrap();
+    ed.board.edit = Some(crate::board::BeatEdit::of(&b));
+    frame(&ctx, &mut ed, vec![key(Key::Tab, Modifiers::NONE)]);
+    assert!(ed.board.edit.as_ref().is_some_and(|e| e.on_body));
+    frame(&ctx, &mut ed, vec![text("Late and wet.")]);
+    assert_eq!(ed.board.edit.as_ref().map(|e| e.body.as_str()), Some("Late and wet."));
+    ed.run("beat.update", json!({"id": 1, "body": "Late and wet."}));
+    ed.board.edit = None;
+    ed.run("beat.toScript", json!({"id": 1}));
+    assert_eq!(lines(&ed)[0], l("Outline1", "Anna arrives"));
+    assert_eq!(lines(&ed)[1], l("Summary", "Late and wet."));
+    frame(&ctx, &mut ed, vec![]);
+}
+
+#[test]
+fn the_outline_view_shows_lanes_beats_and_the_script() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![text("int"), key(Key::Tab, Modifiers::NONE), text("kitchen")]);
+    let alt = Modifiers { alt: true, ..cmd() };
+    frame(&ctx, &mut ed, vec![key(Key::Num7, alt)]);
+    assert_eq!(ed.structure, Some(crate::structure::Structure::Outline));
+    ed.run("outline.template", json!({"name": "three-act"}));
+    ed.run("beat.add", json!({"title": "Setup", "lane": 1}));
+    ed.run("beat.add", json!({"title": "Loose"}));
+    frame(&ctx, &mut ed, vec![]);
+    // The same beat, moved in the outline, is moved for the story board too.
+    ed.run("beat.place", json!({"id": 2, "lane": 1, "index": 0}));
+    let board = wordsmith_script::storyboard::Storyboard::of_doc(&ed.session.doc);
+    assert_eq!(board.lane_beats(Some(1)).iter().map(|b| b.title.as_str()).collect::<Vec<_>>(), ["Loose", "Setup"]);
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("view.board", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+}
+
+#[test]
+fn right_click_moves_the_caret_for_the_element_menu() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("element.action", json!({}));
+    frame(&ctx, &mut ed, vec![text("First paragraph."), key(Key::Enter, Modifiers::NONE), text("Second.")]);
+    // Where the first paragraph is on screen: put the caret there and read its rectangle.
+    ed.session.sel =
+        wordsmith_engine::Selection::caret(wordsmith_doc::Pos { off: 3, path: wordsmith_doc::Path::top(0), ..ed.session.sel.focus.clone() });
+    frame(&ctx, &mut ed, vec![]);
+    let spot = ed.caret_rect().expect("the caret is drawn").center();
+    ed.run("caret.docEnd", json!({}));
+    assert_eq!(ed.session.sel.focus.path.last(), 1);
+    let press = |pressed| Event::PointerButton { pos: spot, button: egui::PointerButton::Secondary, pressed, modifiers: Modifiers::NONE };
+    frame(&ctx, &mut ed, vec![Event::PointerMoved(spot), press(true), press(false)]);
+    assert_eq!(ed.session.sel.focus.path.last(), 0, "the caret went where the right-click was");
+    frame(&ctx, &mut ed, vec![]);
+}
+
+/// The keyboard page of the user guide, made from the registry, so it never disagrees with the
+/// app. `UPDATE_GUIDE=1 cargo test -p wordsmith-ui keyboard_guide` rewrites it.
+#[test]
+fn the_keyboard_guide_matches_the_commands() {
+    let registry = crate::registry();
+    let mut rows: Vec<(&str, &str, &str)> =
+        registry.all().iter().filter(|s| !s.shortcut.is_empty()).map(|s| (s.location, s.label, s.shortcut)).collect();
+    rows.sort_by(|a, b| a.0.cmp(b.0).then(a.2.cmp(b.2)));
+    let mut out = String::from(
+        "# Keyboard\n\nEvery key that runs a command, by menu. `Mod` is Command on macOS and Control elsewhere.\nThis page is made from the app's command list (`the_keyboard_guide_matches_the_commands` keeps it\ncurrent). Custom elements can have keys of their own (Format › Element Settings).\n",
+    );
+    let mut last = "";
+    for (location, label, keys) in rows {
+        if location != last {
+            out.push_str(&format!("\n## {location}\n\n| Command | Keys |\n| --- | --- |\n"));
+            last = location;
+        }
+        let keys = keys.split(" / ").map(|k| format!("`{k}`")).collect::<Vec<_>>().join(" or ");
+        out.push_str(&format!("| {label} | {keys} |\n"));
+    }
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/guide/keyboard.md");
+    if std::env::var_os("UPDATE_GUIDE").is_some() {
+        std::fs::write(&path, &out).unwrap();
+    }
+    assert_eq!(std::fs::read_to_string(&path).unwrap_or_default(), out, "run with UPDATE_GUIDE=1 and review the change");
+}
+
+#[test]
+fn the_go_to_checker_and_reformat_windows_work_through_commands() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(&ctx, &mut ed, vec![text("int"), key(Key::Tab, Modifiers::NONE), text("hall"), key(Key::Enter, Modifiers::NONE), text("Rain.")]);
+    // Mod+G opens Go To; a bookmark made with Mod+M is listed there.
+    frame(&ctx, &mut ed, vec![key(Key::M, cmd()), key(Key::G, cmd())]);
+    assert!(ed.tools.goto.is_some());
+    let marks = ed.session.run("bookmark.list", &json!({})).unwrap();
+    assert_eq!(marks["bookmarks"].as_array().map(Vec::len), Some(1));
+    // An empty paragraph is one format issue; Fix deletes it.
+    frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE)]);
+    ed.run("view.checker", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    // The checker is the Inspector's Check Format panel now (v0.3).
+    assert_eq!(ed.chrome.right, Some(crate::ribbon::Panel::Checker));
+    let issues = ed.session.run("check.run", &json!({})).ok().and_then(|v| v["count"].as_u64());
+    assert_eq!(issues, Some(1));
+    ed.run("check.fix", json!({"block": 2, "rule": "empty"}));
+    assert_eq!(lines(&ed).len(), 2);
+    // The reformat tool: a digit changes the paragraph's element and moves on.
+    ed.tools.checker = None;
+    ed.run("view.reformat", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.tools.reformat);
+    ed.session.sel = wordsmith_engine::Selection::caret(wordsmith_script::data::body_pos(1, 0));
+    frame(&ctx, &mut ed, vec![key(Key::Num0, Modifiers::NONE)]);
+    assert_eq!(lines(&ed)[1].0, "General");
+}
+
+#[test]
+fn macro_keys_and_style_keys_work_from_the_keyboard() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    let macro_key = Modifiers { alt: true, shift: true, ..cmd() };
+    frame(&ctx, &mut ed, vec![key(Key::Num2, macro_key), text("yard"), key(Key::Num3, macro_key), text("Sun.")]);
+    assert_eq!(lines(&ed), vec![l("SceneHeading", "EXT. YARD - DAY"), l("Action", "Sun.")]);
+    // Mod+B makes what is typed next bold.
+    frame(&ctx, &mut ed, vec![key(Key::B, cmd()), text(" Hot.")]);
+    let p = ed.session.doc.para_at(&wordsmith_script::data::body_pos(1, 0)).cloned().unwrap_or_default();
+    assert_eq!(p.props_at(6).bold, Some(true));
+    assert_eq!(p.props_at(2).bold, None);
+    // The macros window opens from its command.
+    ed.run("view.macros", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.tools.macros.is_some());
+}
+
+#[test]
+fn reports_scene_properties_and_tables_open_and_work() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(
+        &ctx,
+        &mut ed,
+        vec![
+            text("int"),
+            key(Key::Tab, Modifiers::NONE),
+            text("hall"),
+            key(Key::Enter, Modifiers::NONE),
+            key(Key::Tab, Modifiers::NONE),
+            text("anna"),
+        ],
+    );
+    frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE), text("Hello.")]);
+    // Reports (Mod+Shift+J) runs a report straight away.
+    frame(&ctx, &mut ed, vec![key(Key::J, Modifiers { shift: true, ..cmd() })]);
+    frame(&ctx, &mut ed, vec![]);
+    let title = ed.tools.reports.as_ref().and_then(|r| r.result.as_ref()).map(|r| r["title"].clone());
+    assert_eq!(title, Some(json!("Scene Report")));
+    // Scene properties for the caret's scene.
+    ed.run("view.sceneProperties", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.chrome.right, Some(crate::ribbon::Panel::Scene), "scene properties are the Inspector's Scene panel");
+    ed.run("scene.setProperties", json!({"scene": 0, "title": "Arrival", "color": "Green"}));
+    // The Tables panel shows the title, sorted and filtered without changing the script.
+    ed.run("view.tables", json!({}));
+    ed.table_view.sort = Some(("heading".into(), true));
+    ed.table_view.filter = "arr".into();
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.scene_list()[0]["title"], "Arrival");
+    // Highlighted speeches are listed for drawing.
+    ed.run("character.set", json!({"name": "ANNA", "highlightOn": true}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(wordsmith_script::cast::highlighted_speeches(&ed.session.doc).len(), 1);
+}
+
+#[test]
+fn boards_strip_and_cards_draw_and_act() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(&ctx, &mut ed, vec![text("int"), key(Key::Tab, Modifiers::NONE), text("hall"), key(Key::Enter, Modifiers::NONE), text("Rain.")]);
+    // A second board: beats added there stay there.
+    ed.run("view.board", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    let id = ed.session.run("storyboard.addBoard", &json!({"name": "Ideas"})).unwrap()["id"].as_u64().unwrap() as u32;
+    ed.board.current = id;
+    ed.run("beat.add", json!({"board": id, "title": "Twist"}));
+    frame(&ctx, &mut ed, vec![]);
+    let b = wordsmith_script::storyboard::Storyboard::of_doc(&ed.session.doc);
+    assert_eq!(b.beats.iter().filter(|x| x.board == id).count(), 1);
+    // The structure strip shows above the script and goes to a scene on a click.
+    ed.structure = None;
+    ed.run("view.strip", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.tools.strip);
+    // The index cards, five to a row, showing script text.
+    ed.run("view.cards", json!({}));
+    ed.tools.cards.per_row = 5;
+    ed.tools.cards.script_text = true;
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.structure, Some(crate::structure::Structure::Cards));
+}
+
+#[test]
+fn production_windows_dual_dialogue_and_tracking() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(
+        &ctx,
+        &mut ed,
+        vec![
+            text("int"),
+            key(Key::Tab, Modifiers::NONE),
+            text("hall"),
+            key(Key::Enter, Modifiers::NONE),
+            key(Key::Tab, Modifiers::NONE),
+            text("anna"),
+        ],
+    );
+    frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE), text("Go."), key(Key::Enter, Modifiers::NONE), key(Key::Tab, Modifiers::NONE)]);
+    frame(&ctx, &mut ed, vec![text("ben"), key(Key::Enter, Modifiers::NONE), text("Stay.")]);
+    // Mod+Shift+D sets Ben's speech beside Anna's; the page view still draws.
+    frame(&ctx, &mut ed, vec![key(Key::D, Modifiers { shift: true, ..cmd() })]);
+    assert_eq!(wordsmith_script::paginate::dual::pairs(&ed.session.doc).len(), 1);
+    frame(&ctx, &mut ed, vec![]);
+    // Tracking: typed text is marked, and the status bar says so.
+    ed.run("track.toggle", json!({"on": true}));
+    frame(&ctx, &mut ed, vec![text(" Now.")]);
+    assert_eq!(wordsmith_script::tracking::changes(&ed.session.doc).len(), 1);
+    // Print is a page of the File page; the watermark and scene number windows open.
+    for id in ["view.watermark", "view.sceneNumbers"] {
+        ed.run(id, json!({}));
+    }
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.tools.watermark.is_some() && ed.tools.scene_numbers.is_some());
+    ed.run("view.print", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.chrome.backstage, Some(crate::backstage::Page::Print));
+    let p = ed.chrome.print.clone();
+    let params = crate::production::PrintChoices { range: "scenes", from: "1".into(), to: "2".into(), which: "revised", ..p }.params();
+    assert_eq!((params["scenes"].clone(), params["revisedOnly"].clone()), (json!([0, 1]), json!(true)));
+}
+
+#[test]
+fn tabs_split_keys_templates_and_statistics() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(&ctx, &mut ed, vec![text("int"), key(Key::Tab, Modifiers::NONE), text("hall"), key(Key::Enter, Modifiers::NONE), text("Rain falls.")]);
+    // Writing statistics count the words typed today.
+    frame(&ctx, &mut ed, vec![text(" Hard and long.")]);
+    let words: u64 = ed.stats.data.days.values().map(|d| d.words).sum();
+    assert!(words >= 3, "counted {words}");
+    // Mod+T: a second script in a tab; the first keeps its text.
+    frame(&ctx, &mut ed, vec![key(Key::T, cmd())]);
+    assert_eq!((ed.tabs.len(), ed.active_tab), (2, 1));
+    frame(&ctx, &mut ed, vec![text("ext"), key(Key::Tab, Modifiers::NONE), text("yard")]);
+    ed.switch_tab(0);
+    assert_eq!(lines(&ed)[1].1, "Rain falls. Hard and long.");
+    // Closing a tab with unsaved changes asks first.
+    ed.session.dirty = true;
+    frame(&ctx, &mut ed, vec![key(Key::W, cmd())]);
+    assert_eq!(ed.unsaved, Some(crate::editor::Then::CloseTab));
+    ed.answer_unsaved(crate::editor::UnsavedAnswer::DontSave);
+    assert_eq!(ed.tabs.len(), 1);
+    assert_eq!(lines(&ed)[0].1, "EXT. YARD");
+    // A key of the writer's own runs its command; "" turns a key off.
+    ed.keys.insert("Mod+Shift+Y".into(), "element.action".into());
+    ed.keys.insert("Mod+1".into(), String::new());
+    frame(&ctx, &mut ed, vec![key(Key::Y, Modifiers { shift: true, ..cmd() }), key(Key::Num1, cmd())]);
+    assert_eq!(lines(&ed)[0].0, "Action");
+    // Split: the cards beside the script; swap; unsplit.
+    ed.run("view.splitCards", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.split.map(|s| s.pane), Some(Some(crate::structure::Structure::Cards)));
+    ed.run("view.splitSwap", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.structure, Some(crate::structure::Structure::Cards));
+    ed.run("view.unsplit", json!({}));
+    // A template from the chooser, in a tab of its own when there is unsaved work.
+    ed.structure = None;
+    ed.session.dirty = true;
+    ed.tools.templates = true;
+    ed.new_tab();
+    ed.run("file.newFromTemplate", json!({"template": "stage"}));
+    assert_eq!(ed.tabs.len(), 2);
+    // A sprint starts and shows its time.
+    ed.run("view.sprint", json!({}));
+    assert!(crate::workspace::sprint_left(&ed).is_some());
+    ed.run("view.stats", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.stats.window.is_some());
+}
+
+/// Every control drawn with every tab, the menu bar and every File page showing (drop-downs
+/// unfolded, so their items are drawn too): where each was drawn and the command it runs.
+fn every_control_drawn() -> Vec<crate::ribbon::Drawn> {
+    use crate::backstage::Page;
+    use crate::ribbon::Tab;
+    use crate::structure::Structure;
+    let ctx = ctx();
+    let mut ed = editor();
+    type_scene(&ctx, &mut ed);
+    ed.recent = vec!["Example.wss".into()];
+    ed.chrome.unfold_menus = true;
+    ed.chrome.menu_bar = true;
+    let mut all = Vec::new();
+    for (tab, view) in [
+        (Tab::Write, None),
+        (Tab::Insert, None),
+        (Tab::Plan, None),
+        (Tab::Production, None),
+        (Tab::Review, None),
+        (Tab::View, None),
+        (Tab::Board, Some(Structure::Board)),
+        (Tab::Cards, Some(Structure::Cards)),
+    ] {
+        ed.structure = view;
+        ed.chrome.tab = tab;
+        frame_at(&ctx, &mut ed, 1920.0, vec![]);
+        all.extend(ed.chrome.drawn.iter().copied());
+    }
+    for page in [Page::New, Page::Open, Page::Save, Page::Export, Page::Print, Page::Compare, Page::Preferences, Page::Keys, Page::About] {
+        ed.chrome.backstage = Some(page);
+        frame_at(&ctx, &mut ed, 1920.0, vec![]);
+        all.extend(ed.chrome.drawn.iter().copied());
+    }
+    all
+}
+
+#[test]
+fn every_drawn_control_runs_a_registered_command() {
+    use crate::ribbon::Place;
+    let all = every_control_drawn();
+    let reg = crate::registry();
+    let missing: Vec<&str> = all.iter().filter_map(|d| d.id).filter(|id| reg.get(id).is_none()).collect();
+    assert!(missing.is_empty(), "controls run commands that are not registered: {missing:?}");
+    // Every command a control runs has an icon to show for it, if the control does not choose one.
+    for id in all.iter().filter_map(|d| d.id) {
+        let _ = crate::script_icons::for_command(id);
+    }
+    let on =
+        |places: &[Place]| -> std::collections::BTreeSet<&str> { all.iter().filter(|d| places.contains(&d.place)).filter_map(|d| d.id).collect() };
+    let ribbon = on(&[Place::Ribbon]);
+    assert!(ribbon.len() > 100, "every tab was drawn: {}", ribbon.len());
+    for id in ["format.style", "macro.run", "view.reports", "cards.print", "view.spelling", "view.menuBar"] {
+        assert!(ribbon.contains(id), "{id} is on the ribbon");
+    }
+    // The menu bar offers nothing the ribbon (with its quick-access row) or the File page does not.
+    let elsewhere = on(&[Place::Ribbon, Place::Quick, Place::FilePage]);
+    let menus = on(&[Place::Menu]);
+    assert!(menus.len() > 100, "every menu was drawn: {}", menus.len());
+    let only_in_menus: Vec<&&str> = menus.iter().filter(|id| !elsewhere.contains(*id)).collect();
+    assert!(only_in_menus.is_empty(), "menu commands with no place on the ribbon or the File page: {only_in_menus:?}");
+}
+
+/// The outlines egui draws around each control that takes clicks, when asked to (debug builds).
+#[cfg(debug_assertions)]
+fn clickable_rects(out: &egui::FullOutput) -> Vec<Rect> {
+    let click = [egui::Color32::from_rgb(0x88, 0, 0), egui::Color32::from_rgb(0x88, 0, 0x88)];
+    out.shapes
+        .iter()
+        .filter_map(|c| match &c.shape {
+            egui::Shape::Rect(r) if click.contains(&r.stroke.color) && r.rect.is_positive() => Some(r.rect),
+            _ => None,
+        })
+        .collect()
+}
+
+#[cfg(debug_assertions)]
+#[test]
+fn every_ribbon_and_status_bar_control_is_a_command() {
+    use crate::ribbon::{Place, Tab};
+    use crate::structure::Structure;
+    let ctx = ctx();
+    ctx.all_styles_mut(|s| s.debug.show_interactive_widgets = true);
+    let mut ed = editor();
+    type_scene(&ctx, &mut ed);
+    // The status bar's chips that open panels.
+    ed.run("revision.mode", json!({}));
+    ed.run("track.toggle", json!({}));
+    for (tab, view) in [
+        (Tab::Write, None),
+        (Tab::Insert, None),
+        (Tab::Plan, None),
+        (Tab::Production, None),
+        (Tab::Review, None),
+        (Tab::View, None),
+        (Tab::Board, Some(Structure::Board)),
+        (Tab::Cards, Some(Structure::Cards)),
+    ] {
+        ed.structure = view;
+        ed.chrome.tab = tab;
+        for w in [1920.0, 1280.0] {
+            let input = RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(w, 800.0))), ..Default::default() };
+            let mut out = ctx.run_ui(input, |ui| ed.ui(ui));
+            out.textures_delta.clear();
+            let areas: Vec<Rect> =
+                ed.chrome.areas.iter().filter(|(p, _)| matches!(p, Place::Quick | Place::Ribbon | Place::Status)).map(|(_, r)| *r).collect();
+            assert_eq!(areas.len(), 3, "the quick-access row, the ribbon's groups and the status bar were drawn");
+            let strays: Vec<Rect> = clickable_rects(&out)
+                .into_iter()
+                .filter(|r| areas.iter().any(|a| a.contains(r.center())))
+                .filter(|r| !ed.chrome.drawn.iter().any(|d| d.rect.expand(1.0).contains(r.center())))
+                .collect();
+            assert!(strays.is_empty(), "{tab:?} at {w}: controls that run no command at {strays:?}");
+        }
+    }
+}
+
+#[test]
+fn the_ribbon_draws_every_tab_at_three_widths_and_in_every_theme() {
+    use crate::ribbon::Tab;
+    for (w, dark, extra) in [(800.0, false, false), (1280.0, true, false), (1920.0, true, true)] {
+        let ctx = ctx();
+        let mut ed = editor();
+        ed.dark = dark;
+        ed.extra_dark = extra;
+        for tab in [Tab::Write, Tab::Insert, Tab::Plan, Tab::Production, Tab::Review, Tab::View] {
+            ed.chrome.tab = tab;
+            let input = RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(w, 800.0))), ..Default::default() };
+            let mut out = ctx.run_ui(input, |ui| ed.ui(ui));
+            out.textures_delta.clear();
+        }
+        // The contextual tabs come with their views.
+        ed.structure = Some(crate::structure::Structure::Board);
+        assert!(crate::ribbon::tabs_now(&ed).contains(&Tab::Board));
+        ed.chrome.tab = Tab::Board;
+        frame(&ctx, &mut ed, vec![]);
+        ed.structure = None;
+        frame(&ctx, &mut ed, vec![]);
+        assert_eq!(ed.chrome.tab, Tab::Write, "the contextual tab went with its view");
+    }
+}
+
+#[test]
+fn key_tips_open_a_tab_and_run_a_control() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(&ctx, &mut ed, vec![key(Key::F10, Modifiers::NONE)]);
+    assert!(ed.chrome.keytips);
+    // V opens the View tab, whose first control (Page) has the letter A.
+    frame(&ctx, &mut ed, vec![text("v")]);
+    assert_eq!(ed.chrome.tab, crate::ribbon::Tab::View);
+    frame(&ctx, &mut ed, vec![]);
+    ed.set_view(crate::editor::View::Draft);
+    frame(&ctx, &mut ed, vec![text("a")]);
+    assert_eq!(ed.view, crate::editor::View::Page);
+    assert!(!ed.chrome.keytips);
+}
+
+/// A frame in a window `w` wide and 800 high.
+fn frame_at(ctx: &egui::Context, ed: &mut Editor, w: f32, events: Vec<Event>) {
+    let input = RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(w, 800.0))), events, ..Default::default() };
+    let mut out = ctx.run_ui(input, |ui| ed.ui(ui));
+    out.textures_delta.clear();
+}
+
+/// Each letter of `letters` typed, in one frame.
+fn typed(letters: &str) -> Vec<Event> {
+    letters.chars().map(|c| text(&c.to_string())).collect()
+}
+
+/// Show key tips on `tab`, open the drop-downs in `opened` by their letters, and give the
+/// controls showing with their letters.
+fn keytips_on(
+    ctx: &egui::Context,
+    ed: &mut Editor,
+    w: f32,
+    tab: crate::ribbon::Tab,
+    opened: &[crate::ribbon::widgets::Keytip],
+) -> Vec<(String, crate::ribbon::widgets::Keytip)> {
+    frame_at(ctx, ed, w, vec![key(Key::F10, Modifiers::NONE)]);
+    assert!(ed.chrome.keytips);
+    frame_at(ctx, ed, w, typed(&tab.letter().to_lowercase()));
+    assert_eq!(ed.chrome.tab, tab);
+    frame_at(ctx, ed, w, vec![]);
+    for what in opened {
+        let letters = letters_of(&ed.chrome.keytip_targets, what);
+        frame_at(ctx, ed, w, typed(&letters));
+        assert!(ed.chrome.keytips, "a drop-down's letters keep the key tips showing");
+        frame_at(ctx, ed, w, vec![]);
+        frame_at(ctx, ed, w, vec![]);
+    }
+    let targets = ed.chrome.keytip_targets.clone();
+    for (i, (a, _)) in targets.iter().enumerate() {
+        for (j, (b, _)) in targets.iter().enumerate() {
+            assert!(i == j || !b.starts_with(a.as_str()), "{tab:?}: the letters {a} begin {b}: {targets:?}");
+        }
+    }
+    targets
+}
+
+fn letters_of(targets: &[(String, crate::ribbon::widgets::Keytip)], what: &crate::ribbon::widgets::Keytip) -> String {
+    targets.iter().find(|(_, t)| t == what).map(|(l, _)| l.clone()).unwrap_or_else(|| panic!("no key tip for {what:?} in {targets:?}"))
+}
+
+#[test]
+fn key_tips_reach_every_control_and_run_it_with_its_parameters() {
+    use crate::ribbon::Tab;
+    use crate::ribbon::widgets::Keytip;
+    use crate::structure::Structure;
+    // As wide as a laptop's screen, and narrow enough that groups fold into drop-downs.
+    for w in [1280.0, 800.0] {
+        let ctx = ctx();
+        let mut ed = editor();
+        type_scene(&ctx, &mut ed);
+        for (tab, view) in [
+            (Tab::Write, None),
+            (Tab::Insert, None),
+            (Tab::Plan, None),
+            (Tab::Production, None),
+            (Tab::Review, None),
+            (Tab::View, None),
+            (Tab::Board, Some(Structure::Board)),
+            (Tab::Cards, Some(Structure::Cards)),
+        ] {
+            // Whatever the last control opened goes, so each one starts from the same window.
+            let reset = |ed: &mut Editor| {
+                ed.chrome.keytips = false;
+                ed.chrome.backstage = None;
+                ed.focus_mode = false;
+                ed.structure = view;
+                ed.tools.reformat = false;
+                ed.unsaved = None;
+                egui::Popup::close_all(&ctx);
+            };
+            reset(&mut ed);
+            // The groups settle to the window's width over a few frames.
+            ed.chrome.tab = tab;
+            for _ in 0..4 {
+                frame_at(&ctx, &mut ed, w, vec![]);
+            }
+            let top = keytips_on(&ctx, &mut ed, w, tab, &[]);
+            assert!(!top.is_empty(), "{tab:?} shows key tips");
+            let mut todo: Vec<(Vec<Keytip>, Keytip)> = top.iter().map(|(_, t)| (Vec::new(), t.clone())).collect();
+            let mut ran = 0;
+            while let Some((path, what)) = todo.pop() {
+                reset(&mut ed);
+                let targets = keytips_on(&ctx, &mut ed, w, tab, &path);
+                let letters = letters_of(&targets, &what);
+                ed.ran.clear();
+                frame_at(&ctx, &mut ed, w, typed(&letters));
+                match &what {
+                    Keytip::Run(c) => {
+                        assert_eq!(ed.ran.first(), Some(&(c.id.to_string(), c.params.clone())), "{tab:?}: {letters} runs {c:?}");
+                        assert!(!ed.chrome.keytips, "key tips end once a control runs");
+                        ran += 1;
+                    }
+                    Keytip::Open(popup) => {
+                        assert!(ed.ran.is_empty());
+                        assert!(egui::Popup::is_id_open(&ctx, *popup), "{tab:?}: {letters} opens its drop-down");
+                        // Its items show letters too: run each of them from the start.
+                        if path.is_empty() {
+                            frame_at(&ctx, &mut ed, w, vec![]);
+                            frame_at(&ctx, &mut ed, w, vec![]);
+                            let inner: Vec<Keytip> =
+                                ed.chrome.keytip_targets.iter().map(|(_, t)| t.clone()).filter(|t| !top.iter().any(|(_, x)| x == t)).collect();
+                            assert!(!inner.is_empty(), "{tab:?}: the drop-down {letters} shows its items' letters");
+                            todo.extend(inner.into_iter().map(|t| (vec![what.clone()], t)));
+                        }
+                    }
+                }
+            }
+            assert!(ran > 0, "{tab:?}");
+        }
+    }
+}
+
+#[test]
+fn every_side_panel_draws_and_acts_through_commands() {
+    use crate::ribbon::Panel;
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    frame(
+        &ctx,
+        &mut ed,
+        vec![
+            text("int"),
+            key(Key::Tab, Modifiers::NONE),
+            text("hall"),
+            key(Key::Enter, Modifiers::NONE),
+            key(Key::Tab, Modifiers::NONE),
+            text("anna"),
+        ],
+    );
+    frame(&ctx, &mut ed, vec![key(Key::Enter, Modifiers::NONE), text("Hello there.")]);
+    ed.run("bookmark.add", json!({"name": "here"}));
+    for (left, right) in [
+        (Panel::Scenes, Panel::Element),
+        (Panel::Outline, Panel::Scene),
+        (Panel::Bookmarks, Panel::Revisions),
+        (Panel::Notes, Panel::Page),
+        (Panel::Characters, Panel::Changes),
+        (Panel::Find, Panel::Checker),
+        (Panel::Scenes, Panel::Goals),
+    ] {
+        ed.chrome.left = Some(left);
+        ed.chrome.right = Some(right);
+        frame(&ctx, &mut ed, vec![]);
+    }
+    // The Find panel with nothing typed in it leaves the find state alone.
+    assert!(ed.find.is_none());
+    ed.chrome.left = None;
+    ed.chrome.right = None;
+    frame(&ctx, &mut ed, vec![]);
+    // Characters: the panel opens a character's details by name.
+    ed.session.push_ui_request(json!({"open": "tool.character", "name": "ANNA"}));
+    ed.run("view.character", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.chrome.left, Some(Panel::Characters));
+    assert!(ed.panels.open.iter().any(|n| n == "ANNA"));
+}
+
+#[test]
+fn every_file_page_draws_and_its_buttons_run_commands() {
+    use crate::backstage::Page;
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    for page in [Page::New, Page::Open, Page::Save, Page::Export, Page::Print, Page::Compare, Page::Preferences, Page::Keys, Page::About] {
+        ed.chrome.backstage = Some(page);
+        frame(&ctx, &mut ed, vec![]);
+        assert_eq!(ed.chrome.backstage, Some(page));
+    }
+    // Escape goes back to the script.
+    frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE)]);
+    assert_eq!(ed.chrome.backstage, None);
+    // A template from the New page (as its card does).
+    ed.chrome.backstage = Some(Page::New);
+    ed.run("file.newFromTemplate", json!({"template": "stage"}));
+    assert_eq!(crate::editor::script_name(&ed.session), "Stage play");
+    // The File tab opens the New page.
+    ed.run("view.start", json!({}));
+    assert_eq!(ed.chrome.backstage, Some(Page::New));
+}
+
+#[test]
+fn the_window_layout_and_the_tour_keep_through_preferences() {
+    use crate::ribbon::Panel;
+    let ctx = ctx();
+    let mut ed = editor();
+    // A first run: the tour shows; Skip ends it for good.
+    let fresh = crate::prefs::Prefs::default();
+    fresh.apply(&mut ed);
+    assert_eq!(ed.chrome.tour, Some(0));
+    assert_eq!(ed.chrome.left, Some(Panel::Scenes));
+    frame(&ctx, &mut ed, vec![]);
+    ed.chrome.tour = None;
+    ed.chrome.tour_done = true;
+    ed.chrome.left = Some(Panel::Notes);
+    ed.chrome.right = Some(Panel::Revisions);
+    ed.chrome.right_w = 333.0;
+    ed.chrome.collapsed = true;
+    let saved = fresh.of(&ed);
+    assert!(saved.workspace.tour_seen);
+    let mut again = editor();
+    saved.apply(&mut again);
+    assert_eq!(
+        (again.chrome.left, again.chrome.right, again.chrome.collapsed, again.chrome.tour),
+        (Some(Panel::Notes), Some(Panel::Revisions), true, None)
+    );
+    assert!((again.chrome.right_w - 333.0).abs() < 0.01);
+    // Hostile widths are bounded.
+    let mut bad = saved.clone();
+    bad.workspace.left_width = f32::NAN;
+    bad.workspace.right_width = 99_999.0;
+    bad.workspace.left_panel = "nonsense".into();
+    bad.apply(&mut again);
+    assert_eq!((again.chrome.left, again.chrome.left_w, again.chrome.right_w), (None, 260.0, 480.0));
+}
+
+#[test]
+fn check_for_updates_asks_the_app_and_the_window_shows_every_status() {
+    use crate::updates::{Offer, Request, Status};
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    ed.run("help.checkForUpdates", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.updates.status, Status::Checking);
+    assert!(ed.updates.prompt);
+    assert_eq!(ed.updates.take_requests(), vec![Request::Check]);
+    // A second request while one runs asks nothing more.
+    ed.updates.check_now();
+    assert!(ed.updates.take_requests().is_empty());
+    let offer = |installs| Status::Available(Offer { version: "9.0.0".into(), page: "https://github.com/x/y/releases/tag/v9.0.0".into(), installs });
+    for status in [
+        Status::Idle,
+        Status::Current,
+        offer(true),
+        offer(false),
+        Status::Installing("Downloading…".into()),
+        Status::Ready("9.0.0".into()),
+        Status::Failed("offline".into()),
+        Status::Updated("9.0.0".into()),
+    ] {
+        ed.updates.status = status;
+        ed.chrome.backstage = Some(crate::backstage::Page::About);
+        frame(&ctx, &mut ed, vec![]);
+    }
+    assert!(ed.updates.describe().0.contains("9.0.0"));
+    // The preference round-trips.
+    ed.updates.check_at_start = false;
+    let p = crate::prefs::Prefs::default().of(&ed);
+    assert!(!p.workspace.check_updates);
+    assert!(crate::prefs::Prefs::default().workspace.check_updates, "on by default");
+}
+
+/// The regression guard for typing speed (docs/performance.md): a keystroke in a 150-page script
+/// paginates once, lays out again only the paragraph typed in, and reads no element registry
+/// from the script's settings; a frame without input does none of that. It counts work rather
+/// than timing it, so it gives the same answer on any machine and in any build.
+#[test]
+fn a_keystroke_in_a_long_script_does_only_its_own_work() {
+    let ctx = ctx();
+    let mut ed = Editor::new(wordsmith_script::session_for(long_script(300)));
+    ed.session.registry = std::sync::Arc::new(crate::registry());
+    ed.mac = false;
+    frame(&ctx, &mut ed, vec![]);
+    let pages = ed.paginated().pages.len();
+    assert!(pages >= 140, "{pages} pages");
+    ed.run("caret.docEnd", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    for panel in [Some(crate::ribbon::Panel::Scenes), None] {
+        ed.chrome.left = panel;
+        frame(&ctx, &mut ed, vec![]);
+        for k in 0..3 {
+            let before = wordsmith_script::work::so_far();
+            frame(&ctx, &mut ed, vec![text("x")]);
+            let w = wordsmith_script::work::so_far().since(before);
+            assert_eq!(w.paginations, 1, "keystroke {k} with {panel:?}: {w:?}");
+            assert!(w.paragraphs_measured <= 2, "keystroke {k} with {panel:?}: {w:?}");
+            assert!(w.element_parses <= 1, "keystroke {k} with {panel:?}: {w:?}");
+        }
+        let before = wordsmith_script::work::so_far();
+        frame(&ctx, &mut ed, vec![]);
+        let idle = wordsmith_script::work::so_far().since(before);
+        assert_eq!((idle.paginations, idle.paragraphs_measured), (0, 0), "a frame without input with {panel:?}: {idle:?}");
+    }
+}
+
+#[test]
+fn the_window_s_own_switches_are_commands() {
+    use crate::ribbon::Panel;
+    use crate::structure::Structure;
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    let spelling = ed.spelling;
+    ed.run("view.spelling", json!({}));
+    assert_eq!(ed.spelling, !spelling);
+    // The side panels: shown or hidden, or a panel named.
+    ed.run("view.scriptPanel", json!({}));
+    assert_eq!(ed.chrome.left, None);
+    ed.run("view.scriptPanel", json!({}));
+    assert_eq!(ed.chrome.left, Some(Panel::Scenes));
+    ed.run("view.scriptPanel", json!({"panel": "notes"}));
+    assert_eq!(ed.chrome.left, Some(Panel::Notes));
+    ed.run("view.scriptPanel", json!({"panel": "revisions"}));
+    assert_eq!(ed.chrome.left, None, "a panel of the other side is not named, so the side toggles");
+    ed.run("view.inspector", json!({"panel": "changes"}));
+    assert_eq!(ed.chrome.right, Some(Panel::Changes));
+    ed.run("view.inspector", json!({}));
+    assert_eq!(ed.chrome.right, None);
+    // The themes and the menu bar.
+    ed.run("view.extraDark", json!({}));
+    assert!(ed.dark && ed.extra_dark);
+    ed.run("view.lightTheme", json!({}));
+    assert!(!ed.dark && !ed.extra_dark);
+    ed.run("view.menuBar", json!({}));
+    assert!(ed.chrome.menu_bar);
+    frame(&ctx, &mut ed, vec![]);
+    // Zoom to a size.
+    ed.run("view.zoomTo", json!({"percent": 150}));
+    assert!((ed.zoom - 1.5).abs() < 0.001);
+    // A report tile opens the Reports window on its report.
+    ed.run("view.reports", json!({"kind": "locations"}));
+    assert_eq!(ed.tools.reports.as_ref().map(|r| r.kind), Some("locations"));
+    // Index cards: printing opens the cards view with the print choices.
+    ed.run("cards.print", json!({}));
+    assert_eq!(ed.structure, Some(Structure::Cards));
+    assert!(ed.tools.cards.printing);
+    ed.run("cards.print", json!({}));
+    assert!(!ed.tools.cards.printing);
+    ed.run("cards.perRow", json!({"count": 4}));
+    assert_eq!(ed.tools.cards.per_row, 4);
+    ed.run("cards.scriptText", json!({"show": "script"}));
+    assert!(ed.tools.cards.script_text);
+    frame(&ctx, &mut ed, vec![]);
+}
+
+/// Whether the frame asked the window to paste.
+fn asks_paste(out: &egui::FullOutput) -> bool {
+    out.viewport_output.values().any(|v| v.commands.contains(&egui::ViewportCommand::RequestPaste))
+}
+
+#[test]
+fn paste_asks_the_window_and_the_paste_goes_in_once() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![key(Key::Num2, cmd()), text("Hello")]);
+    let run = |ed: &mut Editor, events: Vec<Event>| {
+        let input = RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1200.0, 900.0))), events, ..Default::default() };
+        let mut out = ctx.run_ui(input, |ui| ed.ui(ui));
+        out.textures_delta.clear();
+        out
+    };
+    // The command (the ribbon's Paste, the palette) asks the window for the clipboard…
+    ed.run("edit.paste", json!({}));
+    assert!(asks_paste(&run(&mut ed, vec![])));
+    // …whose text comes back as a paste.
+    run(&mut ed, vec![Event::Paste(" there".into())]);
+    assert_eq!(lines(&ed), vec![l("Action", "Hello there")]);
+    // The paste key: the window sends the paste itself, so the command does not ask again.
+    let out = run(&mut ed, vec![key(Key::V, cmd()), Event::Paste("!".into())]);
+    assert!(!asks_paste(&out));
+    assert_eq!(lines(&ed), vec![l("Action", "Hello there!")]);
+    // The Paste button is on the Write tab, with its key in the tooltip.
+    assert!(crate::ribbon::widgets::tip(&ed, "edit.paste", "").contains("Mod+V"));
+}
+
+#[test]
+fn the_find_bar_and_the_find_panel_share_one_query() {
+    use crate::ribbon::Panel;
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![key(Key::Num2, cmd()), text("The dog and the dog.")]);
+    // The bar opens; the panel shows its query and matches.
+    frame(&ctx, &mut ed, vec![key(Key::F, cmd())]);
+    assert!(ed.find_bar);
+    ed.find = Some(crate::editor::FindBar { query: "dog".into(), ..Default::default() });
+    ed.chrome.left = Some(Panel::Find);
+    frame(&ctx, &mut ed, vec![]);
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(ed.find.as_ref().and_then(|b| b.count), Some(2));
+    // Escape with nothing else open closes the bar; the panel keeps the query.
+    frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE)]);
+    assert!(!ed.find_bar);
+    frame(&ctx, &mut ed, vec![]);
+    frame(&ctx, &mut ed, vec![]);
+    assert!(!ed.find_bar, "the panel does not open the bar again");
+    assert_eq!(ed.find.as_ref().map(|b| b.query.as_str()), Some("dog"));
+    // Escape that closes something above the bar leaves the bar open.
+    ed.run("view.find", json!({}));
+    assert!(ed.find_bar);
+    ed.run("view.commandPalette", json!({}));
+    frame(&ctx, &mut ed, vec![]);
+    frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE)]);
+    assert!(ed.palette.is_none());
+    assert!(ed.find_bar, "Escape closed the palette, not the bar");
+    ed.run("view.cards", json!({}));
+    frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE)]);
+    assert!(ed.structure.is_none());
+    assert!(ed.find_bar, "Escape left the cards, not the bar");
+    // With the bar closed and the panel gone, nothing marks matches.
+    frame(&ctx, &mut ed, vec![key(Key::Escape, Modifiers::NONE)]);
+    assert!(!ed.find_bar);
+    ed.chrome.left = Some(Panel::Scenes);
+    frame(&ctx, &mut ed, vec![]);
+    assert!(ed.find.is_none());
+}

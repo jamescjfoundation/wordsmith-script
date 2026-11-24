@@ -1,0 +1,46 @@
+Wordsmith Script 4
+=== settings ===
+{
+  "appData": {
+    "wordsmith.tracking": {
+      "on": false
+    }
+  },
+  "core": {
+    "title": "Fixture 4"
+  },
+  "revisions": [
+    {
+      "author": "Writer",
+      "date": "2026-11-20",
+      "kind": "insert"
+    },
+    {
+      "author": "Writer",
+      "date": "2026-11-20",
+      "kind": "delete"
+    }
+  ]
+}
+=== script ===
+@SceneHeading
+INT. HALL - DAY
+
+@Action
+{sX1}Rain{/s} falls.{sI0} Hard.{/s}
+
+@Action bookmark=1
+{sK}Struck{/s}{sD}_ double{/s}_ {sHyellow}marked{/s} {sF#123456,U}raised{/s}
+
+@Character
+ANNA
+
+@Dialogue
+Hi.
+
+@Character dual
+BEN
+
+@Dialogue
+Hello.
+

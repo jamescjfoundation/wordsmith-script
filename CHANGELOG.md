@@ -1,0 +1,221 @@
+# Changelog
+
+## Unreleased
+
+### The window
+
+- The app has its own mark, wordmark, icon and colors. The window and the
+  macOS and Linux bundles carry the icon (a W and a brass caret on ink);
+  the quick-access row starts with the mark, the File page's column is ink
+  with the wordmark at its foot and a brass caret at the current page, and
+  About shows the mark. The three themes take their colors from the
+  palette: Iron Gall Ink, Page White, Brad Brass, Margin Blue, Slate and
+  Night.
+- Key tips (F10) reach every control on a tab. Before, from the 21st
+  control on, typing the first letter ran another control. The first 19
+  controls have one letter and the rest start with Z; a control keeps its
+  letters while the app runs, even when its group folds to fit the window.
+- A key tip runs its control as a click does, with the same settings (Start
+  Up and Start Down on locked pages, a macro's slot, Strike Through).
+- Drop-downs (More, Highlight, All Macros, the revision set, folded groups)
+  have key tips that open them; their items have letters too.
+- Paste is on the Write tab beside Cut and Copy, and in the Edit menu.
+- Spelling, the Script panel and Inspector switches, the Light theme, the
+  menu bar, the zoom, Print Cards, the index card options, each report tile
+  and the status bar's theme, focus and sprint switches are commands: they
+  are in the command search box, can be given keys, and show their key in
+  their tooltip. A report tile opens the Reports window on its report.
+- The View tab's zoom shows a menu of sizes.
+- The find bar can be closed while the Find panel is open; the panel keeps
+  its results. Escape closes the bar only from its own fields or when
+  nothing else is open, so closing the palette or a suggestion list no
+  longer closes it.
+- File › About has an Acknowledgments section: WordCraft, the libraries
+  and fonts the app is built on, and the word list spelling uses. The
+  README has the same section.
+
+### Inside
+
+- The checks that every control runs a registered command, and that every
+  menu command is on the ribbon or the File page, read what the window draws
+  instead of lists kept by hand (decision 0043).
+
+## 0.1.2 (2026-11-22)
+
+New names for the Script panel and the Draft view, script files that keep
+what a later version wrote, and checked file writes for every command.
+
+### Automation
+
+- Every command that writes a file, including report, storyboard and index
+  card exports, goes through the same checked writer, so a write is complete
+  or not made at all and `wordsmith-cli mcp --write-root` applies to it.
+- While `wordsmith-cli mcp` is confined to folders, printing and the print
+  preview are refused. The print preview writes a new, uniquely named file
+  each time.
+- `wordsmith-cli mcp` started without `--read-root` or `--write-root` warns
+  that the agent can read and write any file your account can.
+
+### Inside
+
+- The crates that started as a copy of WordCraft are now a fork, trimmed to
+  what a screenplay uses (decision 0039). Nothing the app does changes.
+
+### Privacy and licenses (decision 0040)
+
+- The README and the user guide (The window › Updates and privacy) say what
+  the update check at start sends (one request to GitHub's API with the app's
+  name and version; GitHub sees your IP address) and how to turn it off. The
+  app has no telemetry and never sends script content anywhere. The first-run
+  tour mentions the check and where to turn it off.
+- Release bundles carry a `licenses` folder: the license texts of every Rust
+  library the app is built from (`THIRD-PARTY-LICENSES.txt`) and of the
+  bundled fonts. On macOS they are inside the app as well. The About page says
+  where they are and names all five fonts.
+- Each release file has a GitHub build provenance attestation; check one with
+  `gh attestation verify <file> --repo jamescjfoundation/wordsmith-script`.
+- Development: the Rust toolchain is pinned to an exact release, CI checks the
+  minimum version (1.95), runs cargo-deny for licenses, advisories and
+  sources, and uses commit-pinned actions; Dependabot proposes updates.
+
+### Names (decision 0041)
+
+- The left side panel (scenes, outline, bookmarks, notes, characters, find) is
+  now the **Script panel**, and the compact view beside Page and Normal is the
+  **Draft view**. The old names belong to another product. Preference files
+  that name the old view still open in the draft view, and the
+  `view.speed` command id is unchanged, so keys, scripts and agents keep
+  working.
+
+### Commands
+
+- `lock.adjustBreak` refuses a `by` of 0, or one that is not a whole number,
+  with a message saying what it takes. Before, 0 failed with an unrelated
+  message and a value that is not a number moved the page start down.
+- The header and footer `{date}` reads the clock the way the rest of the app
+  does, which also works in the web build.
+
+### Speed
+
+- Typing no longer reads the script's element list from its settings two
+  dozen times a keystroke; it is read again only when it changes. A test in
+  CI fails if a keystroke in a 150-page script paginates more than once or
+  lays out more than the paragraph typed in (`docs/performance.md`).
+
+### Script files
+
+- Paragraph attributes in a `.wss` file that this version does not know (from
+  a later version) are kept and written back when the script is saved, instead
+  of being dropped.
+- A script that cannot be written in full is not saved, with a message saying
+  why, instead of being saved with empty settings or without some of its
+  tracked-change records. A file with more than 100,000 tracked-change records
+  is refused as damaged when opened.
+- Scene numbers: every number the app gives a scene is one the script file
+  keeps, so locked numbers no longer change after saving and opening a script
+  with a long run of added scenes. Fountain scene numbers the app cannot keep
+  (longer than 12 characters, or with other characters than letters, digits,
+  `-` and `.`) are left out on import instead of being lost on the next save.
+- `docs/format.md` describes format version 4, including the tracked-change
+  codes and the `revisions` settings key.
+
+## 0.1.1 (2026-11-20)
+
+The first version that checks for its own updates. It also carries
+everything built since 0.1.0: the v0.2 features from SPEC-2 and the v0.3
+interface, listed below.
+
+### Releases and updates (decision 0038)
+
+- Help ▸ Check for Updates, an Updates section on the About page, and a check
+  at start (a preference, on by default). A newer release is offered in a
+  Software Update window. On Linux it installs the update, verified against
+  its SHA-256, and restarts; on macOS and Windows it opens the release page.
+- Release files are named `wordsmith-script-<version>-<os>-<arch>`; macOS ships
+  a disk image.
+- The release workflow drafts a GitHub release with `SHA256SUMS.txt` and
+  publishes it only when asked, refusing one with fewer files than the last.
+
+### The interface (v0.3 plan, M15 to M19)
+
+- A ribbon of tabs named for screenplay work, every control a command with its
+  key in the tooltip, groups that fold to fit the window, Story Board and Index
+  Cards tabs with those views, and key tips (F10).
+- A quick-access row with a command search box.
+- The Navigator (scenes, outline, bookmarks, notes, characters, find) and the
+  Inspector (element, scene, revisions, page, changes, checker, goals) in rails
+  either side of the page.
+- A File page for new (template cards), open, save, export, print, compare,
+  preferences, keys and about.
+- A status bar that says what Return and Tab make, with clickable page, words
+  and scene and chips for revision mode and tracking.
+- Light, dark and extra-dark themes from one set of tokens; icons drawn in code.
+- A first-run tour; the window's layout kept between runs.
+
+### Features from SPEC-2 (M9 to M14)
+
+Work toward v0.2 from `docs/SPEC-2.md`. Nothing built in 0.1.0 changes its
+behavior; every addition below is new.
+
+- **Editing (M9):** the Sequence element; the Return and Tab hint; reset to
+  element; toggle case; smart quotes and sentence capitals as options; select
+  scene, new scene, page break; Go To by page, scene or bookmark; bookmarks
+  and labels; find within one element; the reformat tool; the format checker.
+- **Macros and styles (M10):** twenty macros per script with shortcuts,
+  aliases and a starter set; bold, italic and underline keys; double, word and
+  dotted underlines, strike, raised, lowered, capitals, small capitals, small
+  letters; highlighter and text colors; element color, highlight and strike;
+  template formatting for all elements. The native format is now version 4
+  (0.1.0 cannot open version-4 files).
+- **Characters and reports (M11):** scene properties (title, color, cast,
+  non-speaking characters, arc beats); character traits and speech
+  highlighting; scene, location, cast, character, filtered-script, notes,
+  statistics and representation reports, saved as text, CSV or PDF; tables
+  that sort, filter, hide columns and keep tabs of your own; note titles,
+  types, colors and dates; next and previous note.
+- **Planning (M12):** several story boards per script; arrange beats on the
+  grid, in a column, a row or a cascade; link styles and colors; list lines
+  in beats; story board and index cards as PDF; cards per row and script-text
+  cards; the structure strip above the script; nesting bars for outline
+  paragraphs.
+- **Production (M13):** dual dialogue (also from Fountain `^`); relock, move a
+  locked page's start, lock or unlock one page, edit a page number; scene
+  number options (start, restart, A2 letters, sides, font, one number by
+  hand); a mark per revision set and current-set-only display; print ranges,
+  one set, unrevised pages, sides, reverse, collated copies and preview; a
+  watermark; header and footer start page and `{collated}`; change tracking;
+  comparing two versions.
+- **Workspace (M14):** twelve templates of our own and templates of your own;
+  text documents for prose; the Welcome window, recent scripts and reopening
+  the last ones; revert and merge; tabs; split views; zoom steps and an
+  extra-dark theme; writing statistics, goals and sprints; your own keys.
+
+## 0.1.0 (2026-11-19)
+
+The first tagged version: a starting point, not a finished app. Everything is
+new; in brief:
+
+- **Writing:** the screenplay elements with Return and Tab, element settings
+  and custom elements, scene-heading separators, autocomplete over six lists,
+  spelling (English), find and replace, notes, character rename.
+- **Pages:** industry pagination with (MORE), (CONT'D) and CONTINUEDs, title
+  page, headers and footers with fields, PDF export and printing matching the
+  page view.
+- **Views:** page, normal and speed views; index cards; scene view; tables
+  (scenes, characters, notes) with CSV; dark theme, typewriter scrolling,
+  focus mode.
+- **Production:** revision mode and sets on the color cycle with margin
+  marks and page colors; scene numbers with letters and OMITTED; locked pages
+  with A-pages and placeholders; revised-pages-only export and printing;
+  scene lengths in eighths; character report.
+- **Outlining:** story board of beats with links and grid snap; outline
+  lanes with structure templates; beats sent to the script; outline elements
+  shown or hidden.
+- **Files:** the `.wss` native format (version 3); Fountain both ways;
+  import of plain text, RTF and text PDF; export of RTF, plain text, HTML
+  and CSV; auto-save, timestamped backups, crash recovery; preferences.
+- **Automation:** `wordsmith-cli` (convert, export-pdf, report, info, mcp)
+  and an MCP server with screenplay tools.
+- **Release:** bundles for macOS, Linux and Windows (`cargo xtask bundle`).
+
+What v0.1 does not do is listed in `docs/gaps.md`.

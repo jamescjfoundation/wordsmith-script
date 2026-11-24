@@ -1,0 +1,27 @@
+Wordsmith Script 2
+=== settings ===
+{
+  "appData": {
+    "wordsmith.notes": {
+      "1": {
+        "author": "Writer",
+        "text": "Is {B} right?"
+      }
+    }
+  },
+  "core": {
+    "title": "Fixture 2"
+  }
+}
+=== script ===
+@SceneHeading
+INT. {n1}HALL \{B}{/n} - NIGHT
+
+@Action
+Rain **hits** the _window_.
+\
+A second line.
+
+@NewAct page-break
+ACT TWO
+

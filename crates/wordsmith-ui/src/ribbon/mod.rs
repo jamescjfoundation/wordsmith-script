@@ -1,0 +1,585 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+//! The window's chrome (decision 0037): a quick-access row (save, undo, redo, the script's name,
+//! a command search box), the ribbon's tab strip and the current tab's groups, and key tips (F10
+//! or Alt+Space shows a letter on every tab, then on every control). Tabs are named for screenplay work; every
+//! control runs a command from the registry. The File tab opens the backstage
+//! ([`crate::backstage`]).
+
+use egui::{Align2, Event, Key, Sense, Stroke, Ui, pos2, vec2};
+use serde_json::json;
+
+use crate::editor::Editor;
+use crate::theme::{BODY, Tokens, medium, regular, semibold};
+
+pub mod tabs;
+pub mod widgets;
+
+/// A ribbon tab.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Tab {
+    Write,
+    Insert,
+    Plan,
+    Production,
+    Review,
+    View,
+    /// Contextual: shown with the story board.
+    Board,
+    /// Contextual: shown with the index cards.
+    Cards,
+}
+
+impl Tab {
+    pub fn name(self) -> &'static str {
+        match self {
+            Tab::Write => "Write",
+            Tab::Insert => "Insert",
+            Tab::Plan => "Plan",
+            Tab::Production => "Production",
+            Tab::Review => "Review",
+            Tab::View => "View",
+            Tab::Board => "Story Board",
+            Tab::Cards => "Index Cards",
+        }
+    }
+
+    /// The key tip letter that opens the tab.
+    pub fn letter(self) -> &'static str {
+        match self {
+            Tab::Write => "W",
+            Tab::Insert => "I",
+            Tab::Plan => "P",
+            Tab::Production => "O",
+            Tab::Review => "R",
+            Tab::View => "V",
+            Tab::Board => "B",
+            Tab::Cards => "C",
+        }
+    }
+}
+
+/// The left side panel (the Script panel) and the right one (the Inspector).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Panel {
+    Scenes,
+    Outline,
+    Bookmarks,
+    Notes,
+    Characters,
+    Find,
+    Element,
+    Scene,
+    Revisions,
+    Page,
+    Changes,
+    Checker,
+    Goals,
+}
+
+impl Panel {
+    const ALL: [(Panel, &'static str); 13] = [
+        (Panel::Scenes, "scenes"),
+        (Panel::Outline, "outline"),
+        (Panel::Bookmarks, "bookmarks"),
+        (Panel::Notes, "notes"),
+        (Panel::Characters, "characters"),
+        (Panel::Find, "find"),
+        (Panel::Element, "element"),
+        (Panel::Scene, "scene"),
+        (Panel::Revisions, "revisions"),
+        (Panel::Page, "page"),
+        (Panel::Changes, "changes"),
+        (Panel::Checker, "checker"),
+        (Panel::Goals, "goals"),
+    ];
+
+    /// The name the preferences keep the panel under.
+    pub fn key(self) -> &'static str {
+        Panel::ALL.iter().find(|(p, _)| *p == self).map_or("", |(_, k)| k)
+    }
+
+    pub fn from_key(k: &str) -> Option<Panel> {
+        Panel::ALL.iter().find(|(_, x)| *x == k).map(|(p, _)| *p)
+    }
+}
+
+/// Where a control was drawn.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Place {
+    Other,
+    /// The quick-access row.
+    Quick,
+    /// The tab strip and the current tab's groups.
+    Ribbon,
+    Menu,
+    FilePage,
+    Status,
+}
+
+/// A control drawn this frame: where, the command it runs (none for a drop-down, whose items say
+/// theirs), and where on the screen.
+#[derive(Clone, Copy, Debug)]
+pub struct Drawn {
+    pub place: Place,
+    pub id: Option<&'static str>,
+    pub rect: egui::Rect,
+}
+
+/// The chrome's state.
+pub struct Chrome {
+    pub tab: Tab,
+    /// The ribbon shows its tabs only (a click opens a tab's groups for one use).
+    pub collapsed: bool,
+    /// The ribbon's groups show for one use while collapsed.
+    pub peek: bool,
+    /// The old menu bar, under the quick-access row (off by default).
+    pub menu_bar: bool,
+    /// The File page in place of the script.
+    pub backstage: Option<crate::backstage::Page>,
+    /// The Script panel's and the Inspector's open panel, if any, and their widths.
+    pub left: Option<Panel>,
+    pub right: Option<Panel>,
+    pub left_w: f32,
+    pub right_w: f32,
+    /// Key tips: off, showing tab letters (stage 0) or control letters (stage 1), and what has
+    /// been typed so far.
+    pub keytips: bool,
+    pub keytip_stage: u8,
+    pub keytip_typed: String,
+    /// The controls that showed key tips in the last frame, with their letters.
+    pub keytip_targets: Vec<(String, widgets::Keytip)>,
+    /// Each tab's controls in the order they were first seen: a control's letters come from its
+    /// place here, so they stay the same for the run however the tab's groups fold.
+    keytip_order: std::collections::HashMap<Tab, Vec<String>>,
+    /// The first-run tour's step, while it shows.
+    pub tour: Option<usize>,
+    /// The ribbon's groups are being drawn (only their controls take key tips).
+    pub in_ribbon: bool,
+    /// The part of the window being drawn, and the controls drawn this frame with the commands
+    /// they run (the checks that every control runs a registered command read these).
+    pub place: Place,
+    pub drawn: Vec<Drawn>,
+    /// Where the quick-access row, the ribbon's groups and the status bar were drawn this frame.
+    pub areas: Vec<(Place, egui::Rect)>,
+    /// Draw drop-down menus' items in place, and no group folded (for those checks).
+    pub unfold_menus: bool,
+    /// The File page's print choices.
+    pub print: crate::production::PrintChoices,
+    /// The first-run tour was finished or skipped this run.
+    pub tour_done: bool,
+}
+
+impl Default for Chrome {
+    fn default() -> Self {
+        Chrome {
+            tab: Tab::Write,
+            collapsed: false,
+            peek: false,
+            menu_bar: false,
+            backstage: None,
+            left: Some(Panel::Scenes),
+            right: None,
+            left_w: 260.0,
+            right_w: 290.0,
+            keytips: false,
+            keytip_stage: 0,
+            keytip_typed: String::new(),
+            keytip_targets: Vec::new(),
+            keytip_order: Default::default(),
+            tour: None,
+            in_ribbon: false,
+            place: Place::Other,
+            drawn: Vec::new(),
+            areas: Vec::new(),
+            unfold_menus: false,
+            print: Default::default(),
+            tour_done: false,
+        }
+    }
+}
+
+/// Letters for the `n`th control of a tab. The first 19 are single letters; after them come "Z"
+/// and the letters again ("ZA", "ZB", … "ZZA"). No control's letters begin another's, so a
+/// letter typed is either a whole tip or the start of longer ones, never both, and a control's
+/// letters do not depend on how many controls the tab has.
+pub fn letters(n: usize) -> String {
+    const L: &[u8] = b"ABCDEFGHJKLMNQSTUXY";
+    let mut out = String::new();
+    let mut n = n;
+    while n >= L.len() {
+        out.push('Z');
+        n -= L.len();
+    }
+    out.push(L[n] as char);
+    out
+}
+
+impl Chrome {
+    /// The place of control `key` in the current tab's order. A control seen for the first time
+    /// (the tab's first showing, a group unfolded, a drop-down opened) goes after the ones known,
+    /// so no control's letters ever change.
+    pub(crate) fn keytip_place(&mut self, key: &str) -> usize {
+        let order = self.keytip_order.entry(self.tab).or_default();
+        match order.iter().position(|k| k == key) {
+            Some(i) => i,
+            None => {
+                order.push(key.to_string());
+                order.len() - 1
+            }
+        }
+    }
+
+    fn end_keytips(&mut self) {
+        self.keytips = false;
+        self.keytip_stage = 0;
+        self.keytip_typed.clear();
+    }
+}
+
+/// The tabs showing now: the main ones, and a contextual one with its view.
+pub fn tabs_now(ed: &Editor) -> Vec<Tab> {
+    let mut v = vec![Tab::Write, Tab::Insert, Tab::Plan, Tab::Production, Tab::Review, Tab::View];
+    match ed.structure {
+        Some(crate::structure::Structure::Board) => v.push(Tab::Board),
+        Some(crate::structure::Structure::Cards) => v.push(Tab::Cards),
+        _ => {}
+    }
+    v
+}
+
+/// Key tips: F10 or Alt+Space shows the tab letters; a letter opens that tab and shows its controls'
+/// letters; typing those runs the control; Escape ends.
+fn handle_keytips(ed: &mut Editor, ui: &mut Ui) {
+    let events = ui.input(|i| i.events.clone());
+    let alt_alone = ui.input(|i| {
+        i.events.iter().any(|e| matches!(e, Event::Key { key: Key::F10, pressed: true, .. }))
+            || (i.modifiers.alt
+                && !i.modifiers.command
+                && !i.modifiers.shift
+                && i.events.iter().any(|e| matches!(e, Event::Key { key: Key::Space, pressed: true, .. })))
+    });
+    if alt_alone {
+        ed.chrome.keytips = !ed.chrome.keytips;
+        ed.chrome.keytip_stage = 0;
+        ed.chrome.keytip_typed.clear();
+        ui.input_mut(|i| i.events.clear());
+        return;
+    }
+    if !ed.chrome.keytips {
+        return;
+    }
+    let mut consumed = false;
+    for e in events {
+        match e {
+            Event::Key { key: Key::Escape, pressed: true, .. } => {
+                ed.chrome.end_keytips();
+                egui::Popup::close_all(ui.ctx());
+                consumed = true;
+            }
+            Event::Text(t) => {
+                consumed = true;
+                let up = t.to_uppercase();
+                if ed.chrome.keytip_stage == 0 {
+                    if up == "F" {
+                        ed.chrome.backstage = Some(crate::backstage::Page::New);
+                        ed.chrome.end_keytips();
+                    } else if let Some(tab) = tabs_now(ed).into_iter().find(|t| t.letter() == up) {
+                        ed.chrome.tab = tab;
+                        ed.chrome.keytip_stage = 1;
+                    }
+                } else {
+                    ed.chrome.keytip_typed.push_str(&up);
+                    let typed = ed.chrome.keytip_typed.clone();
+                    let targets = ed.chrome.keytip_targets.clone();
+                    match targets.iter().find(|(l, _)| *l == typed).map(|(_, t)| t.clone()) {
+                        // A drop-down opens, and its items take letters too.
+                        Some(widgets::Keytip::Open(popup)) => {
+                            egui::Popup::open_id(ui.ctx(), popup);
+                            ed.chrome.keytip_typed.clear();
+                        }
+                        Some(widgets::Keytip::Run(c)) => {
+                            ed.chrome.end_keytips();
+                            egui::Popup::close_all(ui.ctx());
+                            ed.run(c.id, c.params);
+                        }
+                        None => {}
+                    }
+                    if !targets.iter().any(|(l, _)| l.starts_with(&ed.chrome.keytip_typed)) {
+                        ed.chrome.keytip_typed.clear();
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    if consumed {
+        ui.input_mut(|i| i.events.retain(|e| !matches!(e, Event::Text(_) | Event::Key { .. })));
+    }
+}
+
+/// The quick-access row, the tab strip and the ribbon.
+pub fn show(ed: &mut Editor, ui: &mut Ui) {
+    let t = Tokens::get(ui.ctx());
+    handle_keytips(ed, ui);
+    ed.chrome.keytip_targets.clear();
+    // The contextual tab goes when its view does.
+    let now = tabs_now(ed);
+    if !now.contains(&ed.chrome.tab) {
+        ed.chrome.tab = Tab::Write;
+    }
+    ed.chrome.place = Place::Quick;
+    let quick = egui::Panel::top("quick")
+        .frame(egui::Frame::NONE.fill(t.surface_high).inner_margin(egui::Margin::symmetric(8, 4)))
+        .show(ui, |ui| quick_row(ed, ui));
+    ed.chrome.areas.push((Place::Quick, quick.response.rect));
+    if ed.chrome.menu_bar {
+        ed.chrome.place = Place::Menu;
+        crate::chrome::menu_bar(ed, ui);
+    }
+    ed.chrome.place = Place::Ribbon;
+    let show_groups = !ed.chrome.collapsed || ed.chrome.peek;
+    egui::Panel::top("ribbon")
+        .frame(egui::Frame::NONE.fill(t.surface).stroke(Stroke::new(1.0, t.border)).inner_margin(egui::Margin {
+            left: 8,
+            right: 8,
+            top: 0,
+            bottom: if show_groups { 4 } else { 0 },
+        }))
+        .show(ui, |ui| {
+            tab_strip(ed, ui, &now);
+            if show_groups {
+                ui.add_space(2.0);
+                let avail = ui.available_width();
+                crate::ribbon_fit::begin(ui.ctx(), ed.chrome.tab.name(), avail);
+                let groups = egui::ScrollArea::horizontal()
+                    .id_salt("ribbon-scroll")
+                    .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 2.0;
+                            ed.chrome.in_ribbon = true;
+                            tabs::draw(ed, ui);
+                            ed.chrome.in_ribbon = false;
+                        });
+                    });
+                ed.chrome.areas.push((Place::Ribbon, groups.inner_rect));
+                crate::ribbon_fit::end(ui.ctx());
+            }
+        });
+    ed.chrome.place = Place::Other;
+}
+
+fn quick_row(ed: &mut Editor, ui: &mut Ui) {
+    let t = Tokens::get(ui.ctx());
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 2.0;
+        // The mark, small, where the window's corner is.
+        let (r, _) = ui.allocate_exact_size(vec2(crate::brand::mark_width(14.0) + 10.0, 24.0), Sense::hover());
+        crate::brand::paint_mark(ui.painter(), pos2(r.min.x + 2.0, r.center().y - 7.0), 14.0, t.text);
+        for (id, icon) in [("file.save", "save"), ("edit.undo", "undo"), ("edit.redo", "redo")] {
+            widgets::small(ui, ed, widgets::cmd(id), icon, "", "", false);
+        }
+        ui.add_space(10.0);
+        let state = if ed.session.dirty {
+            "Not saved"
+        } else if ed.session.path.is_some() {
+            "Saved"
+        } else {
+            "Not saved yet"
+        };
+        ui.add(egui::Label::new(egui::RichText::new(crate::editor::script_name(&ed.session)).font(semibold(BODY)).color(t.text)).selectable(false));
+        ui.add(egui::Label::new(egui::RichText::new(format!("— {state}")).font(regular(BODY)).color(t.text_dim)).selectable(false));
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            // Show and hide the side panels.
+            let right = ed.chrome.right.is_some();
+            widgets::link(ui, ed, widgets::cmd("view.inspector"), if right { "Inspector ▸" } else { "◂ Inspector" }, "Show or hide the Inspector.");
+            let left = ed.chrome.left.is_some();
+            widgets::link(
+                ui,
+                ed,
+                widgets::cmd("view.scriptPanel"),
+                if left { "◂ Script panel" } else { "Script panel ▸" },
+                "Show or hide the Script panel.",
+            );
+            // The command search box: the palette.
+            let key = if ed.mac { "⌘⇧P" } else { "Ctrl+Shift+P" };
+            let (r, resp) = ui.allocate_exact_size(vec2(300.0, 24.0), Sense::click());
+            ui.painter().rect_filled(r, 5.0, t.input);
+            ui.painter().rect_stroke(r, 5.0, Stroke::new(1.0, if resp.hovered() { t.accent } else { t.border }), egui::StrokeKind::Inside);
+            crate::script_icons::paint(
+                ui.painter(),
+                egui::Rect::from_center_size(pos2(r.min.x + 13.0, r.center().y), vec2(14.0, 14.0)),
+                "find",
+                t.text_dim,
+                t.accent,
+            );
+            ui.painter().text(pos2(r.min.x + 26.0, r.center().y), Align2::LEFT_CENTER, "Search commands and help", regular(12.0), t.text_dim);
+            ui.painter().text(pos2(r.max.x - 8.0, r.center().y), Align2::RIGHT_CENTER, key, regular(11.0), t.text_dim);
+            widgets::record(ed, Some("view.commandPalette"), r);
+            if resp.on_hover_text(widgets::tip(ed, "view.commandPalette", "Find any command by name.")).clicked() {
+                ed.run("view.commandPalette", json!({}));
+            }
+        });
+    });
+}
+
+fn tab_strip(ed: &mut Editor, ui: &mut Ui, tabs: &[Tab]) {
+    let t = Tokens::get(ui.ctx());
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 2.0;
+        // File: the backstage.
+        let file = ui.add(egui::Button::new(egui::RichText::new("File").font(medium(13.0)).color(t.on_brand)).fill(t.brand).corner_radius(4));
+        widgets::record(ed, Some("view.start"), file.rect);
+        if file.on_hover_text("New, open, save, export, print, preferences").clicked() {
+            ed.run("view.start", json!({}));
+        }
+        if ed.chrome.keytips && ed.chrome.keytip_stage == 0 {
+            mark(ui, "F");
+        }
+        for tab in tabs {
+            let current = ed.chrome.tab == *tab;
+            let contextual = matches!(tab, Tab::Board | Tab::Cards);
+            let color = if current {
+                t.accent
+            } else if contextual {
+                t.accent.gamma_multiply(0.8)
+            } else {
+                t.text
+            };
+            let g = ui.painter().layout_no_wrap(tab.name().to_string(), medium(13.0), color);
+            let (r, resp) = ui.allocate_exact_size(vec2(g.size().x + 20.0, 28.0), Sense::click());
+            if resp.hovered() && !current {
+                ui.painter().rect_filled(r.shrink2(vec2(0.0, 3.0)), 4.0, t.hover);
+            }
+            ui.painter().galley(pos2(r.center().x - g.size().x / 2.0, r.center().y - g.size().y / 2.0), g, color);
+            if current {
+                ui.painter().line_segment([pos2(r.min.x + 8.0, r.max.y - 2.0), pos2(r.max.x - 8.0, r.max.y - 2.0)], Stroke::new(2.5, t.accent));
+            }
+            if ed.chrome.keytips && ed.chrome.keytip_stage == 0 {
+                mark(ui, tab.letter());
+            }
+            if resp.clicked() {
+                if ed.chrome.collapsed {
+                    ed.chrome.peek = !(current && ed.chrome.peek);
+                }
+                ed.chrome.tab = *tab;
+            }
+            if resp.double_clicked() {
+                ed.chrome.collapsed = !ed.chrome.collapsed;
+                ed.chrome.peek = false;
+            }
+        }
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let label = if ed.chrome.collapsed { "▾ Show ribbon" } else { "▴ Hide ribbon" };
+            if ui
+                .add(egui::Button::new(egui::RichText::new(label).font(regular(11.5)).color(t.text_dim)).frame(false))
+                .on_hover_text("Ribbon: show the groups, or the tabs only (double-click a tab too)")
+                .clicked()
+            {
+                ed.chrome.collapsed = !ed.chrome.collapsed;
+                ed.chrome.peek = false;
+            }
+        });
+    });
+}
+
+/// A key tip letter beside the control just drawn.
+fn mark(ui: &mut Ui, letter: &str) {
+    let t = Tokens::get(ui.ctx());
+    let r = ui.min_rect();
+    let at = pos2(ui.cursor().min.x - 6.0, r.max.y - 4.0);
+    let g = ui.painter().layout_no_wrap(letter.to_string(), semibold(10.0), t.surface_high);
+    let bx = egui::Rect::from_center_size(at, g.size() + vec2(6.0, 2.0));
+    ui.painter().rect_filled(bx, 3.0, t.text);
+    ui.painter().galley(bx.min + vec2(3.0, 1.0), g, t.surface_high);
+}
+
+/// The first-run tour: what each part of the window is for, one step at a time.
+pub const TOUR: [(&str, &str); 5] = [
+    (
+        "The ribbon",
+        "Tabs for writing, inserting, planning, production, review and the view. Each control shows its key when you point at it; F10 shows letters to use them from the keyboard.",
+    ),
+    ("Elements", "Write › Elements sets the paragraph's element. Each tile shows its key and what Return and Tab make from it."),
+    ("The Script panel", "The rail on the left: scenes (drag to reorder), the outline, bookmarks, notes, characters and find."),
+    (
+        "The Inspector",
+        "The rail on the right: the element and scene at the caret, revisions, the page, tracked changes, the format checker and your goals.",
+    ),
+    (
+        "The File page",
+        "File holds new scripts from templates, recent scripts, export, print and preferences. The status bar below shows the page, words and what Return and Tab make. At start the app asks GitHub for a newer version; Preferences › Starting turns that off.",
+    ),
+];
+
+/// The tour's card, while it shows.
+pub fn tour(ed: &mut Editor, ctx: &egui::Context) {
+    let Some(step) = ed.chrome.tour else { return };
+    let Some((head, body)) = TOUR.get(step) else {
+        ed.chrome.tour = None;
+        ed.chrome.tour_done = true;
+        return;
+    };
+    let t = Tokens::get(ctx);
+    let mut next = false;
+    let mut skip = false;
+    egui::Window::new("tour")
+        .title_bar(false)
+        .resizable(false)
+        .anchor(egui::Align2::CENTER_TOP, [0.0, 170.0])
+        .frame(egui::Frame::popup(&ctx.style_of(ctx.theme())).fill(t.surface_high).inner_margin(14))
+        .show(ctx, |ui| {
+            ui.set_max_width(380.0);
+            ui.label(egui::RichText::new(format!("{} of {}", step + 1, TOUR.len())).font(regular(11.0)).color(t.text_dim));
+            ui.label(egui::RichText::new(*head).font(semibold(16.0)).color(t.text));
+            ui.label(egui::RichText::new(*body).font(regular(12.5)).color(t.text));
+            ui.add_space(6.0);
+            ui.horizontal(|ui| {
+                next = ui.button(if step + 1 == TOUR.len() { "Done" } else { "Next" }).clicked();
+                skip = ui.button("Skip the tour").clicked();
+            });
+        });
+    if skip || (next && step + 1 == TOUR.len()) {
+        ed.chrome.tour = None;
+        ed.chrome.tour_done = true;
+    } else if next {
+        ed.chrome.tour = Some(step + 1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn letters_count_on() {
+        assert_eq!(letters(0), "A");
+        assert_eq!(letters(18), "Y");
+        assert_eq!(letters(19), "ZA");
+        assert_eq!(letters(37), "ZY");
+        assert_eq!(letters(38), "ZZA");
+    }
+
+    #[test]
+    fn no_letters_begin_another_control_s() {
+        let all: Vec<String> = (0..400).map(letters).collect();
+        for (i, a) in all.iter().enumerate() {
+            for (j, b) in all.iter().enumerate() {
+                assert!(i == j || !b.starts_with(a.as_str()), "{a} (control {i}) begins {b} (control {j})");
+            }
+        }
+    }
+
+    #[test]
+    fn controls_keep_their_places_as_others_show_and_hide() {
+        let mut c = Chrome::default();
+        assert_eq!([c.keytip_place("a"), c.keytip_place("c")], [0, 1]);
+        // A frame where "b" shows between them (a group unfolded): it goes last.
+        assert_eq!([c.keytip_place("a"), c.keytip_place("b"), c.keytip_place("c")], [0, 2, 1]);
+        // A frame where "b" is hidden again.
+        assert_eq!([c.keytip_place("a"), c.keytip_place("c")], [0, 1]);
+        // Each tab has its own order.
+        c.tab = Tab::View;
+        assert_eq!(c.keytip_place("c"), 0);
+    }
+}
