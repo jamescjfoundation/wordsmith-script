@@ -2,6 +2,8 @@
 
 Date: 2026-11-19
 
+Status: replaced by open-source-core decision 0006 (extension data): `app_data` became the document's `ext` (decision 0044).
+
 ## Context
 
 Element settings, the Tab table, scene-heading separators and (later)

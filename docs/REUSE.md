@@ -2,9 +2,11 @@
 
 As of 2026-11-19
 
-Since 2026-11-22 the copied WordCraft crates are a trimmed fork rather than a
-copy kept in step with upstream: what a screenplay cannot use was cut, and
-fixes are ported by hand (decision 0039). The plan below is kept as written.
+Since 0.2 (2026-11-24) nothing of WordCraft is copied here: the app is built
+on open-source-core, which uses WordCraft and craft-libs through its own
+adapters (decision 0044, `UPSTREAM.md`). The plan below is kept as written for
+the record; before that, from 2026-11-22, the copied crates were a trimmed
+fork (decision 0039).
 
 What this repository takes from these projects is code: crates copied from
 WordCraft and pinned craft-libs crates, each under its own MIT OR Apache-2.0

@@ -2,6 +2,8 @@
 
 Date: 2026-11-19
 
+Status: replaced by open-source-core decision 0007: the agent server is `jcj-agents` (decision 0044).
+
 ## Decision
 
 `wordsmith-mcp` and `wordsmith-control-key` come from WordCraft `6ef13b2`

@@ -2,6 +2,8 @@
 
 Date: 2026-11-19
 
+Status: replaced by open-source-core decision 0004; the app names no craft-libs crate (decision 0044).
+
 ## Context
 
 `docs/REUSE.md` rule 1 says to depend on the five craft-libs v0.1.0 crates

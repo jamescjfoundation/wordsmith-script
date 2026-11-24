@@ -12,10 +12,12 @@ cargo xtask ci                        # the gate every change must pass
 cargo xtask screenshots <folder>      # the interface pictures, drawn offscreen
 ```
 
-`cargo xtask ci` runs rustfmt, the crate-root lint check, clippy, every test,
-the license and asset attribution check, the layering check and the wasm build.
-Run it before you open a pull request; CI runs it again on Linux, macOS and
-Windows.
+`cargo xtask ci` runs rustfmt, the crate-root lint check, the checks that the
+settings shared with open-source-core match its pinned release and that no
+WordCraft or craft-libs crate is named here, the privacy check, the license and
+asset attribution checks, clippy and every test. Run it before you open a pull
+request; CI runs it again (`.github/workflows/ci.yml`, the core's), and the
+release runs it on Linux, macOS and Windows.
 
 ## Where things are
 
@@ -25,11 +27,16 @@ Windows.
 | `crates/wordsmith-format` | The native `.wss` format, Fountain, imports and exports, and the file commands |
 | `crates/wordsmith-ui` | The egui interface |
 | `apps/wordsmith`, `apps/wordsmith-cli`, `apps/wordsmith-web` | The desktop app, the command line and MCP server, and the web build |
-| `crates/wordsmith-{geom,doc,fonts,layout,render,pdf,engine,control-key,mcp}` | Code that started as a copy of WordCraft (see `UPSTREAM.md`) |
 | `xtask` | The gate, bundling and screenshots |
 | `docs/guide` | The user guide |
 | `docs/decisions` | Why things are the way they are, one record per choice |
 | `docs/history` | The first build's plans and audits, kept for the record and not maintained |
+
+The document model, layout, PDF, the command engine, the shared document
+features, the window around the script and the agent server come from
+[open-source-core](https://github.com/jamescjfoundation/open-source-core)'s
+`jcj-` crates (decision 0044). A change that would work the same in any app
+belongs there: `AGENTS.md` says how to make one.
 
 Every action in the app is a command in one registry. The window, the command
 line and the MCP server all run the same commands, so a new feature is a
@@ -87,11 +94,10 @@ an outsider can follow. Do not refer to private conversations ("as discussed",
 - A proprietary file format needs a legitimately published description before
   we support it.
 
-### Copied code and branding
+### Upstream code and branding
 
-- Code copied from WordCraft or craft-libs keeps its header and gains the line
-  "Modified by the Wordsmith Script contributors" once we change it. Record
-  each copy in `UPSTREAM.md` and in `ATTRIBUTION.md`.
+- No WordCraft or craft-libs code is copied here, and no crate of theirs is a
+  dependency: the core wraps them (`UPSTREAM.md`).
 - Refer to an upstream issue as `storytold/wordcraft#123`, never `#123`, which
   links to an unrelated issue here.
 - No ArtCraft or WordCraft name, logo or icon, and no "Craft", in anything users

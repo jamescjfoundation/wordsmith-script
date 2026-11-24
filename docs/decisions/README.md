@@ -49,3 +49,4 @@ what would make us revisit it.
 | [0041](0041-our-names-for-panel-and-view.md) | Our names for the side panel and the compact view (Script panel, Draft view) |
 | [0042](0042-scope-and-asking-first.md) | Scope, and changes that need the maintainers first |
 | [0043](0043-key-tips-and-commands.md) | Key tips that reach every control and keep their letters; every ribbon and status bar control runs a command |
+| [0044](0044-rebuilt-on-open-source-core.md) | Rebuilt on open-source-core: what moved to the core, what stays, the `.wss` format 5 and the differences |

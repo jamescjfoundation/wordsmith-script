@@ -2,6 +2,8 @@
 
 Date: 2026-11-19
 
+Status: replaced by open-source-core decision 0007: the app uses the full engine and registers its own commands (decision 0044).
+
 ## Context
 
 `docs/REUSE.md` plans to copy the session, undo and command-registry parts of

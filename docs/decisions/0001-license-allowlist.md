@@ -2,6 +2,8 @@
 
 Date: 2026-11-19
 
+Status: replaced by open-source-core decision 0001 (licenses and supply chain), whose allowlist and `deny.toml` the app now syncs (decision 0044).
+
 ## Context
 
 `docs/REUSE.md` rule 5 allows MIT, Apache-2.0, BSD, ISC, OFL-1.1, CC0-1.0,

@@ -2,6 +2,8 @@
 
 Date: 2026-11-19
 
+Status: the core's layers are open-source-core decision 0002; the app's own crates keep the order below (decision 0044).
+
 ## Context
 
 `docs/REUSE.md` sketches eight layers, each calling only the layers under it,

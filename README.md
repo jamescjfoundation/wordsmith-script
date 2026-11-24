@@ -94,7 +94,7 @@ gh attestation verify wordsmith-script-<version>-linux-x86_64.tar.gz --repo jame
   the app starts, and when you choose Check for Updates (on the About page or
   in the Help menu), it asks GitHub's API (`api.github.com`) for this
   repository's list of releases. GitHub sees your IP address and a user agent
-  that names the app and its version (`WordsmithScript/0.1.1`), nothing else.
+  that names the app and its version, nothing else.
   If GitHub's request limit has run out, the check simply fails; it does not
   try another server. An update is downloaded only when you choose to install
   it, from the release on github.com (served from GitHub's own file host).
@@ -109,18 +109,34 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) first: this repository is public, and it
 sets the rules for personal information, security problems, names and copied
 code. Report security problems privately, as [SECURITY.md](SECURITY.md) says.
 
+The app is built on
+[open-source-core](https://github.com/jamescjfoundation/open-source-core), the
+J. C. J. Foundation's shared base for its desktop apps: the document model,
+layout, PDF, the command engine, the shared document features (notes,
+revisions, page locks, bookmarks, watermark, headers and footers, change
+tracking, comparison), the window around the script (ribbon, panels, File
+page, preferences, updates) and the agent server all come from its `jcj-`
+crates. This repository holds what is about screenplays: elements and typing,
+pagination with (MORE) and (CONT'D), Fountain and the `.wss` format, scene
+numbers, reports, the title page, the story board and the screenplay's
+interface. Decision 0044 records what moved where. `AGENTS.md` says how a
+change that belongs in the core is made.
+
 Before merging anything to `main`, run the gate:
 
 ```sh
 cargo xtask ci
 ```
 
-It runs rustfmt, a crate-root lint check, clippy, all tests, the license and
-asset attribution check, the layering check and the wasm build
-(`cargo xtask ci --skip wasm` leaves one task out). CI also runs
-[cargo-deny](https://github.com/EmbarkStudios/cargo-deny) (`deny.toml`) for
-licenses, security advisories and crate sources, and checks the build on the
-minimum Rust version. Dependabot proposes dependency and action updates weekly.
+It runs rustfmt, the crate-root lint check (with no indexing in the
+screenplay crates), a check that no local core link is left, a check that the
+settings shared with the core match the pinned core release (`cargo xtask
+sync --check`), the layers check (no WordCraft or craft-libs crate is named
+here), the privacy check, the license allowlist, the asset attribution check,
+clippy and all tests. CI also runs
+[cargo-deny](https://github.com/EmbarkStudios/cargo-deny) (`deny.toml`, the
+core's) for licenses, security advisories and crate sources. `cargo xtask
+wasm` builds the web version on its own.
 
 - `docs/SPEC.md`: the behavior spec v0.1 was built from.
 - `docs/SPEC-2.md`: the clean-room functional spec for work after v0.1 (decision 0030).
@@ -129,20 +145,20 @@ minimum Rust version. Dependabot proposes dependency and action updates weekly.
 - `docs/gaps.md`: what the app does not do yet.
 - `docs/history/`: the plans, spec audits and spec questions from the first build, kept for the record.
 - `docs/progress.md`: one line per merge. `CHANGELOG.md`: what changed.
-- `ROADMAP.md`: what comes after v0.1.
+- `ROADMAP.md`: what comes next.
 
 ## Acknowledgments
 
 Wordsmith Script is based on WordCraft by the ArtCraft team. Its document
 model, page layout, drawing, PDF output, font handling, command engine and
-agent connection started as WordCraft's code; `UPSTREAM.md` records what came
-from where.
+agent connection are WordCraft's, through
+[open-source-core](https://github.com/jamescjfoundation/open-source-core);
+`UPSTREAM.md` says how.
 
 It is also built on these open-source projects:
 
-- [craft-libs](https://github.com/storytold/craft-libs): spelling, RTF, PDF
-  writing, image codecs, file dialogs, safe saving, the agent server and the
-  update check.
+- [craft-libs](https://github.com/storytold/craft-libs): spelling, PDF
+  reading and writing, file dialogs, safe saving and the update check.
 - [egui and eframe](https://github.com/emilk/egui) for the window and its
   controls, with [AccessKit](https://github.com/AccessKit/accesskit) for
   screen readers.

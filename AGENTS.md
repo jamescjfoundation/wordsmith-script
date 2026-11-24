@@ -1,5 +1,11 @@
 # Notes for coding agents (and people)
 
+Wordsmith Script is a screenwriting app. Its screenplay rules (elements, typing, pagination with
+(MORE) and (CONT'D), Fountain, the `.wss` format, scene numbers, reports, the title page) live in
+`crates/wordsmith-script` and `crates/wordsmith-format`; its interface in `crates/wordsmith-ui`;
+the programs in `apps/`. Read `CONTRIBUTING.md`, `SECURITY.md` and `docs/decisions/` (decision
+0044 says what the app takes from the core) before you start.
+
 This app is built on [open-source-core](https://github.com/jamescjfoundation/open-source-core),
 the J. C. J. Foundation's shared base. The core holds what every app needs; this repository holds
 only what is about this app. Read the core's AGENTS.md too: the rules below are its rules, which
@@ -120,3 +126,19 @@ interface back out is not.
 - Depend only on the core's `jcj-` crates; never on `jcj-upstream`, `wordcraft-*` or `craft-*`
   (`cargo xtask layers`).
 - The app's brand (name, colors as `tokens.json`, fonts, logo) lives here, never in the core.
+
+## Wordsmith Script's own rules
+
+- **Golden files are the judge.** `cargo test -p wordsmith-format --test golden` compares the
+  PDF text of three public-domain photoplays with reviewed files, and `--test migration` checks
+  that every file 0.1.2 saved opens and paginates as 0.1.2 paginated it. A change that alters
+  them is deliberate, reviewed and recorded (`docs/golden.md`).
+- **Security problems you find**: do not describe one in a commit, branch, comment, issue or pull
+  request. Write it to `.private/` (ignored by Git) and tell the user; fix it on a neutrally
+  named branch with a test; disclosure waits for a release.
+- **Reviews, audits and working notes** go in `.private/`, not in `docs/`.
+- **Names in the interface are our own.** Never use another product's name or feature names
+  (`docs/SPEC.md`, rule 2).
+- **`.wss` changes** get a new format version and a migration step, and a fixture of the new
+  version (`docs/format.md`).
+- New assets are listed in `ATTRIBUTION.md` (`cargo xtask assets`).

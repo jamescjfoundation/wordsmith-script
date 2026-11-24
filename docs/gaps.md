@@ -104,15 +104,47 @@ built stay (decision 0030).
 - The interface was tested headlessly and by its own offscreen pictures, not by
   hand with a real mouse in a running window.
 
-## Copied-code tests ignored for missing build inputs
+## On open-source-core (0.2, decision 0044)
 
-These WordCraft tests pass when the build input is present (checked on
-2026-11-19) and are `#[ignore]`d:
+What the rebuild on the core left for later, each with what it waits for:
 
-- `wordsmith-layout`: `auto_hyphenation_breaks_long_words`,
-  `fragmented_hidden_text_lays_out_like_the_visible_text`,
-  `hyphenation_and_proofing_follow_each_runs_language`: they need craft-i18n
-  language data, whose English dictionaries carry the SCOWL notice (not on the
-  allowlist; decision 0014).
-- `wordsmith-fonts`: `a_thai_run_with_latin_falls_back_to_one_face`: it needs a
-  Thai face (craft-fonts), not needed for screenplays.
+- **PDF files name WordCraft** as their creator and producer. WordCraft's PDF
+  writer fixes both names; letting an app name itself needs a patch on the
+  core's WordCraft fork and a new pin there, which is a maintainer's decision.
+  0.1.x wrote "Wordsmith Script".
+- **Pagination is still Script's own planner**, over the core's measuring
+  primitives, page labels and page plans (`jcj_layout::measure`,
+  `jcj_features::locks`, `jcj_features::pages`), not a `PaginationPass` on the
+  core's planner. Tried on the golden and fixture scripts, the core's planner
+  with a screenplay pass makes the same page starts on six of seven and differs
+  on one (Everybody's Girl from page 6): it does not keep room for the (MORE)
+  line when it keeps a speaker with the start of the speech. It also cannot yet
+  count a scene's pages for "CONTINUED: (2)", force a page to start at a page
+  lock inside a paragraph, or add placeholder pages for deleted locked pages.
+  Each is a general hook the core would need first.
+- **The story board's data** (beats, lanes, several boards) stays Script's:
+  the core's board (`jcj-board`) has no lanes and one board, and it is an
+  interface crate.
+- **Script's text markers in `.wss`** (`**`, `*`, `_` and the note, revision,
+  lock and style marks) are read and written by Script's own codec, not by
+  `jcj_interchange::emphasis`: the format's markers are one grammar.
+- **The engine's catalog**: every registry now carries WordCraft's ~420
+  word-processor commands. Script shows only its own in its interface, and
+  agents see the whole list through `list_commands`.
+- **The web build does not build.** The core's shell turns on its desktop
+  pieces (dialogs, the update check) for every target, and the update check's
+  TLS library needs a C compiler for wasm32 that the build machines lack.
+  `wordsmith-web` builds and tests for the desktop; `cargo xtask wasm` fails.
+  It needs the shell to leave those pieces out on wasm32.
+- **An update cannot finish in place on Windows**: the shell has no hook for
+  the updater's finishing step (`--finish-update`), so 0.2 on Windows offers
+  the download instead. On macOS updates are offered as downloads, as in 0.1.
+- **File dialogs** come from the `rfd` crate in `apps/wordsmith` directly: the
+  core has no file-dialog interface for apps yet (marked `core-candidate`).
+- **Icons**: the shell draws only its general icons on the ribbon, the rails
+  and the File page; Script's own icons are used in its panels and status bar.
+- **Shell keys**: Shift with a caret key extending the selection, and keys
+  typed in the same frame as text, are handled in Script's editor until the
+  shell does both (`core-candidate`).
+- **Spelling and hyphenation without craft-i18n**: as before, English spelling
+  uses the word list built into craft-proof (the core's `docs/UPSTREAM.md`).

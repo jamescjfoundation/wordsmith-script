@@ -2,6 +2,8 @@
 
 Date: 2026-11-19
 
+Status: replaced by open-source-core decision 0004 (follow, hold, own): no WordCraft code is copied into the app any more (decision 0044).
+
 ## Decision
 
 - **What and from where.** `geom`, `doc`, `fonts`, `layout`, `render` and

@@ -2,6 +2,8 @@
 
 Date: 2026-11-22
 
+Status: replaced by open-source-core decision 0004: the fork is gone; WordCraft is used through the core's adapters (decision 0044).
+
 ## Context
 
 Decision 0005 copied WordCraft's model, layout, font, render and PDF crates so

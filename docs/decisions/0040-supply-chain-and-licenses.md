@@ -2,6 +2,8 @@
 
 Date: 2026-11-22
 
+Status: the supply-chain rules are open-source-core decisions 0001 and 0003, synced into the app; the release's own parts (provenance, license texts in bundles, privacy disclosure) stay here (decision 0044).
+
 ## Context
 
 The repository is public and ships binaries. Several gaps remained:

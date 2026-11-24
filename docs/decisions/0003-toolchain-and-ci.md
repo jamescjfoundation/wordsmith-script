@@ -2,6 +2,8 @@
 
 Date: 2026-11-19
 
+Status: replaced by open-source-core decision 0003 (toolchain, gate and CI), synced into the app (decision 0044).
+
 ## Decision
 
 - **Toolchain.** `rust-version = "1.95"` in the workspace is the minimum.

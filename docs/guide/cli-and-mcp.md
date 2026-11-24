@@ -20,10 +20,23 @@ a usage mistake.
 
 `wordsmith-cli mcp` is a Model Context Protocol server over standard input
 and output, for AI agents and other tools. It edits a script with every
-command the app has, without a window. Besides the general tools (list the
-commands, run one or a batch, inspect the script, render a page as a
-picture) it offers `open_script`, `save_script`, `export_script`,
-`type_text`, `set_element`, `scenes`, `characters` and `page_count`.
+command the app has, without a window. It has the general tools every app on
+open-source-core shares (`list_commands`, `execute`, `batch`, `type_text`,
+`select_text`, `get_text`, `inspect_document`, `render_page` and a few more),
+and each screenplay command as a tool of its own, named after it:
+`scene_list`, `element_action`, `character_list`, `report_characters`,
+`titlePage_set` and so on. Any other command runs through `execute` by its
+id. Scripts are opened and saved with the app's own file commands:
+`execute {"command": "file.openPath", "params": {"path": ...}}`, `execute file.save` and
+`execute file.saveAsPath {"path": ...}` (the extension picks the format).
+The general `open_document` and `save_document` tools know word-processor
+files, not `.wss`.
+
+Since 0.2 the server is the shared one: the tools `open_script`,
+`save_script`, `export_script`, `set_element`, `scenes`, `characters` and
+`page_count` of 0.1 are now `execute file.openPath`, `execute file.save`,
+`execute file.saveAsPath`, `element_set`, `scene_list`, `character_list` and
+`execute document.pages`.
 
 To keep an agent to certain folders, start it with
 `--read-root <folder>` and `--write-root <folder>`: every file it reads or

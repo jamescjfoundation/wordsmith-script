@@ -1,17 +1,19 @@
 # Attribution
 
-Every asset in this repository that we did not write, and every block of
-copied code, is listed here with its source and license. `cargo xtask
-attribution` fails if a file under `assets/` is not named in this file, or if
-any dependency's license is outside the allowlist in `docs/REUSE.md` rule 5
-(see `docs/decisions/0001-license-allowlist.md`).
+Every asset in this repository that we did not write is listed here with its
+source and license. `cargo xtask assets` fails if a file under `assets/` is
+not named in this file, and `cargo xtask licenses` if any dependency's license
+is outside the allowlist (open-source-core's decision 0001).
 
 Add the entry in the same commit as the asset.
 
 ## Assets
 
-The fonts are embedded by `wordsmith-fonts` as its bundled faces. Courier Prime is the
-script font; the others come with the copied WordCraft font code.
+Courier Prime is the script font: `wordsmith-script` adds it to the core's font
+set. Inter and JetBrains Mono are the interface fonts: `wordsmith-ui` gives
+them to the core's shell. Source Sans 3 and Source Serif 4 come with the
+core's bundled fonts (WordCraft's) and are in the app; only their license
+texts are kept here, for the release bundles' `licenses` folder.
 
 | Path | What it is | Source | License | Added |
 | --- | --- | --- | --- | --- |
@@ -19,15 +21,6 @@ script font; the others come with the copied WordCraft font code.
 | `assets/fonts/Inter-Regular.ttf` | Inter Regular, by the Inter Project Authors | https://github.com/rsms/inter; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (`assets/fonts/OFL-Inter.txt`) | 2026-11-19 |
 | `assets/fonts/Inter-SemiBold.ttf` | Inter SemiBold, by the Inter Project Authors | https://github.com/rsms/inter; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (`assets/fonts/OFL-Inter.txt`) | 2026-11-19 |
 | `assets/fonts/JetBrainsMono-Regular.ttf` | JetBrains Mono Regular, by the JetBrains Mono Project Authors | https://github.com/JetBrains/JetBrainsMono; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (`assets/fonts/OFL-JetBrainsMono.txt`) | 2026-11-19 |
-| `assets/fonts/SourceSans3-Bold.ttf` | Source Sans 3 Bold, Adobe | https://github.com/adobe-fonts/source-sans; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (`assets/fonts/OFL-SourceSans3.txt`) | 2026-11-19 |
-| `assets/fonts/SourceSans3-It.ttf` | Source Sans 3 It, Adobe | https://github.com/adobe-fonts/source-sans; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (`assets/fonts/OFL-SourceSans3.txt`) | 2026-11-19 |
-| `assets/fonts/SourceSans3-Regular.ttf` | Source Sans 3 Regular, Adobe | https://github.com/adobe-fonts/source-sans; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (`assets/fonts/OFL-SourceSans3.txt`) | 2026-11-19 |
-| `assets/fonts/SourceSans3-Semibold.ttf` | Source Sans 3 Semibold, Adobe | https://github.com/adobe-fonts/source-sans; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (`assets/fonts/OFL-SourceSans3.txt`) | 2026-11-19 |
-| `assets/fonts/SourceSerif4-Bold.ttf` | Source Serif 4 Bold, Adobe | https://github.com/adobe-fonts/source-serif; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (`assets/fonts/OFL-SourceSerif4.txt`) | 2026-11-19 |
-| `assets/fonts/SourceSerif4-BoldIt.ttf` | Source Serif 4 BoldIt, Adobe | https://github.com/adobe-fonts/source-serif; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (`assets/fonts/OFL-SourceSerif4.txt`) | 2026-11-19 |
-| `assets/fonts/SourceSerif4-It.ttf` | Source Serif 4 It, Adobe | https://github.com/adobe-fonts/source-serif; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (`assets/fonts/OFL-SourceSerif4.txt`) | 2026-11-19 |
-| `assets/fonts/SourceSerif4-Regular.ttf` | Source Serif 4 Regular, Adobe | https://github.com/adobe-fonts/source-serif; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (`assets/fonts/OFL-SourceSerif4.txt`) | 2026-11-19 |
-| `assets/fonts/SourceSerif4-Semibold.ttf` | Source Serif 4 Semibold, Adobe | https://github.com/adobe-fonts/source-serif; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (`assets/fonts/OFL-SourceSerif4.txt`) | 2026-11-19 |
 | `assets/fonts/OFL-Inter.txt` | License text for Inter | upstream font project; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (license text) | 2026-11-19 |
 | `assets/fonts/OFL-JetBrainsMono.txt` | License text for JetBrains Mono | upstream font project; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (license text) | 2026-11-19 |
 | `assets/fonts/OFL-SourceSans3.txt` | License text for Source Sans 3 | upstream font project; copied from WordCraft `assets/fonts/` at 6ef13b2 | OFL-1.1 (license text) | 2026-11-19 |
@@ -55,22 +48,13 @@ macOS and Linux bundles. The PNGs are rendered from the SVGs.
 | `assets/brand/wordsmith-script-wordmark-ink.svg` | The wordmark, in Iron Gall Ink with the brass caret bar | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-23 |
 | `assets/brand/mark-mask.png` | The mark's W alone, white, for the app to tint (rendered from `wordsmith-mark-ink.svg`) | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-23 |
 | `assets/brand/wordmark-mask.png` | The wordmark's letters alone, white, for the app to tint (rendered from `wordsmith-script-wordmark-ink.svg`) | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-23 |
+| `assets/brand/script/tokens.json` | The interface's design tokens (colors in three themes, fonts, sizes), in the shape of open-source-core's `jcj-theme` | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
 
 ## Copied code
 
-| Our crate | Upstream | License | Notes |
-| --- | --- | --- | --- |
-| wordsmith-geom | WordCraft `crates/geom` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Renamed; changed files carry "Modified by the Wordsmith Script contributors" |
-| wordsmith-doc | WordCraft `crates/doc` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Renamed; changed files carry "Modified by the Wordsmith Script contributors"; trimmed to what a screenplay uses (decision 0039) |
-| wordsmith-fonts | WordCraft `crates/fonts` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Renamed; changed files carry "Modified by the Wordsmith Script contributors"; trimmed to what a screenplay uses (decision 0039) |
-| wordsmith-layout | WordCraft `crates/layout` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Renamed; changed files carry "Modified by the Wordsmith Script contributors"; trimmed to what a screenplay uses (decision 0039) |
-| wordsmith-render | WordCraft `crates/render` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Renamed; changed files carry "Modified by the Wordsmith Script contributors"; trimmed to what a screenplay uses (decision 0039) |
-| wordsmith-pdf | WordCraft `crates/pdf` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Renamed; changed files carry "Modified by the Wordsmith Script contributors"; trimmed to what a screenplay uses (decision 0039) |
-| wordsmith-engine | WordCraft `crates/engine` at 6ef13b2 (session, undo, command registry, recovery, file access) | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Trimmed (decision 0006); every file carries "Modified by the Wordsmith Script contributors" except our new `tests.rs` |
-| wordsmith-control-key | WordCraft `crates/control-key` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Renamed (decision 0007) |
-| wordsmith-mcp | WordCraft `crates/mcp` at 6ef13b2 | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Trimmed and rebranded (decision 0007) |
-| wordsmith-ui (`src/icons.rs`) | WordCraft `crates/ui-egui/src/icons.rs` at f8ec3cc | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Library icons and the Discord icon cut; carries "Modified by the Wordsmith Script contributors" (decision 0037) |
-| wordsmith-ui (`src/ribbon_fit.rs`) | WordCraft `crates/ui-egui/src/ribbon_fit.rs` at f8ec3cc | MIT OR Apache-2.0, Copyright (c) 2026 ArtCraft Team and the WordCraft contributors | Tests that need WordCraft's app cut; carries "Modified by the Wordsmith Script contributors" (decision 0037) |
+None since 0.2: WordCraft's code is used through open-source-core, not copied
+(`UPSTREAM.md`, decision 0044). 0.1.x's copies are in the history up to the
+`v0.1.2-final` tag.
 
 ## Test data
 
@@ -86,7 +70,7 @@ These are test data and are not shipped with the app. See `docs/golden.md`.
 ## Dependencies
 
 Rust crate dependencies are not copied into the repository. Their licenses
-are checked on every CI run by `cargo xtask attribution` and by cargo-deny
+are checked on every CI run by `cargo xtask licenses` and by cargo-deny
 (`deny.toml`), against the pinned `Cargo.lock`. Every release bundle carries
 their license texts in `licenses/THIRD-PARTY-LICENSES.txt`, made by
 `cargo xtask third-party-licenses` (decision 0040), beside the fonts'

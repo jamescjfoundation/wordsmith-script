@@ -11,16 +11,20 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | Delete Back | `Backspace` |
 | Delete | `Delete` |
 | New Paragraph | `Enter` |
-| Select All | `Mod+A` |
 | Note… | `Mod+Alt+N` |
 | Copy | `Mod+C` |
 | Find and Replace… | `Mod+F` |
 | Select Scene | `Mod+Shift+A` |
 | Paste | `Mod+V` |
 | Cut | `Mod+X` |
-| Redo | `Mod+Y` or `Mod+Shift+Z` |
-| Undo | `Mod+Z` |
 | Tab | `Tab` |
+
+## Editing › Selection
+
+| Command | Keys |
+| --- | --- |
+| Extend Selection | `F8` |
+| Column Selection | `Mod+Shift+F8` |
 
 ## File
 
@@ -44,7 +48,6 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | Command | Keys |
 | --- | --- |
 | Dual Dialogue | `Mod+Shift+D` |
-| Toggle Case | `Mod+Shift+K` |
 
 ## Format › Element
 
@@ -69,24 +72,38 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | End of Act | `Mod+Shift+7` |
 | Reset to Element | `Mod+Shift+R` |
 
-## Format › Style
+## Format › Font
 
 | Command | Keys |
 | --- | --- |
-| Bold | `Mod+B` |
-| Italic | `Mod+I` |
+| Toggle Capitals | `Mod+Shift+K` |
 | Plain Text | `Mod+Shift+T` |
-| Underline | `Mod+U` |
 
 ## Go
 
 | Command | Keys |
 | --- | --- |
-| Next Note | `Mod+Alt+Down` |
-| Previous Note | `Mod+Alt+Up` |
 | Go To… | `Mod+G` |
 | Add Bookmark | `Mod+M` |
 | Bookmarks… | `Mod+Shift+M` |
+
+## Home › Editing › Select
+
+| Command | Keys |
+| --- | --- |
+| Select All | `Mod+A` |
+
+## Home › Font
+
+| Command | Keys |
+| --- | --- |
+| Subscript | `Mod+=` |
+| Bold | `Mod+B` |
+| Italic | `Mod+I` |
+| Superscript | `Mod+Shift+=` |
+| Strikethrough | `Mod+Shift+X` |
+| Underline | `Mod+U` |
+| Change Case | `Shift+F3` |
 
 ## Insert
 
@@ -95,36 +112,45 @@ current). Custom elements can have keys of their own (Format › Element Setting
 | Page Break | `Mod+Shift+Enter` |
 | New Scene | `Mod+Shift+N` |
 
-## Navigate
+## Navigation
 
 | Command | Keys |
 | --- | --- |
 | Down | `Down` |
 | Line End | `End` |
+| Collapse Selection | `Escape` |
 | Line Start | `Home` |
 | Left | `Left` |
-| Script End | `Mod+End` |
-| Script Start | `Mod+Home` |
-| Word Left | `Mod+Left` |
-| Word Right | `Mod+Right` |
-| Select to Script End | `Mod+Shift+End` |
-| Select to Script Start | `Mod+Shift+Home` |
-| Select Word Left | `Mod+Shift+Left` |
-| Select Word Right | `Mod+Shift+Right` |
+| Paragraph Down | `Mod+Down` or `Alt+Down` |
+| Document End | `Mod+End` |
+| Document Start | `Mod+Home` |
+| Word Left | `Mod+Left` or `Alt+Left` |
+| Word Right | `Mod+Right` or `Alt+Right` |
+| Paragraph Up | `Mod+Up` or `Alt+Up` |
+| Page Down | `PageDown` |
+| Page Up | `PageUp` |
 | Right | `Right` |
-| Select Down | `Shift+Down` |
-| Select to Line End | `Shift+End` |
-| Select to Line Start | `Shift+Home` |
-| Select Left | `Shift+Left` |
-| Select Right | `Shift+Right` |
-| Select Up | `Shift+Up` |
 | Up | `Up` |
 
-## Production › Changes
+## Quick Access Toolbar
+
+| Command | Keys |
+| --- | --- |
+| Redo | `Mod+Y` or `Mod+Shift+Z` |
+| Undo | `Mod+Z` |
+
+## Review › Changes
 
 | Command | Keys |
 | --- | --- |
 | Track Changes | `Mod+Shift+C` |
+
+## Review › Notes
+
+| Command | Keys |
+| --- | --- |
+| Next Note | `Mod+Alt+Down` |
+| Previous Note | `Mod+Alt+Up` |
 
 ## Tools
 

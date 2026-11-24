@@ -1,6 +1,40 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (not released yet)
+
+### Rebuilt on open-source-core
+
+Wordsmith Script is now built on open-source-core, the J. C. J. Foundation's
+shared base, instead of its own copy of WordCraft (decision 0044). Scripts
+print exactly as before: the golden scripts' pages and PDF text are unchanged,
+and every script 0.1.2 saved opens with the same pages.
+
+- **Scripts are saved in format 5.** 0.1 scripts open as they were and are
+  saved in format 5 from then on, which 0.1 cannot open. Notes, revisions,
+  page locks, bookmarks, the watermark, headers and footers and the script's
+  own words are kept under the shared features' names; nothing is lost
+  (`docs/format.md`).
+- **The window** is the shared shell: the same tabs, panels and File page,
+  with general icons on the ribbon, "Left panel" and "Right panel" in the
+  quick row, Compare as a File page of its own, and the shell's preferences
+  before Script's. Preferences are kept and moved to the new file shape.
+- **Keys**: every key of 0.1 still works. The engine's general commands add
+  more: Strikethrough (Mod+Shift+X), Superscript and Subscript (Mod+Shift+=,
+  Mod+=), Extend Selection (F8), Change Case (Shift+F3) and others; the
+  keyboard guide lists them.
+- **Bold, italic, underline and the other text styles** at a caret inside a
+  word format the whole word, as word processors do.
+- **The agent server** (`wordsmith-cli mcp`) is the shared one: general tools,
+  and every screenplay command as a tool of its own (`scene_list`,
+  `element_action`, ...). 0.1's `scenes`, `characters`, `set_element`,
+  `open_script`, `save_script`, `export_script` and `page_count` tools are
+  replaced; the guide maps each.
+- **RTF export** is written by the shared RTF writer (same layout, different
+  file text). PDFs name WordCraft as their creator; 0.1 named Wordsmith
+  Script (`docs/gaps.md`).
+- **Not yet in 0.2**: the web build, and finishing an update in place on
+  Windows (`docs/gaps.md`).
+
 
 ### The window
 
