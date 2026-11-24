@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! `cargo xtask <task>` for a foundation app built on open-source-core.
+//! `cargo xtask <task>` for Wordsmith Script, built on open-source-core.
 //!
-//! Started from the core's `template/`. This file is the app's own (add app tasks here); the other
+//! Started from the core's `template/`. This file and `bundle.rs` are the app's own; the other
 //! modules in this folder are owned by the core and kept identical by `cargo xtask sync`.
+//!
+//! `cargo xtask ci` runs the core's gate plus the app's `assets` check, and `lint-roots` also
+//! requires `clippy::indexing_slicing` in the crates that may not index. Outside the gate:
+//! `bundle` (a release bundle for this computer), `screenshots` (the README's pictures) and
+//! `wasm` (the web build).
 
 #![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
+mod bundle;
 mod changed;
 mod json;
 mod licenses;
@@ -26,21 +32,44 @@ use std::process::ExitCode;
 use changed::Affected;
 use util::{TaskResult, cargo, cargo_output, report, workspace_members};
 
-/// The programs this app ships (for THIRD-PARTY-LICENSES.txt). Change to the app's binaries.
-const SHIPPED: &[&str] = &["app"];
-/// The product name used in generated files. Change to the app's name.
-const PRODUCT: &str = "This app";
+/// The programs this app ships (for THIRD-PARTY-LICENSES.txt).
+const SHIPPED: &[&str] = &["wordsmith", "wordsmith-cli"];
+/// The product name used in generated files.
+const PRODUCT: &str = "Wordsmith Script";
+
+/// Crates whose product code may not index or slice (`clippy.toml`): their roots must also deny
+/// `clippy::indexing_slicing`.
+const NO_INDEXING_CRATES: &[&str] = &["wordsmith-script", "wordsmith-format"];
+
+const WASM_TARGET: &str = "wasm32-unknown-unknown";
+const WASM_CRATE: &str = "wordsmith-web";
+
+/// Files the repository must carry (the `assets` check).
+const LEGAL_FILES: &[&str] = &["LICENSE-MIT", "LICENSE-APACHE", "NOTICE", "ATTRIBUTION.md", "UPSTREAM.md"];
+
+/// Bounds for walking `assets/`, which is treated like any other input.
+const MAX_ASSET_DEPTH: usize = 12;
+const MAX_ASSET_FILES: usize = 10_000;
 
 const TASKS: &[(&str, &str)] = &[
     ("fmt", "rustfmt in check mode"),
-    ("lint-roots", "every crate root forbids unsafe and denies the panicking lints"),
+    ("lint-roots", "every crate root forbids unsafe and denies the panicking lints (and indexing where barred)"),
     ("unlinked", "no local core dev-link is left in .cargo/config.toml"),
     ("sync", "shared settings and the patch block match the pinned core release"),
     ("layers", "only jcj- interfaces of the core are used, never upstream crates or jcj-upstream"),
     ("privacy", "no personal details or secrets in files or commit identities"),
     ("licenses", "every dependency's license is on the allowlist"),
+    ("assets", "every file under assets/ is listed in ATTRIBUTION.md; the legal files exist"),
     ("clippy", "clippy on all targets, warnings are errors"),
     ("test", "all tests"),
+];
+
+/// The app's tasks that `ci` does not run.
+const OTHER_TASKS: &[(&str, &str)] = &[
+    ("bundle", "build a release bundle for this computer in dist/ (nothing is published)"),
+    ("screenshots", "redraw docs/images with the app's offscreen renderer"),
+    ("wasm", "build wordsmith-web for wasm32-unknown-unknown"),
+    ("third-party-licenses", "[file] write the dependency license texts (default dist/THIRD-PARTY-LICENSES.txt)"),
 ];
 
 fn main() -> ExitCode {
@@ -61,11 +90,19 @@ fn main() -> ExitCode {
         "install-hooks" => util::git_output(&root, &["config", "core.hooksPath", "hooks"]).map(|_| println!("git hooks on")),
         "third-party-licenses" => licenses::task(&root, SHIPPED, PRODUCT, rest.first().map(String::as_str)),
         "privacy" => privacy::task(&root, rest),
+        "bundle" => bundle::bundle(&root),
+        "screenshots" => screenshots(&root),
+        "wasm" => wasm(&root),
         name => match TASKS.iter().find(|(n, _)| *n == name) {
             Some((n, _)) => run_task(n, &root, &Affected::All),
             None => {
                 println!("usage: cargo xtask <ci [--changed] [--base <ref>] | dev-link <core> | dev-unlink | sync [--check] | deny | install-hooks>");
+                println!("\nchecks (`ci` runs them all, in this order; --skip <task> leaves one out):");
                 for (name, about) in TASKS {
+                    println!("  {name:<12} {about}");
+                }
+                println!("\nother tasks:");
+                for (name, about) in OTHER_TASKS {
                     println!("  {name:<12} {about}");
                 }
                 if name == "help" { Ok(()) } else { Err(format!("unknown task '{name}'")) }
@@ -120,12 +157,13 @@ fn run_task(name: &str, root: &Path, scope: &Affected) -> TaskResult {
     println!("\n==> {name}");
     let result = match name {
         "fmt" => cargo(root, &["fmt", "--all", "--", "--check"]),
-        "lint-roots" => lintroots::check_lint_roots(root, &[], &[]),
+        "lint-roots" => lintroots::check_lint_roots(root, NO_INDEXING_CRATES, &[]),
         "unlinked" => link::check_unlinked(root),
         "sync" => sync::app_task(root, true),
         "layers" => check_layers(root),
         "privacy" => privacy::task(root, &[]),
         "licenses" => check_licenses(root),
+        "assets" => check_assets(root),
         "clippy" => scoped(root, scope, &["clippy", "--locked", "--all-targets"], &["--", "-D", "warnings"]),
         "test" => scoped(root, scope, &["test", "--locked"], &[]),
         other => Err(format!("no runner for task '{other}'")),
@@ -187,4 +225,170 @@ fn check_licenses(root: &Path) -> TaskResult {
         }
     }
     report(failures, "licenses are on the allowlist")
+}
+
+/// Redraw the README's pictures (docs/images) from the sample script.
+fn screenshots(root: &Path) -> TaskResult {
+    let out = root.join("docs/images");
+    let out = out.to_str().ok_or_else(|| format!("{} is not UTF-8", out.display()))?;
+    cargo(root, &["run", "--release", "--locked", "-p", "wordsmith-ui", "--example", "screenshots", "--", out])
+}
+
+/// The web build. Not part of `ci`.
+fn wasm(root: &Path) -> TaskResult {
+    cargo(root, &["build", "--locked", "-p", WASM_CRATE, "--target", WASM_TARGET])
+        .map_err(|e| format!("{e} (is the target installed? rustup target add {WASM_TARGET})"))
+}
+
+/// Every file under `assets/` is named in ATTRIBUTION.md, and the legal files exist.
+fn check_assets(root: &Path) -> TaskResult {
+    let (failures, listed) = asset_problems(root)?;
+    println!("checked {listed} asset files against ATTRIBUTION.md");
+    report(failures, "assets are attributed and the legal files exist")
+}
+
+/// The problems the `assets` check finds, and how many asset files it checked.
+fn asset_problems(root: &Path) -> Result<(Vec<String>, usize), String> {
+    let mut failures = Vec::new();
+    let attribution = std::fs::read_to_string(root.join("ATTRIBUTION.md")).map_err(|e| format!("cannot read ATTRIBUTION.md: {e}"))?;
+    let mut assets = Vec::new();
+    collect_files(&root.join("assets"), 0, &mut assets)?;
+    let mut listed = 0usize;
+    for asset in &assets {
+        let rel = asset.strip_prefix(root).unwrap_or(asset);
+        let rel = rel.to_string_lossy().replace('\\', "/");
+        if is_ignored_file(&rel) {
+            continue;
+        }
+        listed += 1;
+        if !attribution.contains(&rel) {
+            failures.push(format!("{rel}: asset not listed in ATTRIBUTION.md"));
+        }
+    }
+    for file in LEGAL_FILES {
+        if !root.join(file).is_file() {
+            failures.push(format!("{file} is missing"));
+        }
+    }
+    Ok((failures, listed))
+}
+
+fn is_ignored_file(rel: &str) -> bool {
+    rel.ends_with("/.gitkeep") || rel.ends_with("/.DS_Store")
+}
+
+fn collect_files(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) -> TaskResult {
+    if depth > MAX_ASSET_DEPTH {
+        return Err(format!("{} is nested too deeply", dir.display()));
+    }
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Ok(());
+    };
+    let mut entries: Vec<_> = entries.flatten().map(|e| e.path()).collect();
+    entries.sort();
+    for path in entries {
+        if out.len() >= MAX_ASSET_FILES {
+            return Err(format!("more than {MAX_ASSET_FILES} files under assets/"));
+        }
+        // Do not follow symlinks out of the tree.
+        let is_link = std::fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_symlink());
+        if is_link {
+            return Err(format!("{} is a symlink; assets must be real files", path.display()));
+        }
+        if path.is_dir() {
+            collect_files(&path, depth + 1, out)?;
+        } else {
+            out.push(path);
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_root(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("xtask-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn write(path: &Path, text: &str) {
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, text).unwrap();
+    }
+
+    #[test]
+    fn task_lists_are_complete_and_apart() {
+        let names: Vec<&str> = TASKS.iter().map(|(n, _)| *n).collect();
+        for app_check in ["assets", "lint-roots"] {
+            assert!(names.contains(&app_check), "{app_check} is not in ci");
+        }
+        assert!(!names.contains(&"ci"));
+        // Release and slow builds stay out of the gate.
+        for (name, _) in OTHER_TASKS {
+            assert!(!names.contains(name), "{name} is both a ci check and another task");
+        }
+        assert!(OTHER_TASKS.iter().any(|(n, _)| *n == "wasm"));
+        assert_eq!(SHIPPED, ["wordsmith", "wordsmith-cli"]);
+    }
+
+    #[test]
+    fn the_core_workflow_skips_only_tasks_that_exist() {
+        // The core's CI workflow runs `ci --skip <list>` in two jobs; an unknown name fails it.
+        let root = workspace_root();
+        let workflow = std::fs::read_to_string(root.join(".github/workflows/ci.yml")).unwrap();
+        let names: Vec<&str> = TASKS.iter().map(|(n, _)| *n).collect();
+        let mut seen = 0;
+        for line in workflow.lines().filter(|l| l.contains("cargo xtask ci")) {
+            let Some((_, list)) = line.split_once("--skip ") else { continue };
+            let list = list.split_whitespace().next().unwrap();
+            assert!(util::skipped(&["--skip".to_owned(), list.to_owned()], &names).is_ok(), "{line}");
+            seen += 1;
+        }
+        assert!(seen >= 2, "no --skip lists found in ci.yml");
+    }
+
+    #[test]
+    fn no_indexing_crates_are_workspace_members() {
+        let manifest = std::fs::read_to_string(workspace_root().join("Cargo.toml")).unwrap();
+        for name in NO_INDEXING_CRATES {
+            assert!(manifest.contains(&format!("\"crates/{name}\"")), "{name} is not a workspace member");
+        }
+    }
+
+    #[test]
+    fn every_asset_must_be_attributed() {
+        let root = temp_root("assets");
+        for file in LEGAL_FILES {
+            write(&root.join(file), file);
+        }
+        write(&root.join("ATTRIBUTION.md"), "| `assets/fonts/A.ttf` | a font |\n");
+        write(&root.join("assets/fonts/A.ttf"), "");
+        write(&root.join("assets/.gitkeep"), "");
+        assert_eq!(asset_problems(&root).unwrap(), (vec![], 1));
+
+        write(&root.join("assets/brand/icon.png"), "");
+        let (problems, listed) = asset_problems(&root).unwrap();
+        assert_eq!(listed, 2);
+        assert_eq!(problems, ["assets/brand/icon.png: asset not listed in ATTRIBUTION.md"]);
+
+        std::fs::remove_file(root.join("NOTICE")).unwrap();
+        assert!(asset_problems(&root).unwrap().0.contains(&"NOTICE is missing".to_owned()));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn assets_may_not_be_symlinks() {
+        let root = temp_root("assets-link");
+        write(&root.join("ATTRIBUTION.md"), "");
+        write(&root.join("outside.txt"), "");
+        std::fs::create_dir_all(root.join("assets")).unwrap();
+        std::os::unix::fs::symlink(root.join("outside.txt"), root.join("assets/link.txt")).unwrap();
+        assert!(asset_problems(&root).unwrap_err().contains("symlink"));
+        let _ = std::fs::remove_dir_all(&root);
+    }
 }

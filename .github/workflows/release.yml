@@ -4,6 +4,9 @@
 # the release is published: by hand on GitHub, or by starting this workflow on the `release`
 # branch with "publish" ticked. Publishing refuses a release with fewer files than the last one.
 #
+# Each platform first runs the whole gate (`cargo xtask ci`): the core's CI workflow runs on Linux
+# only. The toolchain is the core's rust-toolchain.toml; the release needs no extra target.
+#
 # Uses only GitHub's own actions, pinned to full commit SHAs, and the gh CLI that runners carry;
 # nothing from other organisations runs with the release token. Every release file gets a
 # signed build provenance attestation (decision 0040): `gh attestation verify <file> --repo
@@ -87,9 +90,8 @@ jobs:
           rustup show active-toolchain || rustup toolchain install
           rustc --version
 
-      # The wasm build is the same on every host, so only Linux runs it.
       - name: cargo xtask ci
-        run: cargo xtask ci ${{ matrix.os != 'ubuntu-latest' && '--skip wasm' || '' }}
+        run: cargo xtask ci
 
       - name: cargo xtask bundle
         run: cargo xtask bundle

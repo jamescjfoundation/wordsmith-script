@@ -1,3 +1,6 @@
 /target
 /dist
+.DS_Store
+*.swp
+# Private working notes: reviews, audits, open security problems (CONTRIBUTING.md).
 /.private
