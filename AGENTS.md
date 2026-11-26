@@ -11,6 +11,43 @@ the J. C. J. Foundation's shared base. The core holds what every app needs; this
 only what is about this app. Read the core's AGENTS.md too: the rules below are its rules, which
 every app carries.
 
+<!-- BEGIN wordsmith project block -->
+## The Wordsmith project
+
+Wordsmith is five repositories and two forks, all under [jamescjfoundation](https://github.com/jamescjfoundation). The full map, the steps of every route and the project's rules are in the [project map](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md), which the wordsmith repository owns.
+
+| Repository | Owns |
+| --- | --- |
+| [wordsmith](https://github.com/jamescjfoundation/wordsmith) | The project map and rules (`project/`), the brand kit (`brand/`), the website (`website/`), the wiki (`website/wiki/`), the launcher (planned) |
+| [wordsmith-script](https://github.com/jamescjfoundation/wordsmith-script) | Wordsmith Script, the screenplay app, and the `.wss` file format |
+| [wordsmith-manuscript](https://github.com/jamescjfoundation/wordsmith-manuscript) | Wordsmith Manuscript, the novel and long-form app, the `.wsm` project format, and the book view that Book reads |
+| [wordsmith-book](https://github.com/jamescjfoundation/wordsmith-book) | Wordsmith Book, the book design and typesetting app, and the `.wsbk` project format |
+| [open-source-core](https://github.com/jamescjfoundation/open-source-core) | The shared base: the `jcj-` crates and the settings and tooling every app carries. It is general and names no product |
+| [wordcraft](https://github.com/jamescjfoundation/wordcraft), [craft-libs](https://github.com/jamescjfoundation/craft-libs) | Our forks of the upstream projects the core builds on |
+
+- Each app builds on open-source-core at one release tag and carries its shared files (`cargo xtask sync`). Only the core reaches the forks.
+- Wordsmith Book also builds on Wordsmith Manuscript's model and format crates, at a book-view tag. Wordsmith Manuscript reads Wordsmith Script's `.wss` files.
+- Each app takes its logos, icons and palette from the brand kit, unchanged. The wiki and the website describe the apps from each app's guide, changelog and releases.
+
+| The change | Where it goes | Route |
+| --- | --- | --- |
+| A fix in a `jcj-` crate, or something any app would share | open-source-core first, then the app's pin | [A](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-a) |
+| Something one app needs from another app | An issue in the providing app's repository | [B](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-b) |
+| A change users will see in an app | The app's `docs/guide/` and `CHANGELOG.md`, then the wiki and website | [C](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-c) |
+| A wiki page | wordsmith, `website/wiki/content/docs/<app>/` | [D](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-d) |
+| Website text, or an app's status on the site | wordsmith, `website/tools/build.py` | [E](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-e) |
+| A logo, icon or brand color | wordsmith, `brand/source/`, then the copies | [F](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-f) |
+| Screenshots | Drawn in the app, then copied to wordsmith | [G](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-g) |
+| A security problem | Never public: `.private/` and a maintainer | [H](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-h) |
+| A core release, or moving an app to a newer core | open-source-core, then each app | [I](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-i) |
+| An app release | The app, then the website and wiki | [J](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-j) |
+| A change in WordCraft or craft-libs | Our fork, then the core | [K](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-k) |
+| A change that spans two repositories | The provider first; each change names the other | [L](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-l) |
+| Working with all the repositories, or with only one | Side by side as sibling folders | [M](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-m) |
+
+Before changing a repository, read its own `AGENTS.md`. Its rules apply inside it; this block applies in all of them.
+<!-- END wordsmith project block -->
+
 ## Before you commit
 
 ```sh
@@ -20,9 +57,10 @@ cargo xtask sync            # after moving to a new core release: shared setting
 ```
 
 Files marked as owned by the core (`rust-toolchain.toml`, `rustfmt.toml`, `clippy.toml`,
-`deny.toml`, `xtask/src/` except `main.rs`, `.github/workflows/ci.yml`, `hooks/`, and the patch
-block in `Cargo.toml`) are changed in the core, never here; `cargo xtask sync --check` fails if
-they differ from the pinned core release.
+`deny.toml`, the shared modules in `xtask/src/`, `.github/workflows/ci.yml` and `core-pin.yml`,
+`hooks/`, and the patch block in `Cargo.toml`) are changed in the core, never here;
+`cargo xtask sync --check` fails if they differ from the pinned core release. `xtask/src/main.rs`
+and any module an app adds beside it are the app's own.
 
 ## What is public
 
@@ -49,7 +87,7 @@ Ask in order; the first "yes" decides.
 
 1. **Does it change how we use WordCraft, craft-libs or another upstream project?** The core's
    adapters (`jcj-upstream` and the `jcj-` crate that wraps it). If upstream code itself must
-   change, it goes in our fork first (the core's `docs/UPSTREAM.md` and decision 0004).
+   change, it goes in our fork first (the core's `docs/UPSTREAM.md` and core decision 0004).
 2. **Would it look or work the same in any foundation app?** The window, ribbon, panels, dialogs,
    File page, preferences, auto-save, updates, saving and backups, spelling, find and replace,
    undo, format import and export, PDF and printing, cards and boards, theming, agent control: the
@@ -72,7 +110,10 @@ interface back out is not.
 
 ### Step 2: build it
 
-- **App-only change:** one pull request in the app.
+- **How a change lands** (core decision 0013): while no app has a public release, a push to
+  `main` is allowed once the gate passes; a pull request is optional and its author merges it
+  when its checks pass.
+- **App-only change:** one change in the app.
 - **Core change an app needs:**
   1. Open a core issue describing the general need, not the app's feature.
   2. Check out both side by side. In the app: `cargo xtask dev-link ../open-source-core`
@@ -80,32 +121,39 @@ interface back out is not.
   3. Build the general part in the core with its own tests and a use in `apps/core-testbed`, so it
      is proven without any product.
   4. Build the app's use of it in the app.
-  5. Open two linked pull requests: the core one first, then the app one, which says which core
-     pull request it needs.
-  6. Merge the core pull request, release the core, update the app's pin, merge the app.
+  5. Land the core change first, with the core's gate green. Then release the core.
+  6. Move the app's pin to that release (`cargo xtask sync`), then land the app change, which
+     names the core issue it needed.
 - **Prototype first, promote later.** If the general shape is not clear yet, build it in the app,
   mark it `// core-candidate:` and open a core issue labelled `core-candidate`. Move it once it works
   and a second app wants it. Never copy code between app repositories.
+- **Something one app needs from another app** (core decision 0015): open an issue in the
+  providing app's repository. The provider's change lands and is tagged there first; the consumer
+  then moves its pin. Never edit the provider as part of the consumer's change.
 
 ### Step 3: let it reach the other apps safely
 
 - Everything in the core is shared by default.
 - A change that alters what users see in other apps goes behind an option (a shell setting or a
   Cargo feature) that defaults to the old behavior; each app turns it on when ready.
-- Versioning (decision 0011): while at 0.x a patch release only adds or fixes; a minor release may
-  break and its changelog says exactly what each app must do. A breaking change to a public `jcj-`
-  interface says so in the pull request title, and every app is updated in follow-up pull requests.
+- Versioning (core decision 0011): while at 0.x a patch release only adds or fixes; a minor release
+  may break and its changelog says exactly what each app must do. A breaking change to a public
+  `jcj-` interface says so in the title of its commit or pull request, and every app is updated
+  in follow-up changes.
 - A core change that breaks another app is fixed in the core, not worked around in the app.
-- Apps stay at most one core release behind.
+- An app moves to the newest core before new work starts on it and before its own release. Every
+  `jcj-` line names one tag. `cargo xtask core-pin` says how far behind an app is, and a
+  scheduled check opens an issue when it is more than three releases behind.
 
 ### Things agents must not do
 
 - Name WordCraft or craft-libs types in an app repository. Use the `jcj-` interfaces; if one is
   missing, add it to the core.
 - Put a product name, color, logo, or screenplay, manuscript or book concept into the core.
-- Change a core interface from an app repository's pull request.
+- Change a core interface from a change made in an app repository.
 - Copy code from one app repository into another.
-- Release the core, move upstream pins, or merge pull requests without a person's approval.
+- Release the core, or move an upstream pin, on a commit whose full gate has not passed. A
+  person or an agent may do either once it has (core decisions 0004 and 0011).
 - Edit WordCraft or craft-libs code anywhere but our forks' topic branches.
 - Commit personal details, private files or secrets.
 
@@ -118,13 +166,15 @@ interface back out is not.
 | Pins, carried patches, follow / hold / own | The core's `docs/UPSTREAM.md` |
 | What changed for apps in each core release | The core's `CHANGELOG.md`, with "What apps must do" |
 | Ideas waiting to be promoted to the core | Core issues labelled `core-candidate` |
+| A request to another app | An issue in that app's repository |
+| Reviews, audits, working notes | `.private/`, or `docs/history/` once a maintainer publishes one |
 
 ## House rules for code
 
 - Every crate root: an SPDX line, `#![forbid(unsafe_code)]`, and `#![deny(...)]` of the six
   panicking lints. Product code returns errors; it never unwraps or panics.
-- Depend only on the core's `jcj-` crates; never on `jcj-upstream`, `wordcraft-*` or `craft-*`
-  (`cargo xtask layers`).
+- Depend only on the core's `jcj-` crates and, under a contract, another app's crates (core
+  decision 0015); never on `jcj-upstream`, `wordcraft-*` or `craft-*` (`cargo xtask layers`).
 - The app's brand (name, colors as `tokens.json`, fonts, logo) lives here, never in the core.
 
 ## Wordsmith Script's own rules

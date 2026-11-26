@@ -67,12 +67,23 @@ and every script 0.1.2 saved opens with the same pages.
 - File › About has an Acknowledgments section: WordCraft, the libraries
   and fonts the app is built on, and the word list spelling uses. The
   README has the same section.
+- File › Preferences: the auto-save fields (how many minutes, and how long
+  typing must pause) are named for screen readers by the words beside them.
+  Before, they were unnamed number fields.
 
 ### Inside
 
 - The checks that every control runs a registered command, and that every
   menu command is on the ribbon or the File page, read what the window draws
   instead of lists kept by hand (decision 0043).
+- Built on open-source-core 0.1.16 (before, 0.1.1), so new work starts from
+  the newest shared base. The releases between add interfaces Script does not
+  call yet and one fix it shows (the Preferences fields above); no code of
+  Script's changed. The golden scripts' PDF text and the page plans of every
+  file 0.1.2 saved are unchanged (`docs/golden.md`).
+- `cargo xtask core-pin` joins the gate: every `jcj-` line names one core
+  release and `Cargo.lock` holds one core. A weekly workflow opens an issue
+  when the pin is more than three core releases behind.
 
 ## 0.1.2 (2026-11-22)
 

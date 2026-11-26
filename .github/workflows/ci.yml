@@ -4,7 +4,8 @@
 #
 # - The gate is `cargo xtask ci`, the same command the pre-push hook runs, so CI confirms what the
 #   developer already saw. It also fails if the app's shared settings or patch block differ from
-#   the pinned core release, or if a local core dev-link was committed.
+#   the pinned core release, if a local core dev-link was committed, or if the app names or builds
+#   more than one core release (how far behind the pin is: core-pin.yml).
 # - Pushes check only what changed since the last commit that passed CI on main (found through
 #   the GitHub API, so a cancelled run's changes are never skipped), plus everything that depends
 #   on it. Manifests, the lock file or the toolchain changing means everything.
@@ -45,8 +46,9 @@ env:
   CARGO_DENY_VERSION: "0.20.2"
 
 jobs:
-  # Everything that needs no product build: formatting, crate roots, no dev-link, shared settings,
-  # layers, privacy (all files and every commit identity) and the license allowlist.
+  # Everything that needs no product build: formatting, crate roots, no dev-link, one core
+  # release, shared settings, layers, privacy (all files and every commit identity) and the
+  # license allowlist.
   checks:
     name: checks (fmt, sync, layers, privacy, licenses)
     runs-on: ubuntu-latest

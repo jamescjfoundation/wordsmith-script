@@ -1,0 +1,114 @@
+# How far this app's core pin is behind the newest open-source-core release. Owned by the core
+# (template/.github/workflows/core-pin.yml) and kept identical in every app by `cargo xtask sync`.
+#
+# An app moves to the newest core before new work starts on it and before its own release (core
+# decision 0011); between those it may fall behind, and CI stays green for a release the app does
+# not need yet. What must not happen is that nobody notices. So once a week:
+#
+# - `cargo xtask core-pin --max-behind N` lists the core's release tags and counts the ones newer
+#   than the tag this app's `jcj-` dependencies carry.
+# - When that is more than MAX_BEHIND, an issue named "Move to open-source-core vX.Y.Z" is opened
+#   here. While such an issue is open no second one is opened: it is renamed, and its text
+#   rewritten, when the core has released again.
+# - Any other failure (the pin names two releases, the core cannot be reached, the task is missing
+#   from the app's xtask) fails the run.
+#
+# GitHub stops a scheduled workflow in a repository with no commit for 60 days; run it by hand
+# then (workflow_dispatch) and it is scheduled again.
+#
+# Only GitHub's own actions, pinned to full commit SHAs, and only this run's own token.
+name: Core pin
+
+on:
+  schedule:
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-pin
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  CARGO_NET_RETRY: "10"
+  RUST_BACKTRACE: "short"
+  # An issue is opened when the pin is more than this many core releases behind.
+  MAX_BEHIND: "3"
+  CORE_CHANGELOG: "https://github.com/jamescjfoundation/open-source-core/blob/main/CHANGELOG.md"
+  ISSUE_TITLE: "Move to open-source-core"
+
+jobs:
+  behind:
+    name: core pin (releases behind the newest core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Restore cargo home
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-home-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-home-
+      - name: cargo xtask core-pin
+        id: pin
+        run: |
+          set +e
+          cargo xtask core-pin --max-behind "$MAX_BEHIND" > core-pin.txt
+          status=$?
+          set -e
+          cat core-pin.txt
+          # The task prints pinned=, newest= and behind= once it has measured the distance.
+          grep -E '^(pinned|newest)=v[0-9]+\.[0-9]+\.[0-9]+$|^behind=[0-9]+$' core-pin.txt >> "$GITHUB_OUTPUT" || true
+          behind=$(sed -n 's/^behind=\([0-9][0-9]*\)$/\1/p' core-pin.txt)
+          if [ -n "$behind" ] && [ "$behind" -gt "$MAX_BEHIND" ]; then
+            echo "late=true" >> "$GITHUB_OUTPUT"
+          elif [ "$status" -ne 0 ]; then
+            echo "::error::cargo xtask core-pin failed for a reason other than the distance (see the log above). If the task is unknown, add it to xtask/src/main.rs as the core's CHANGELOG says."
+            exit "$status"
+          fi
+      - name: Open the issue, or bring the open one up to date
+        if: steps.pin.outputs.late == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PINNED: ${{ steps.pin.outputs.pinned }}
+          NEWEST: ${{ steps.pin.outputs.newest }}
+          BEHIND: ${{ steps.pin.outputs.behind }}
+        run: |
+          title="$ISSUE_TITLE $NEWEST"
+          cat > core-pin-issue.md <<EOF
+          This repository builds on open-source-core $PINNED. The newest release is $NEWEST, $BEHIND releases later. An issue is opened when a pin is more than $MAX_BEHIND releases behind.
+
+          An app moves to the newest core before new work starts on it and before its own release (core decision 0011).
+
+          - [ ] Read **What apps must do** for every release after $PINNED in the core's changelog: $CORE_CHANGELOG
+          - [ ] Move every \`jcj-\` dependency in \`Cargo.toml\` to \`tag = "$NEWEST"\`. A dependency on another app's crates moves to a release of that app built on $NEWEST.
+          - [ ] Run \`cargo xtask sync\` until \`cargo xtask sync --check\` passes, then \`cargo xtask ci\`.
+
+          \`cargo xtask core-pin --behind\` shows the distance at any time. Opened by the scheduled \`core-pin\` workflow, which rewrites this text when the core has released again while the issue is open.
+          EOF
+          # Every open issue (the list also holds pull requests), not a search: a search can lag.
+          open=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues?state=open&per_page=100" \
+                 --jq '.[] | select(.pull_request == null) | "\(.number) \(.title)"' \
+                 | grep -E "^[0-9]+ $ISSUE_TITLE v[0-9]" | head -n 1 || true)
+          if [ -z "$open" ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file core-pin-issue.md
+          elif [ "${open#* }" = "$title" ]; then
+            echo "already open: #${open%% *}"
+          else
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/${open%% *}" -f title="$title" -F body=@core-pin-issue.md --jq '.html_url'
+          fi
