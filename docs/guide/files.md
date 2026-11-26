@@ -5,8 +5,9 @@ readable JSON at the top and then the script, one paragraph per element, with
 `**bold**`, `*italic*` and `_underline_`. They compare cleanly with `diff` and
 work well in version control. The format is documented in `docs/format.md`.
 
-Version 0.2 saves format 5. Scripts saved by 0.1 open as they were, with the
-same pages; once saved by 0.2 they open only in 0.2 or later.
+Scripts are saved in format 5. A script saved in an earlier format, by a
+build from before 0.9, opens as it was, with the same pages; once saved again
+it opens only in 0.9 or later.
 
 - **Open** (Mod+O) reads `.wss` and Fountain (`.fountain`) scripts. A
   Fountain script opens as a new script; saving asks where to put the

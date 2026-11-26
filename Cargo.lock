@@ -5457,7 +5457,7 @@ dependencies = [
 
 [[package]]
 name = "wordsmith-script"
-version = "0.2.0"
+version = "0.9.0"
 dependencies = [
  "eframe",
  "egui",
@@ -5469,7 +5469,7 @@ dependencies = [
 
 [[package]]
 name = "wordsmith-script-cli"
-version = "0.2.0"
+version = "0.9.0"
 dependencies = [
  "jcj-agents",
  "jcj-doc",
@@ -5480,7 +5480,7 @@ dependencies = [
 
 [[package]]
 name = "wordsmith-script-format"
-version = "0.2.0"
+version = "0.9.0"
 dependencies = [
  "jcj-doc",
  "jcj-engine",
@@ -5497,7 +5497,7 @@ dependencies = [
 
 [[package]]
 name = "wordsmith-script-model"
-version = "0.2.0"
+version = "0.9.0"
 dependencies = [
  "chrono",
  "jcj-doc",
@@ -5514,7 +5514,7 @@ dependencies = [
 
 [[package]]
 name = "wordsmith-script-ui"
-version = "0.2.0"
+version = "0.9.0"
 dependencies = [
  "egui",
  "image",
@@ -5535,7 +5535,7 @@ dependencies = [
 
 [[package]]
 name = "wordsmith-script-web"
-version = "0.2.0"
+version = "0.9.0"
 dependencies = [
  "wordsmith-script-ui",
 ]
@@ -5635,7 +5635,7 @@ checksum = "9440ea3e5aeabb0ac63af70daf835274065238cdd0cec83418f417eae38bacee"
 
 [[package]]
 name = "xtask"
-version = "0.2.0"
+version = "0.9.0"
 
 [[package]]
 name = "yeslogic-fontconfig-sys"

@@ -385,10 +385,10 @@ mod tests {
 
     #[test]
     fn release_files_are_named_as_the_update_looks_for_them() {
-        assert_eq!(asset_name("0.2.0", "macos", "aarch64"), "wordsmith-script-0.2.0-macos-aarch64.dmg");
-        assert_eq!(asset_name("0.2.0", "windows", "x86_64"), "wordsmith-script-0.2.0-windows-x64-portable.zip");
-        assert_eq!(asset_name("0.2.0-rc.1", "linux", "x86_64"), "wordsmith-script-0.2.0-rc.1-linux-x86_64.tar.gz");
-        assert_eq!(stem(&asset_name("0.2.0", "windows", "aarch64")), "wordsmith-script-0.2.0-windows-arm64");
+        assert_eq!(asset_name("0.9.0", "macos", "aarch64"), "wordsmith-script-0.9.0-macos-aarch64.dmg");
+        assert_eq!(asset_name("0.9.0", "windows", "x86_64"), "wordsmith-script-0.9.0-windows-x64-portable.zip");
+        assert_eq!(asset_name("0.9.0-rc.1", "linux", "x86_64"), "wordsmith-script-0.9.0-rc.1-linux-x86_64.tar.gz");
+        assert_eq!(stem(&asset_name("0.9.0", "windows", "aarch64")), "wordsmith-script-0.9.0-windows-arm64");
     }
 
     #[test]

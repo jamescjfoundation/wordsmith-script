@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! Files from Wordsmith Script 0.1.x open in 0.2 (format 5, on open-source-core) and come out the
-//! same: every one opens, saves in the new format, reopens to the same script, and paginates
-//! exactly as 0.1.2 paginated it.
+//! Files from the first build of Wordsmith Script (0.1.x) open in the app as rebuilt on
+//! open-source-core (format 5) and come out the same: every one opens, saves in the new format,
+//! reopens to the same script, and paginates exactly as 0.1.2 paginated it.
 //!
-//! `tests/fixtures/saved-by-0.1.2/` holds what Wordsmith Script 0.1.2 (commit 29ed4bf) wrote for
+//! `tests/fixtures/saved-by-0.1.2/` holds what Wordsmith Script 0.1.2 wrote (the last build
+//! before the rebuild; never published, and its history was not kept: `docs/fixtures.md`) for
 //! each golden script (`tests/golden/*.fountain`) and each format fixture (`tests/fixtures/v*.wss`):
 //! the `.wss` file it saved, and its page plan (`.plan.txt`: whether the layout matched the plan,
 //! each page's newest revision set, the page labels, and every page's pieces). The plans were

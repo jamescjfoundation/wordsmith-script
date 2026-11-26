@@ -12,7 +12,7 @@ body:
     attributes:
       label: Version
       description: From File ▸ About, or `wordsmith-script-cli --version`.
-      placeholder: 0.2.0
+      placeholder: 0.9.0
     validations:
       required: true
   - type: dropdown

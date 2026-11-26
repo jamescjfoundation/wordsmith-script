@@ -1,42 +1,22 @@
 # Changelog
 
-## 0.2.0 (not released yet)
+What changed in each release of Wordsmith Script, newest first. `## Unreleased`
+holds what the next release will bring; when that release is cut, the section
+takes its version and date (`## 0.9.0 (2026-12-01)`), and a new, empty
+`## Unreleased` opens above it.
 
-### Rebuilt on open-source-core
+No version has been published yet. The first public release will be 0.9.0, a
+preview; 1.0.0 follows it (decision 0047). The versions under "Before the
+first release", at the end, were builds of the first version of the app and
+were never published.
 
-Wordsmith Script is now built on open-source-core, The James C. J.
-Foundation's shared base, instead of its own copy of WordCraft (decision
-0044). Scripts print exactly as before: the golden scripts' pages and PDF
-text are unchanged, and every script 0.1.2 saved opens with the same pages.
+## Unreleased
 
-- **Scripts are saved in format 5.** 0.1 scripts open as they were and are
-  saved in format 5 from then on, which 0.1 cannot open. Notes, revisions,
-  page locks, bookmarks, the watermark, headers and footers and the script's
-  own words are kept under the shared features' names; nothing is lost
-  (`docs/format.md`).
-- **The window** is the shared shell: the same tabs, panels and File page,
-  with general icons on the ribbon, "Left panel" and "Right panel" in the
-  quick row, Compare as a File page of its own, and the shell's preferences
-  before Script's. Preferences are kept and moved to the new file shape.
-- **Keys**: every key of 0.1 still works. The engine's general commands add
-  more: Strikethrough (Mod+Shift+X), Superscript and Subscript (Mod+Shift+=,
-  Mod+=), Extend Selection (F8), Change Case (Shift+F3) and others; the
-  keyboard guide lists them.
-- **Bold, italic, underline and the other text styles** at a caret inside a
-  word format the whole word, as word processors do.
-- **The agent server** (`wordsmith-script-cli mcp`) is the shared one: general tools,
-  and every screenplay command as a tool of its own (`script_scene_list`,
-  `script_element_action`, ...). 0.1's `scenes`, `characters`, `set_element`,
-  `open_script`, `save_script`, `export_script` and `page_count` tools are
-  replaced; the guide maps each.
-- **RTF export** is written by the shared RTF writer (same layout, different
-  file text). PDFs name WordCraft as their creator; 0.1 named Wordsmith
-  Script (`docs/gaps.md`).
-- **Not yet in 0.2**: the web build, and finishing an update in place on
-  Windows (`docs/gaps.md`).
+To be released as 0.9.0. This is the app as rebuilt on open-source-core.
+Where an entry says "before", or "the first build", it compares with 0.1.2,
+the last build before the rebuild.
 
-
-### The window
+### Added
 
 - The app has its own mark, wordmark, icon and colors. The window and the
   macOS and Linux bundles carry the icon (an S and a brass caret on ink);
@@ -45,12 +25,6 @@ text are unchanged, and every script 0.1.2 saved opens with the same pages.
   About shows the mark. The three themes take their colors from the
   palette: Iron Gall Ink, Page White, Brad Brass, Margin Blue, Slate and
   Night.
-- Key tips (F10) reach every control on a tab. Before, from the 21st
-  control on, typing the first letter ran another control. The first 19
-  controls have one letter and the rest start with Z; a control keeps its
-  letters while the app runs, even when its group folds to fit the window.
-- A key tip runs its control as a click does, with the same settings (Start
-  Up and Start Down on locked pages, a macro's slot, Strike Through).
 - Drop-downs (More, Highlight, All Macros, the revision set, folded groups)
   have key tips that open them; their items have letters too.
 - Paste is on the Write tab beside Cut and Copy, and in the Edit menu.
@@ -60,16 +34,51 @@ text are unchanged, and every script 0.1.2 saved opens with the same pages.
   are in the command search box, can be given keys, and show their key in
   their tooltip. A report tile opens the Reports window on its report.
 - The View tab's zoom shows a menu of sizes.
-- The find bar can be closed while the Find panel is open; the panel keeps
-  its results. Escape closes the bar only from its own fields or when
-  nothing else is open, so closing the palette or a suggestion list no
-  longer closes it.
 - File › About has an Acknowledgments section: WordCraft, the libraries
   and fonts the app is built on, and the word list spelling uses. The
   README has the same section.
-- File › Preferences: the auto-save fields (how many minutes, and how long
-  typing must pause) are named for screen readers by the words beside them.
-  Before, they were unnamed number fields.
+- **Keys**: every key of the first build still works. The engine's general commands add
+  more: Strikethrough (Mod+Shift+X), Superscript and Subscript (Mod+Shift+=,
+  Mod+=), Extend Selection (F8), Change Case (Shift+F3) and others; the
+  keyboard guide lists them.
+- **`wordsmith-script-cli mcp <file>` opens a script before the agent connects**,
+  and tells the agent it is open. The file is the person's choice, so it is
+  opened before `--read-root` and `--write-root` hold; what the agent opens
+  and saves afterwards must still be inside those folders, a save back to
+  that file included. Before, `mcp` took no file.
+
+### Changed
+
+#### Rebuilt on open-source-core
+
+Wordsmith Script is built on open-source-core, The James C. J. Foundation's
+shared base, where the first build carried its own copy of WordCraft
+(decision 0044). Scripts print exactly as before: the golden scripts' pages
+and PDF text are unchanged, and every script 0.1.2 saved opens with the same
+pages.
+
+- **Scripts are saved in format 5.** A script saved by the first build
+  (formats 1 to 4) opens as it was and is saved in format 5 from then on,
+  which the first build cannot open. Notes, revisions,
+  page locks, bookmarks, the watermark, headers and footers and the script's
+  own words are kept under the shared features' names; nothing is lost
+  (`docs/format.md`).
+- **The window** is the shared shell: the same tabs, panels and File page,
+  with general icons on the ribbon, "Left panel" and "Right panel" in the
+  quick row, Compare as a File page of its own, and the shell's preferences
+  before Script's. Preferences are kept and moved to the new file shape.
+- **Bold, italic, underline and the other text styles** at a caret inside a
+  word format the whole word, as word processors do.
+- **The agent server** (`wordsmith-script-cli mcp`) is the shared one: general tools,
+  and every screenplay command as a tool of its own (`script_scene_list`,
+  `script_element_action`, ...). The first build's `scenes`, `characters`, `set_element`,
+  `open_script`, `save_script`, `export_script` and `page_count` tools are
+  replaced; the guide maps each.
+- **RTF export** is written by the shared RTF writer (same layout, different
+  file text). PDFs name WordCraft as their creator; the first build's
+  named Wordsmith Script (`docs/gaps.md`).
+- **Not yet**: the web build, and finishing an update in place on Windows
+  (`docs/gaps.md`).
 - Script tabs and the split view are drawn by the shared shell. Every open
   script's tab has its own close button (closing a script with unsaved
   changes still asks first), and the new-tab button sits at the right end of
@@ -88,11 +97,8 @@ text are unchanged, and every script 0.1.2 saved opens with the same pages.
     script was closed, nothing is done and the status bar says so.
   - When the system cannot show a dialog, the status bar says why. Before,
     nothing was said.
-- A shifted caret key that you turned off on the Keys page does nothing.
-  Before, Shift with an arrow, Home or End still extended the selection
-  when its own entry was turned off.
 
-### The programs' names
+#### The programs' names
 
 The programs are named for Script, so that `wordsmith` stays free for the
 Wordsmith launcher and nobody takes one Wordsmith app's program for another's
@@ -115,7 +121,7 @@ Wordsmith launcher and nobody takes one Wordsmith app's program for another's
   files, backups, dictionary and statistics, the release files' names, the
   `.wss` file type and the name the agent server gives are as they were.
 
-### The command line and agents
+#### The command line and agents
 
 `wordsmith-script-cli` follows the convention every app on open-source-core shares
 ([core decision 0017](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0017-command-lines-and-agent-tools.md)),
@@ -135,11 +141,6 @@ What changes for a script that calls it, and for an agent:
   tools (`execute`, `list_commands`, `type_text` and the rest) keep their
   names, and the commands' ids, which `execute` takes, are unchanged. The
   server's instructions to the agent say so.
-- **`wordsmith-script-cli mcp <file>` opens a script before the agent connects**,
-  and tells the agent it is open. The file is the person's choice, so it is
-  opened before `--read-root` and `--write-root` hold; what the agent opens
-  and saves afterwards must still be inside those folders, a save back to
-  that file included. Before, `mcp` took no file.
 - `--read-root` or `--write-root` given twice, and a second file, are usage
   errors. Before, the last of two folders won.
 - `export-pdf` prints its page count on standard output, where results go.
@@ -153,13 +154,43 @@ What changes for a script that calls it, and for an agent:
   check ran and did not pass", is kept by the convention for commands that
   check or compare; `wordsmith-script-cli` has none yet and never exits with 3.
 
+### Fixed
+
+- Key tips (F10) reach every control on a tab. Before, from the 21st
+  control on, typing the first letter ran another control. The first 19
+  controls have one letter and the rest start with Z; a control keeps its
+  letters while the app runs, even when its group folds to fit the window.
+- A key tip runs its control as a click does, with the same settings (Start
+  Up and Start Down on locked pages, a macro's slot, Strike Through).
+- The find bar can be closed while the Find panel is open; the panel keeps
+  its results. Escape closes the bar only from its own fields or when
+  nothing else is open, so closing the palette or a suggestion list no
+  longer closes it.
+- File › Preferences: the auto-save fields (how many minutes, and how long
+  typing must pause) are named for screen readers by the words beside them.
+  Before, they were unnamed number fields.
+- A shifted caret key that you turned off on the Keys page does nothing.
+  Before, Shift with an arrow, Home or End still extended the selection
+  when its own entry was turned off.
+
 ### Inside
+
+For people who work on the code.
 
 - The crates and folders follow the other Wordsmith apps (decision 0045, which
   has the whole table): `crates/script-model` (`wordsmith-script-model`, the
   screenplay rules; it was `wordsmith-script`), `crates/script-format`
   (`wordsmith-script-format`), `crates/script-ui` (`wordsmith-script-ui`), and
   the programs in `apps/script`, `apps/script-cli` and `apps/script-web`.
+- The files the tests read are in `tests/fixtures/` and `tests/golden/` at
+  the root, as in the other Wordsmith apps, and `docs/fixtures.md` lists each
+  with where it came from. `UPDATE_GOLDEN=1` is the one switch that rewrites
+  a reviewed file, the guide's page of keys included (it was
+  `UPDATE_GUIDE=1`). The guide's pages `keyboard.md` and `cli-and-mcp.md` are
+  `keys.md` and `command-line-and-agents.md`. No fixture or golden file
+  changed (decision 0046, `docs/golden.md`).
+- The version is 0.9.0, the first that will be published; it was 0.2.0,
+  which never was (decision 0047).
 - Script uses the core's file dialogs (`jcj_shell::files`, core issue #28)
   and the core's rule for shifted caret keys (`KeyMap::command_for`, core
   issue #29), both new in core 0.1.20, and its own copies are deleted. The
@@ -186,12 +217,23 @@ What changes for a script that calls it, and for an agent:
   fails when one differs. `CODE_OF_CONDUCT.md` is the core's file. What is
   Script's own stays outside the blocks.
 
-## 0.1.2 (2026-11-22)
+## Before the first release
+
+Nothing in this section was published. 0.1.0, 0.1.1 and 0.1.2 were builds of
+the first version of the app, made in November 2026 before it was rebuilt on
+open-source-core. That code carried its own copy of WordCraft; it was written
+before this repository's history starts, and its history is not published: no
+commit, tag or release of it exists here (`UPSTREAM.md`, decision 0047). The
+notes are kept as they were written, for what they say about how the app came
+to be. They name the crates and programs as they were then (decision 0045),
+and "v0.2" and "v0.3" in them are the names of plans, not of versions.
+
+### 0.1.2 (built 2026-11-22, never released)
 
 New names for the Script panel and the Draft view, script files that keep
 what a later version wrote, and checked file writes for every command.
 
-### Automation
+#### Automation
 
 - Every command that writes a file, including report, storyboard and index
   card exports, goes through the same checked writer, so a write is complete
@@ -202,12 +244,12 @@ what a later version wrote, and checked file writes for every command.
 - `wordsmith-cli mcp` started without `--read-root` or `--write-root` warns
   that the agent can read and write any file your account can.
 
-### Inside
+#### Inside
 
 - The crates that started as a copy of WordCraft are now a fork, trimmed to
   what a screenplay uses (decision 0039). Nothing the app does changes.
 
-### Privacy and licenses (decision 0040)
+#### Privacy and licenses (decision 0040)
 
 - The README and the user guide (The window › Updates and privacy) say what
   the update check at start sends (one request to GitHub's API with the app's
@@ -224,7 +266,7 @@ what a later version wrote, and checked file writes for every command.
   minimum version (1.95), runs cargo-deny for licenses, advisories and
   sources, and uses commit-pinned actions; Dependabot proposes updates.
 
-### Names (decision 0041)
+#### Names (decision 0041)
 
 - The left side panel (scenes, outline, bookmarks, notes, characters, find) is
   now the **Script panel**, and the compact view beside Page and Normal is the
@@ -233,7 +275,7 @@ what a later version wrote, and checked file writes for every command.
   `view.speed` command id is unchanged, so keys, scripts and agents keep
   working.
 
-### Commands
+#### Commands
 
 - `lock.adjustBreak` refuses a `by` of 0, or one that is not a whole number,
   with a message saying what it takes. Before, 0 failed with an unrelated
@@ -241,14 +283,14 @@ what a later version wrote, and checked file writes for every command.
 - The header and footer `{date}` reads the clock the way the rest of the app
   does, which also works in the web build.
 
-### Speed
+#### Speed
 
 - Typing no longer reads the script's element list from its settings two
   dozen times a keystroke; it is read again only when it changes. A test in
   CI fails if a keystroke in a 150-page script paginates more than once or
   lays out more than the paragraph typed in (`docs/performance.md`).
 
-### Script files
+#### Script files
 
 - Paragraph attributes in a `.wss` file that this version does not know (from
   a later version) are kept and written back when the script is saved, instead
@@ -265,13 +307,13 @@ what a later version wrote, and checked file writes for every command.
 - `docs/format.md` describes format version 4, including the tracked-change
   codes and the `revisions` settings key.
 
-## 0.1.1 (2026-11-20)
+### 0.1.1 (built 2026-11-20, never released)
 
-The first version that checks for its own updates. It also carries
+The first build that checks for its own updates. It also carries
 everything built since 0.1.0: the v0.2 features from SPEC-2 and the v0.3
 interface, listed below.
 
-### Releases and updates (decision 0038)
+#### Releases and updates (decision 0038)
 
 - Help ▸ Check for Updates, an Updates section on the About page, and a check
   at start (a preference, on by default). A newer release is offered in a
@@ -282,7 +324,7 @@ interface, listed below.
 - The release workflow drafts a GitHub release with `SHA256SUMS.txt` and
   publishes it only when asked, refusing one with fewer files than the last.
 
-### The interface (v0.3 plan, M15 to M19)
+#### The interface (v0.3 plan, M15 to M19)
 
 - A ribbon of tabs named for screenplay work, every control a command with its
   key in the tooltip, groups that fold to fit the window, Story Board and Index
@@ -298,7 +340,7 @@ interface, listed below.
 - Light, dark and extra-dark themes from one set of tokens; icons drawn in code.
 - A first-run tour; the window's layout kept between runs.
 
-### Features from SPEC-2 (M9 to M14)
+#### Features from SPEC-2 (M9 to M14)
 
 Work toward v0.2 from `docs/SPEC-2.md`. Nothing built in 0.1.0 changes its
 behavior; every addition below is new.
@@ -336,9 +378,9 @@ behavior; every addition below is new.
   the last ones; revert and merge; tabs; split views; zoom steps and an
   extra-dark theme; writing statistics, goals and sprints; your own keys.
 
-## 0.1.0 (2026-11-19)
+### 0.1.0 (built 2026-11-19, never released)
 
-The first tagged version: a starting point, not a finished app. Everything is
+The first numbered build: a starting point, not a finished app. Everything is
 new; in brief:
 
 - **Writing:** the screenplay elements with Return and Tab, element settings

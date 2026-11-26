@@ -1764,7 +1764,7 @@ fn check_for_updates_asks_the_shell_and_the_about_page_shows_every_status() {
         ed.shell.open_file_page(Page::About);
         frame(&ctx, &mut ed, vec![]);
     }
-    assert!(ed.shell.updates.describe("Wordsmith Script", "0.2.0").0.contains("9.0.0"));
+    assert!(ed.shell.updates.describe("Wordsmith Script", "0.9.0").0.contains("9.0.0"));
     // The preference round-trips.
     ed.shell.updates.check_at_start = false;
     assert!(!ed.shell.prefs().check_updates);

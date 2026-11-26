@@ -85,3 +85,4 @@ Decision 0045 has the table of what each is called now.
 | [0044](0044-rebuilt-on-open-source-core.md) | Rebuilt on open-source-core: what moved to the core, what stays, the `.wss` format 5 and the differences | accepted |
 | [0045](0045-names-of-crates-programs-and-the-app-id.md) | The names of the crates, the programs and the app id: `script-model`, `script-format`, `script-ui`, `wordsmith-script`, `wordsmith-script-cli`, `org.jcjfoundation.script` | accepted |
 | [0046](0046-one-shape-with-the-other-wordsmith-apps.md) | One shape with the other Wordsmith apps: root `tests/`, a list of fixtures, one switch for golden files, the guide's page names, the changelog's form, the plan as issues | accepted |
+| [0047](0047-the-first-public-release-is-0.9.0.md) | The first public release is 0.9.0, then 1.0.0; 0.1.0 to 0.1.2 were never published and their history was not kept; the changelog's form | accepted |

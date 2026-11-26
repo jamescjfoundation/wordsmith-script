@@ -67,9 +67,11 @@ artwork.
 
 ## Copied code
 
-None since 0.2: WordCraft's code is used through open-source-core, not copied
-(`UPSTREAM.md`, decision 0044). 0.1.x's copies are in the history up to the
-`v0.1.2-final` tag.
+None: WordCraft's code is used through open-source-core, not copied
+(`UPSTREAM.md`, decision 0044). The first version of the app (0.1.x, never
+published) carried copies of WordCraft's crates. Those copies are not in this
+repository and their history was not kept here (`UPSTREAM.md`, "Before the
+rebuild", names the upstream commits they came from).
 
 ## Test data
 

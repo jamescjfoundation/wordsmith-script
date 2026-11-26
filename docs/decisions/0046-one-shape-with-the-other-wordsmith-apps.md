@@ -26,7 +26,7 @@ other apps are asked to follow by an issue in their repositories.
 | The guide's page of keys | `docs/guide/keyboard.md` | `docs/guide/keys.md` |
 | The guide's page for the command line and agents | `docs/guide/cli-and-mcp.md` | `docs/guide/command-line-and-agents.md` |
 | The writer's words | no rule | a rule in `AGENTS.md`, with what proves it and what does not yet |
-| The changelog | a heading for each planned version, "(not released yet)" | `## Unreleased` first, in the core's form; a version gets its heading and date when it is released |
+| The changelog | a heading for each planned version, "(not released yet)" | `## Unreleased` first, in the core's form; a version gets its heading and date when it is released (decision 0047) |
 | What is planned | `ROADMAP.md`, `docs/gaps.md`, `docs/progress.md` and the questions in `docs/history/` | Issues in this repository under the milestone `v1`. `ROADMAP.md` links to it and holds no list |
 | What the app does not do | `docs/gaps.md`: limits, missing features, unfinished work and tooling notes in one list | `docs/gaps.md` holds only standing limits a writer should know; anything to be done is an issue |
 | Finished plans and logs | in `docs/`, some reading as current | `docs/history/`, each with a first line saying it is history |

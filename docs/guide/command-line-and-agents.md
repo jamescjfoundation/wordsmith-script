@@ -69,9 +69,9 @@ saved with the app's own file commands:
 The general `open_document` and `save_document` tools know word-processor
 files, not `.wss`.
 
-Since 0.2 the server is the shared one: the tools `open_script`,
-`save_script`, `export_script`, `set_element`, `scenes`, `characters` and
-`page_count` of 0.1 are now `execute file.openPath`, `execute file.save`,
+Builds from before 0.9 had tools named `open_script`, `save_script`,
+`export_script`, `set_element`, `scenes`, `characters` and `page_count`.
+They are now `execute file.openPath`, `execute file.save`,
 `execute file.saveAsPath`, `script_element_set`, `script_scene_list`,
 `script_character_list` and `execute document.pages`.
 

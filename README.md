@@ -74,10 +74,10 @@ and of the fonts.
 
 ### Checking a download
 
-Release files come only from this repository's GitHub releases. From the
-release after 0.1.1 on, each one has a build provenance attestation, which
-shows it was built from this repository by its release workflow. With the
-GitHub CLI:
+No version has been published yet; the first will be 0.9.0, a preview
+(`CHANGELOG.md`). Release files come only from this repository's GitHub
+releases. Each one has a build provenance attestation, which shows it was
+built from this repository by its release workflow. With the GitHub CLI:
 
 ```sh
 gh attestation verify wordsmith-script-<version>-linux-x86_64.tar.gz --repo jamescjfoundation/wordsmith-script

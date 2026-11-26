@@ -106,7 +106,7 @@ What the check sends, and how to stop it:
 
 - The app asks GitHub's API (`api.github.com`) for the list of Wordsmith
   Script releases. GitHub sees your IP address and the app's name and version
-  (`WordsmithScript/0.1.1`), nothing about you or your scripts. If GitHub's
+  (`WordsmithScript/0.9.0`), nothing about you or your scripts. If GitHub's
   request limit has run out, the check fails quietly; no other server is
   asked.
 - An update is downloaded only when you choose to install it, from the

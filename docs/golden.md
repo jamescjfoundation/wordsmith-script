@@ -63,29 +63,31 @@ pagination or PDF output, rewrite them with the switch above and read the
 diff of the golden files before committing it.
 
 The test reads the PDF back through the core's PDF reader (`jcj_output::read`,
-craft-libs' guarded interpreter underneath); before 0.2 it called that
+craft-libs' guarded interpreter underneath); the first build called that
 interpreter directly.
 
 ## Files saved by 0.1.2
 
 `tests/fixtures/saved-by-0.1.2/` keeps, for each golden script and each
-`.wss` fixture, the file Wordsmith Script 0.1.2 (commit `29ed4bf`) saved and
-the page plan it made. `cargo test -p wordsmith-script-format --test migration`
+`.wss` fixture, the file Wordsmith Script 0.1.2 saved and the page plan it
+made. 0.1.2 was the last build of the first version of the app; it was never
+published and its history was not kept (`UPSTREAM.md`), so these files cannot
+be made again. `cargo test -p wordsmith-script-format --test migration`
 opens each in the current version, saves it in the newest format, reopens it
 and checks that the pages are exactly those 0.1.2 planned.
 
-## The rebuild on open-source-core (0.2)
+## The rebuild on open-source-core
 
 The rebuild was checked against 0.1.2's outputs before any code moved: the
 three golden files above, the page plans of every golden script and fixture,
-and the PDFs. With 0.2 on open-source-core (v0.1.20):
+and the PDFs. With the rebuilt app on open-source-core (v0.1.20):
 
 - the golden text files are unchanged: every page reads back line for line as
   0.1.2 printed it;
 - every page plan is unchanged (the migration test);
 - the PDF files are not compared byte for byte, before or after: with default
-  settings both 0.1.2 and 0.2 write the time of export into the file. 0.2
-  writes through the core's PDF writer (WordCraft v0.18.1), whose file
+  settings both 0.1.2 and the rebuilt app write the time of export into the
+  file. The rebuilt app writes through the core's PDF writer (WordCraft v0.18.1), whose file
   structure differs, and whose files name WordCraft as their creator and
   producer where 0.1.2's named Wordsmith Script (`docs/gaps.md`). The text,
   its places on the page and the page count are what the tests compare, and
