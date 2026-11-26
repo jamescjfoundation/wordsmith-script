@@ -40,7 +40,7 @@ If a problem is already public or being exploited, go straight to a fix and an a
 Anything that lets a file, an agent or a network peer do more than the user
 asked for. For example:
 
-- A command run through `wordsmith-cli mcp` reading or writing outside its
+- A command run through `wordsmith-script-cli mcp` reading or writing outside its
   `--read-root` or `--write-root` folders, or launching another program while
   confined.
 - A script, Fountain, RTF, PDF or text file that crashes the app, hangs it, or

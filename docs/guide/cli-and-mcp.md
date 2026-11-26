@@ -1,14 +1,14 @@
 # Command line and agents
 
-`wordsmith-cli` comes with the app.
+`wordsmith-script-cli` comes with the app.
 
 ```sh
-wordsmith-cli convert draft.fountain draft.wss
-wordsmith-cli export-pdf draft.wss draft.pdf
-wordsmith-cli export-pdf draft.wss blue-pages.pdf --revised-only
-wordsmith-cli report characters draft.wss cast.csv
-wordsmith-cli report scenes draft.wss
-wordsmith-cli info draft.wss
+wordsmith-script-cli convert draft.fountain draft.wss
+wordsmith-script-cli export-pdf draft.wss draft.pdf
+wordsmith-script-cli export-pdf draft.wss blue-pages.pdf --revised-only
+wordsmith-script-cli report characters draft.wss cast.csv
+wordsmith-script-cli report scenes draft.wss
+wordsmith-script-cli info draft.wss
 ```
 
 Inputs can be `.wss` or Fountain; plain text, RTF and PDF are imported as
@@ -20,9 +20,9 @@ a script written for one works with the next:
 
 - What a command prints (a report with no output file, `info`, the page
   count of `export-pdf`) goes to standard output. What went wrong goes to
-  standard error, as `wordsmith-cli: <reason>`.
-- `wordsmith-cli --help` (or `-h`, or `help`) prints the usage.
-  `wordsmith-cli --version` (or `-V`) prints `wordsmith-cli <version>` on
+  standard error, as `wordsmith-script-cli: <reason>`.
+- `wordsmith-script-cli --help` (or `-h`, or `help`) prints the usage.
+  `wordsmith-script-cli --version` (or `-V`) prints `wordsmith-script-cli <version>` on
   its first line and the app's name on the next.
 - Run with no argument, it prints the usage on standard error and exits
   with 2: nothing was asked, so it does not report success.
@@ -32,18 +32,18 @@ a script written for one works with the next:
 | 0 | Done |
 | 1 | It failed: a file could not be read or written, or there was nothing to export (no revised page for `--revised-only`) |
 | 2 | The command line was wrong: no command, an unknown command or option, a missing or extra argument. Nothing was done |
-| 3 | Kept for a check that ran and did not pass (two texts differ). No command of `wordsmith-cli` checks or compares yet, so it never exits with 3 |
+| 3 | Kept for a check that ran and did not pass (two texts differ). No command of `wordsmith-script-cli` checks or compares yet, so it never exits with 3 |
 
 ## MCP
 
-`wordsmith-cli mcp` is a Model Context Protocol server over standard input
+`wordsmith-script-cli mcp` is a Model Context Protocol server over standard input
 and output, for AI agents and other tools. It edits a script with every
 command the app has, without a window, until its input ends.
 
 ```sh
-wordsmith-cli mcp
-wordsmith-cli mcp draft.wss
-wordsmith-cli mcp draft.wss --read-root scripts --write-root scripts/out
+wordsmith-script-cli mcp
+wordsmith-script-cli mcp draft.wss
+wordsmith-script-cli mcp draft.wss --read-root scripts --write-root scripts/out
 ```
 
 Name a script and it is open when the agent connects; the server tells the

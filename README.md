@@ -31,7 +31,7 @@ in `git diff`; Fountain, PDF, RTF, plain text and HTML come and go.
 - **Files.** A diff-friendly native format (`.wss`), Fountain both ways,
   import of plain text, RTF and text PDFs, export to RTF, text, HTML and CSV,
   auto-save and timestamped backups.
-- **Automation.** `wordsmith-cli` converts, exports and reports, and serves
+- **Automation.** `wordsmith-script-cli` converts, exports and reports, and serves
   every command to agents over MCP.
 
 The window has a ribbon of tabs named for screenplay work (Write, Insert,
@@ -55,7 +55,7 @@ The pictures are drawn by the app itself (`cargo xtask screenshots`) from
 Read the [user guide](docs/guide/README.md). To build and run:
 
 ```sh
-cargo run --release -p wordsmith
+cargo run --release -p wordsmith-script
 ```
 
 `rust-toolchain.toml` names the exact Rust release the project builds and
@@ -65,7 +65,7 @@ network access to crates.io and to github.com/storytold/craft-libs, where
 several dependencies come from (pinned to one commit). The command line:
 
 ```sh
-cargo run --release -p wordsmith-cli -- export-pdf script.fountain script.pdf
+cargo run --release -p wordsmith-script-cli -- export-pdf script.fountain script.pdf
 ```
 
 `cargo xtask bundle` builds a release bundle for your computer in `dist/`,
@@ -101,7 +101,7 @@ gh attestation verify wordsmith-script-<version>-linux-x86_64.tar.gz --repo jame
   The system's proxy settings are used.
 - **Turning it off:** clear "Check for updates when the app starts" in File ›
   Preferences (or on the About page). Nothing is sent unless you then check by
-  hand. The web build and `wordsmith-cli` never check.
+  hand. The web build and `wordsmith-script-cli` never check.
 
 ## Working on it
 

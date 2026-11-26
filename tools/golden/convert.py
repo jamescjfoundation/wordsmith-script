@@ -4,7 +4,7 @@
 The scripts are the golden corpus for pagination and PDF tests (docs/golden.md). Each was
 printed in the United States before 1931 and is in the public domain there; sources and dates
 are in docs/provenance.md. Run it once with the three Gutenberg plain-text files; the results
-are reviewed by eye and committed under crates/wordsmith-format/tests/golden/.
+are reviewed by eye and committed under crates/script-format/tests/golden/.
 
     python3 tools/golden/convert.py WRITING_THE_PHOTOPLAY.txt HOW_TO_WRITE_PHOTOPLAYS.txt THE_PHOTODRAMA.txt OUT_DIR
 

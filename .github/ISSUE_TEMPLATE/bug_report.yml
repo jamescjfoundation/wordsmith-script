@@ -11,7 +11,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: From File ▸ About, or `wordsmith-cli --version`.
+      description: From File ▸ About, or `wordsmith-script-cli --version`.
       placeholder: 0.2.0
     validations:
       required: true

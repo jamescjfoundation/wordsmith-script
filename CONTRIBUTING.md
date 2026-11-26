@@ -10,8 +10,8 @@ stays in the history for good. The rules below follow from that.
 cargo xtask install-hooks             # once: pre-commit and pre-push hooks
 cargo xtask ci                        # the gate every change must pass (CI runs the same)
 cargo xtask ci --changed              # only the packages your change affects, and their dependents
-cargo run --release -p wordsmith      # the app
-cargo run -p wordsmith-cli -- help    # the command line and MCP server
+cargo run --release -p wordsmith-script       # the app
+cargo run -p wordsmith-script-cli -- help     # the command line and MCP server
 cargo xtask screenshots               # redraw the pictures in docs/images, offscreen
 ```
 
@@ -28,10 +28,10 @@ the release runs it on Linux, macOS and Windows.
 
 | Path | What it is |
 | --- | --- |
-| `crates/wordsmith-script` | Screenplay rules: elements, typing, pagination, revisions, scene numbers, locks, reports, and the screenplay commands |
-| `crates/wordsmith-format` | The native `.wss` format, Fountain, imports and exports, and the file commands |
-| `crates/wordsmith-ui` | The egui interface |
-| `apps/wordsmith`, `apps/wordsmith-cli`, `apps/wordsmith-web` | The desktop app, the command line and MCP server, and the web build |
+| `crates/script-model` | Screenplay rules: elements, typing, pagination, revisions, scene numbers, locks, reports, and the screenplay commands |
+| `crates/script-format` | The native `.wss` format, Fountain, imports and exports, and the file commands |
+| `crates/script-ui` | The egui interface |
+| `apps/script`, `apps/script-cli`, `apps/script-web` | The desktop app, the command line and MCP server, and the web build |
 | `assets/brand` | Copies of the Wordsmith brand kit's logos, icons and palette, and Script's own theme file and derived icons (`AGENTS.md`, "Brand") |
 | `assets/fonts` | The bundled fonts, with their licenses |
 | `xtask` | The gate, bundling and screenshots |
@@ -105,7 +105,7 @@ These add to the rules above; they hold only in this repository.
 ### Scripts and the app's own privacy
 
 - Never commit a real person's screenplay or notes. Test scripts and screenshots use
-  public-domain works (the ones in `crates/wordsmith-format/tests/golden`) or text you wrote for
+  public-domain works (the ones in `crates/script-format/tests/golden`) or text you wrote for
   the purpose.
 - When someone attaches a file with personal content to an issue, a maintainer deletes or edits
   the attachment and asks for a made-up example instead.

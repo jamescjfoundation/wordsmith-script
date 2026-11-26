@@ -1,0 +1,19 @@
+[package]
+name = "wordsmith-script-cli"
+description = "Wordsmith Script command-line tool"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+wordsmith-script-model.workspace = true
+wordsmith-script-format.workspace = true
+serde_json.workspace = true
+jcj-doc.workspace = true
+jcj-agents.workspace = true
+
+[lints]
+workspace = true

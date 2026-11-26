@@ -25,21 +25,21 @@ use shared::util::{TaskResult, cargo};
 
 /// Crates whose product code may not index or slice (`clippy.toml`): their roots must also deny
 /// `clippy::indexing_slicing`.
-const NO_INDEXING_CRATES: &[&str] = &["wordsmith-script", "wordsmith-format"];
+const NO_INDEXING_CRATES: &[&str] = &["wordsmith-script-model", "wordsmith-script-format"];
 
 const WASM_TARGET: &str = "wasm32-unknown-unknown";
-const WASM_CRATE: &str = "wordsmith-web";
+const WASM_CRATE: &str = "wordsmith-script-web";
 
 /// What the shared tasks need to know about Script.
 const APP: App = App {
     product: "Wordsmith Script",
     // The programs Script ships (for THIRD-PARTY-LICENSES.txt).
-    shipped: &["wordsmith", "wordsmith-cli"],
+    shipped: &["wordsmith-script", "wordsmith-script-cli"],
     no_indexing: NO_INDEXING_CRATES,
     // Beyond the legal files every app carries (the `assets` check).
     legal_files: &["UPSTREAM.md"],
     // `cargo xtask screenshots` redraws docs/images from the sample script.
-    screenshots: Some("wordsmith-ui"),
+    screenshots: Some("wordsmith-script-ui"),
     tasks: TASKS,
     ..App::DEFAULT
 };
@@ -47,7 +47,7 @@ const APP: App = App {
 /// Script's own tasks. Neither is part of the gate: release and slow builds stay out of it.
 const TASKS: &[Task] = &[
     Task::other("bundle", "build a release bundle for this computer in dist/ (nothing is published)", |root, _| bundle::bundle(root)),
-    Task::other("wasm", "build wordsmith-web for wasm32-unknown-unknown", |root, _| wasm(root)),
+    Task::other("wasm", "build wordsmith-script-web for wasm32-unknown-unknown", |root, _| wasm(root)),
 ];
 
 fn main() -> ExitCode {
@@ -74,14 +74,14 @@ mod tests {
         for slow in ["bundle", "wasm", "screenshots"] {
             assert!(!in_gate.contains(&slow), "{slow} is in ci");
         }
-        assert_eq!(APP.shipped, ["wordsmith", "wordsmith-cli"]);
+        assert_eq!(APP.shipped, ["wordsmith-script", "wordsmith-script-cli"]);
     }
 
     #[test]
     fn no_indexing_crates_are_workspace_members() {
         let manifest = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../Cargo.toml")).unwrap();
         for name in NO_INDEXING_CRATES {
-            assert!(manifest.contains(&format!("\"crates/{name}\"")), "{name} is not a workspace member");
+            assert!(manifest.contains(&format!("\n{name} = {{ path = \"crates/")), "{name} is not a crate of this workspace");
         }
     }
 }

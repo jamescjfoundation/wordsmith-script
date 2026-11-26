@@ -2,20 +2,20 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/wordsmith-script",
-    "crates/wordsmith-format",
-    "crates/wordsmith-ui",
-    "apps/wordsmith",
-    "apps/wordsmith-cli",
-    "apps/wordsmith-web",
+    "crates/script-model",
+    "crates/script-format",
+    "crates/script-ui",
+    "apps/script",
+    "apps/script-cli",
+    "apps/script-web",
     "xtask",
 ]
 default-members = [
-    "crates/wordsmith-script",
-    "crates/wordsmith-format",
-    "crates/wordsmith-ui",
-    "apps/wordsmith",
-    "apps/wordsmith-cli",
+    "crates/script-model",
+    "crates/script-format",
+    "crates/script-ui",
+    "apps/script",
+    "apps/script-cli",
     "xtask",
 ]
 
@@ -29,9 +29,9 @@ publish = false
 
 [workspace.dependencies]
 # Ours
-wordsmith-script = { path = "crates/wordsmith-script" }
-wordsmith-format = { path = "crates/wordsmith-format" }
-wordsmith-ui = { path = "crates/wordsmith-ui" }
+wordsmith-script-model = { path = "crates/script-model" }
+wordsmith-script-format = { path = "crates/script-format" }
+wordsmith-script-ui = { path = "crates/script-ui" }
 
 # The core, at a release tag. Apps use only jcj- interface crates (never jcj-upstream, WordCraft or
 # craft-libs); `cargo xtask layers` checks it. Move all of them together.

@@ -106,7 +106,7 @@ version is refused with a message naming both versions. A file is saved in
 the newest version, so an older file that is saved again can then be opened
 only by a version of the app that reads it.
 
-`crates/wordsmith-format/tests/fixtures` keeps one small file per version
+`crates/script-format/tests/fixtures` keeps one small file per version
 (the table under "Other readers" names them), each using what its version
 added. The tests read every one on every build, save it again and check that
 nothing was lost, and a version with no file fails a test.
@@ -146,7 +146,7 @@ A format change is therefore two changes:
    names the fixture. Manuscript's reader is changed there, never from here.
 
 Both sides test against the same files, one per format version. They live
-here, in `crates/wordsmith-format/tests/fixtures/`; Manuscript keeps unchanged
+here, in `crates/script-format/tests/fixtures/`; Manuscript keeps unchanged
 copies in its `tests/fixtures/scripts/`. When a fixture here changes,
 Manuscript takes its copy again, so the issue says that too.
 

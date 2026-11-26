@@ -1,0 +1,32 @@
+[package]
+name = "wordsmith-script-format"
+description = "Native file format, Fountain, imports and exports for Wordsmith Script"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+wordsmith-script-model.workspace = true
+jcj-doc.workspace = true
+jcj-interchange.workspace = true
+jcj-project.workspace = true
+jcj-features.workspace = true
+jcj-layout.workspace = true
+jcj-output.workspace = true
+# The automation file gateway (paths agents may read and write).
+jcj-engine.workspace = true
+serde = { workspace = true }
+serde_json = { workspace = true }
+# RTF import and export.
+# Text-based PDF import: craft-pdf's guarded page interpreter.
+
+
+[dev-dependencies]
+# Round trips of generated scripts (tests/round_trips.rs).
+proptest = { workspace = true }
+
+[lints]
+workspace = true

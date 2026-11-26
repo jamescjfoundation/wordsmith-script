@@ -2,7 +2,7 @@
 
 Three public-domain screenplays (1910s "photoplay" scenarios), transcribed into
 Fountain, are the golden corpus for pagination and PDF output
-(`crates/wordsmith-format/tests/golden/`).
+(`crates/script-format/tests/golden/`).
 
 | Script | Author | Printed in | Pages |
 | --- | --- | --- | --- |
@@ -40,13 +40,13 @@ test's PDF reader before the golden files were committed.
 
 ## The test
 
-`cargo test -p wordsmith-format --test golden` reads each Fountain file,
+`cargo test -p wordsmith-script-format --test golden` reads each Fountain file,
 paginates it, checks that the layout engine agrees with the pagination plan
 page for page, exports the PDF, reads its text back line by line, and
 compares it with `<name>.golden.txt`. After a deliberate change to
 pagination or PDF output:
 
-    UPDATE_GOLDEN=1 cargo test -p wordsmith-format --test golden
+    UPDATE_GOLDEN=1 cargo test -p wordsmith-script-format --test golden
 
 then read the diff of the golden files before committing it.
 
@@ -58,7 +58,7 @@ interpreter directly.
 
 `tests/fixtures/saved-by-0.1.2/` keeps, for each golden script and each
 `.wss` fixture, the file Wordsmith Script 0.1.2 (commit `29ed4bf`) saved and
-the page plan it made. `cargo test -p wordsmith-format --test migration`
+the page plan it made. `cargo test -p wordsmith-script-format --test migration`
 opens each in the current version, saves it in the newest format, reopens it
 and checks that the pages are exactly those 0.1.2 planned.
 
@@ -81,4 +81,4 @@ and the PDFs. With 0.2 on open-source-core (v0.1.20):
 
 The scripts have little dialogue, so they exercise headings, action splits
 and keep rules more than (MORE)/(CONT'D); the unit tests in
-`wordsmith-script::paginate` cover those.
+`wordsmith-script-model::paginate` cover those.

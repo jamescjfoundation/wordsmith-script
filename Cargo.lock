@@ -5456,7 +5456,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wordsmith"
+name = "wordsmith-script"
 version = "0.2.0"
 dependencies = [
  "eframe",
@@ -5464,22 +5464,22 @@ dependencies = [
  "jcj-proof",
  "jcj-shell",
  "serde_json",
- "wordsmith-ui",
+ "wordsmith-script-ui",
 ]
 
 [[package]]
-name = "wordsmith-cli"
+name = "wordsmith-script-cli"
 version = "0.2.0"
 dependencies = [
  "jcj-agents",
  "jcj-doc",
  "serde_json",
- "wordsmith-format",
- "wordsmith-script",
+ "wordsmith-script-format",
+ "wordsmith-script-model",
 ]
 
 [[package]]
-name = "wordsmith-format"
+name = "wordsmith-script-format"
 version = "0.2.0"
 dependencies = [
  "jcj-doc",
@@ -5492,11 +5492,11 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
- "wordsmith-script",
+ "wordsmith-script-model",
 ]
 
 [[package]]
-name = "wordsmith-script"
+name = "wordsmith-script-model"
 version = "0.2.0"
 dependencies = [
  "chrono",
@@ -5513,7 +5513,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wordsmith-ui"
+name = "wordsmith-script-ui"
 version = "0.2.0"
 dependencies = [
  "egui",
@@ -5529,15 +5529,15 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
- "wordsmith-format",
- "wordsmith-script",
+ "wordsmith-script-format",
+ "wordsmith-script-model",
 ]
 
 [[package]]
-name = "wordsmith-web"
+name = "wordsmith-script-web"
 version = "0.2.0"
 dependencies = [
- "wordsmith-ui",
+ "wordsmith-script-ui",
 ]
 
 [[package]]

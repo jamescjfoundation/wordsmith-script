@@ -27,6 +27,10 @@ are Script's:
   nothing" is the promise the option makes, so `file.save` writes the script
   back only when it lies inside the write folder.
 
+Amended 2026-11-26 (decision 0045): the command line is `wordsmith-script-cli`
+and the desktop program `wordsmith-script`; this record names them
+`wordsmith-cli` and `wordsmith` throughout, as they were.
+
 No command of `wordsmith-cli` compares two texts or runs a check, so none ends
 with the convention's exit code 3. A revised-pages export of a script with
 nothing revised stays a failure (1): nothing was checked, there was nothing to

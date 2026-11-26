@@ -28,8 +28,17 @@ const DOCS: [&str; 5] = ["LICENSE-MIT", "LICENSE-APACHE", "NOTICE", "ATTRIBUTION
 /// The app icon's sizes in `assets/brand/` (`icon-<size>.png`), and the macOS icon type of each.
 const ICON_SIZES: [(u32, &[u8; 4]); 3] = [(256, b"ic08"), (512, b"ic09"), (1024, b"ic10")];
 
-/// The name the icon is installed under (the desktop entry's `Icon=` and the app's id).
-const ICON_NAME: &str = "wordsmith-script";
+/// The app's id (decision 0045): the macOS bundle's id, the window's app id
+/// (`wordsmith_script_ui::app::APP_ID`), and so the name of the Linux menu entry, of its
+/// `StartupWMClass` and of the icon it is installed under.
+const APP_ID: &str = "org.jcjfoundation.script";
+
+/// The desktop program and the command-line tool, as Cargo names them.
+const APP_PROGRAM: &str = "wordsmith-script";
+const CLI_PROGRAM: &str = "wordsmith-script-cli";
+
+/// The `.wss` file type, as the Linux menu entry names it.
+const MIME_TYPE: &str = "application/x-wordsmith-script";
 
 /// The app icon at `size` pixels.
 fn icon_png(root: &Path, size: u32) -> Result<Vec<u8>, String> {
@@ -142,14 +151,14 @@ pub fn info_plist(version: &str) -> String {
 <dict>
   <key>CFBundleName</key><string>Wordsmith Script</string>
   <key>CFBundleDisplayName</key><string>Wordsmith Script</string>
-  <key>CFBundleIdentifier</key><string>org.wordsmith-script.app</string>
-  <key>CFBundleExecutable</key><string>wordsmith</string>
+  <key>CFBundleIdentifier</key><string>{APP_ID}</string>
+  <key>CFBundleExecutable</key><string>{APP_PROGRAM}</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>{version}</string>
   <key>CFBundleVersion</key><string>{version}</string>
   <key>LSMinimumSystemVersion</key><string>11.0</string>
   <key>NSHighResolutionCapable</key><true/>
-  <key>CFBundleIconFile</key><string>wordsmith-script</string>
+  <key>CFBundleIconFile</key><string>{APP_ID}</string>
   <key>CFBundleDocumentTypes</key>
   <array>
     <dict>
@@ -170,18 +179,20 @@ pub fn info_plist(version: &str) -> String {
 }
 
 /// The Linux desktop entry.
-pub fn desktop_entry() -> &'static str {
-    "[Desktop Entry]
+pub fn desktop_entry() -> String {
+    format!(
+        "[Desktop Entry]
 Type=Application
 Name=Wordsmith Script
 Comment=Write screenplays
-Exec=wordsmith %f
-Icon=wordsmith-script
-StartupWMClass=wordsmith-script
+Exec={APP_PROGRAM} %f
+Icon={APP_ID}
+StartupWMClass={APP_ID}
 Terminal=false
 Categories=Office;WordProcessor;
-MimeType=text/x-fountain;application/x-wordsmith-script;
+MimeType=text/x-fountain;{MIME_TYPE};
 "
+    )
 }
 
 /// The release file name for `os` and `arch` (Rust's names), as the in-app update reads them:
@@ -216,7 +227,7 @@ fn stem(file: &str) -> &str {
 }
 
 pub fn bundle(root: &Path) -> TaskResult {
-    cargo(root, &["build", "--release", "--locked", "-p", "wordsmith", "-p", "wordsmith-cli"])?;
+    cargo(root, &["build", "--release", "--locked", "-p", APP_PROGRAM, "-p", CLI_PROGRAM])?;
     let third_party = licenses::third_party_licenses(root, crate::APP.shipped, crate::APP.product)?;
     let fonts = font_licenses(root)?;
     let version = version(root)?;
@@ -225,8 +236,8 @@ pub fn bundle(root: &Path) -> TaskResult {
     let arch = std::env::consts::ARCH;
     let dist = root.join("dist");
     std::fs::create_dir_all(&dist).map_err(|e| format!("{}: {e}", dist.display()))?;
-    let app_bin = release.join(format!("wordsmith{exe}"));
-    let cli_bin = release.join(format!("wordsmith-cli{exe}"));
+    let app_bin = release.join(format!("{APP_PROGRAM}{exe}"));
+    let cli_bin = release.join(format!("{CLI_PROGRAM}{exe}"));
     let file = asset_name(&version, std::env::consts::OS, arch);
     let name = stem(&file).to_string();
     let out: PathBuf = dist.join(&file);
@@ -236,14 +247,14 @@ pub fn bundle(root: &Path) -> TaskResult {
             let stage = dist.join(&name);
             let _ = std::fs::remove_dir_all(&stage);
             let app = stage.join("Wordsmith Script.app/Contents");
-            copy(&app_bin, &app.join("MacOS/wordsmith"))?;
-            copy(&cli_bin, &app.join("MacOS/wordsmith-cli"))?;
+            copy(&app_bin, &app.join("MacOS").join(APP_PROGRAM))?;
+            copy(&cli_bin, &app.join("MacOS").join(CLI_PROGRAM))?;
             write(&app.join("Info.plist"), &info_plist(&version))?;
             let mut images = Vec::new();
             for (size, kind) in ICON_SIZES {
                 images.push((kind, icon_png(root, size)?));
             }
-            let icon = app.join(format!("Resources/{ICON_NAME}.icns"));
+            let icon = app.join(format!("Resources/{APP_ID}.icns"));
             std::fs::create_dir_all(app.join("Resources")).map_err(|e| format!("{}: {e}", icon.display()))?;
             std::fs::write(&icon, icns(&images)).map_err(|e| format!("{}: {e}", icon.display()))?;
             // Inside the app too, so the notices stay with it once it is copied out of the disk image.
@@ -264,8 +275,8 @@ pub fn bundle(root: &Path) -> TaskResult {
         "windows" => {
             let stage = dist.join(&name);
             let _ = std::fs::remove_dir_all(&stage);
-            copy(&app_bin, &stage.join("wordsmith.exe"))?;
-            copy(&cli_bin, &stage.join("wordsmith-cli.exe"))?;
+            copy(&app_bin, &stage.join(format!("{APP_PROGRAM}.exe")))?;
+            copy(&cli_bin, &stage.join(format!("{CLI_PROGRAM}.exe")))?;
             legal_files(root, &stage, &third_party, &fonts)?;
             check_legal_files(&stage, &fonts)?;
             // Windows' own tar writes zip archives.
@@ -274,11 +285,11 @@ pub fn bundle(root: &Path) -> TaskResult {
         _ => {
             let stage = dist.join(&name);
             let _ = std::fs::remove_dir_all(&stage);
-            copy(&app_bin, &stage.join("bin/wordsmith"))?;
-            copy(&cli_bin, &stage.join("bin/wordsmith-cli"))?;
-            write(&stage.join("share/applications/wordsmith-script.desktop"), desktop_entry())?;
+            copy(&app_bin, &stage.join("bin").join(APP_PROGRAM))?;
+            copy(&cli_bin, &stage.join("bin").join(CLI_PROGRAM))?;
+            write(&stage.join(format!("share/applications/{APP_ID}.desktop")), &desktop_entry())?;
             for (size, _) in ICON_SIZES {
-                let icon = stage.join(format!("share/icons/hicolor/{size}x{size}/apps/{ICON_NAME}.png"));
+                let icon = stage.join(format!("share/icons/hicolor/{size}x{size}/apps/{APP_ID}.png"));
                 std::fs::create_dir_all(icon.parent().unwrap_or(&stage)).map_err(|e| format!("{}: {e}", icon.display()))?;
                 std::fs::write(&icon, icon_png(root, size)?).map_err(|e| format!("{}: {e}", icon.display()))?;
             }
@@ -299,9 +310,28 @@ mod tests {
     fn the_app_describes_itself_and_its_documents() {
         let plist = info_plist("0.1.0");
         assert!(plist.contains("<string>0.1.0</string>") && plist.contains("<string>wss</string>") && plist.contains("<string>fountain</string>"));
-        assert!(desktop_entry().contains("Exec=wordsmith %f"));
-        assert!(plist.contains(&format!("<key>CFBundleIconFile</key><string>{ICON_NAME}</string>")));
-        assert!(desktop_entry().contains(&format!("Icon={ICON_NAME}\n")));
+        let entry = desktop_entry();
+        assert!(entry.contains("Exec=wordsmith-script %f\n"), "{entry}");
+        // The app's id, in the three places a desktop reads it (decision 0045).
+        assert!(plist.contains("<key>CFBundleIdentifier</key><string>org.jcjfoundation.script</string>"));
+        assert!(plist.contains("<key>CFBundleExecutable</key><string>wordsmith-script</string>"));
+        assert!(plist.contains(&format!("<key>CFBundleIconFile</key><string>{APP_ID}</string>")));
+        assert!(entry.contains("Icon=org.jcjfoundation.script\n") && entry.contains("StartupWMClass=org.jcjfoundation.script\n"));
+        assert!(entry.contains("MimeType=text/x-fountain;application/x-wordsmith-script;\n"));
+    }
+
+    #[test]
+    fn the_bundle_and_the_window_carry_the_same_names() {
+        // The gate has no dependencies, so the id is written here and in the interface crate: a
+        // Linux desktop joins a window to its menu entry by this id, so the two must be the same.
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let app = std::fs::read_to_string(root.join("crates/script-ui/src/app.rs")).unwrap();
+        assert!(app.contains(&format!("pub const APP_ID: &str = \"{APP_ID}\";")), "the window's app id is not {APP_ID}");
+        assert_eq!(crate::APP.shipped, [APP_PROGRAM, CLI_PROGRAM]);
+        for (program, folder) in [(APP_PROGRAM, "apps/script"), (CLI_PROGRAM, "apps/script-cli")] {
+            let manifest = std::fs::read_to_string(root.join(folder).join("Cargo.toml")).unwrap();
+            assert!(manifest.contains(&format!("name = \"{program}\"\n")), "{folder} is not {program}");
+        }
     }
 
     #[test]

@@ -135,7 +135,7 @@ What the rebuild on the core left for later, each with what it waits for.
 - **The web build does not build.** The core's shell turns on its desktop
   pieces (dialogs, the update check) for every target, and the update check's
   TLS library needs a C compiler for wasm32 that the build machines lack.
-  `wordsmith-web` builds and tests for the desktop; `cargo xtask wasm` fails.
+  `wordsmith-script-web` builds and tests for the desktop; `cargo xtask wasm` fails.
   It needs the shell to leave those pieces out on wasm32 (core issue #35).
 - **An update cannot finish in place on Windows**: the shell has no hook for
   the updater's finishing step (`--finish-update`), so 0.2 on Windows offers

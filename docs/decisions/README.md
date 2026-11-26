@@ -30,6 +30,11 @@ the document's `ext`. `wordsmith-geom`, `-doc`, `-fonts`, `-layout`,
 of what the core's `jcj-` crates now provide. The fields Script had added to
 the copied model are extension keys. Decision 0044 has both tables.
 
+Records from before decision 0045 name Script's own crates and programs as
+they were then: `wordsmith-script`, `wordsmith-format` and `wordsmith-ui` (the
+crates), `wordsmith`, `wordsmith-cli` and `wordsmith-web` (the programs).
+Decision 0045 has the table of what each is called now.
+
 ## The records
 
 | # | Decision | Status |
@@ -78,3 +83,4 @@ the copied model are extension keys. Decision 0044 has both tables.
 | [0042](0042-scope-and-asking-first.md) | Scope, and changes that need the maintainers first | accepted |
 | [0043](0043-key-tips-and-commands.md) | Key tips that reach every control and keep their letters; every ribbon and status bar control runs a command | general part moved to the core (core decision 0014) |
 | [0044](0044-rebuilt-on-open-source-core.md) | Rebuilt on open-source-core: what moved to the core, what stays, the `.wss` format 5 and the differences | accepted |
+| [0045](0045-names-of-crates-programs-and-the-app-id.md) | The names of the crates, the programs and the app id: `script-model`, `script-format`, `script-ui`, `wordsmith-script`, `wordsmith-script-cli`, `org.jcjfoundation.script` | accepted |

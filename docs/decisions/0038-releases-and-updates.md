@@ -10,6 +10,11 @@ named below are gone). Still Script's: its identity (`wordsmith_ui::RELEASES`),
 the release files and their names, the release workflow, and the macOS limit
 below.
 
+Amended 2026-11-26 (decision 0045): the macOS bundle's id is
+`org.jcjfoundation.script`, not the `org.wordsmith-script.app` written below,
+and the identity is `wordsmith_script_ui::RELEASES`. The id
+`wordsmith-script` and the release files' names are unchanged.
+
 ## Context
 
 Downloads, releases and updates follow the pattern the ArtCraft apps use, so

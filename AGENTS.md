@@ -2,7 +2,7 @@
 
 Wordsmith Script is a screenwriting app. Its screenplay rules (elements, typing, pagination with
 (MORE) and (CONT'D), Fountain, the `.wss` format, scene numbers, reports, the title page) live in
-`crates/wordsmith-script` and `crates/wordsmith-format`; its interface in `crates/wordsmith-ui`;
+`crates/script-model` and `crates/script-format`; its interface in `crates/script-ui`;
 the programs in `apps/`. Read `CONTRIBUTING.md`, `SECURITY.md` and `docs/decisions/` (decision
 0044 says what the app takes from the core) before you start.
 
@@ -257,11 +257,11 @@ is in one row.
 <!-- BEGIN layer table (cargo xtask app-layers reads it) -->
 | Layer | Crate or program | What it holds | May use |
 | --- | --- | --- | --- |
-| 1 | `crates/wordsmith-script` | The screenplay rules: elements, typing, pagination, revisions, scene numbers, locks, reports, and the screenplay commands | `jcj-doc`, `jcj-engine`, `jcj-features`, `jcj-layout`, `jcj-output`, `jcj-project`, `jcj-proof` |
-| 2 | `crates/wordsmith-format` | The `.wss` format, Fountain, imports and exports, and the file commands | the screenplay rules, `jcj-interchange` |
-| 3 | `apps/wordsmith-cli` | The command line and the MCP server | the two crates above, `jcj-agents` |
-| 4 | `crates/wordsmith-ui` | The interface | the two crates above, `jcj-board`, `jcj-shell`, `jcj-theme` |
-| 5 | `apps/wordsmith`, `apps/wordsmith-web` | The desktop app; the web build | the interface |
+| 1 | `crates/script-model` | The screenplay rules: elements, typing, pagination, revisions, scene numbers, locks, reports, and the screenplay commands | `jcj-doc`, `jcj-engine`, `jcj-features`, `jcj-layout`, `jcj-output`, `jcj-project`, `jcj-proof` |
+| 2 | `crates/script-format` | The `.wss` format, Fountain, imports and exports, and the file commands | the screenplay rules, `jcj-interchange` |
+| 3 | `apps/script-cli` | The command line and the MCP server | the two crates above, `jcj-agents` |
+| 4 | `crates/script-ui` | The interface | the two crates above, `jcj-board`, `jcj-shell`, `jcj-theme` |
+| 5 | `apps/script`, `apps/script-web` | The desktop app; the web build | the interface |
 <!-- END layer table -->
 
 What holds the layers:
@@ -269,12 +269,12 @@ What holds the layers:
 - `cargo xtask app-layers` fails when a crate or program depends on one of its own row or a
   later one, or uses a core crate that its row and the rows before it do not name. So the
   screenplay rules sit under the format and both sit under the interface (decisions 0002 and
-  0044), and nothing below `wordsmith-ui` depends on it or on `jcj-shell`, `jcj-theme` or
+  0044), and nothing below `wordsmith-script-ui` depends on it or on `jcj-shell`, `jcj-theme` or
   `jcj-board`: the command line and the MCP server run every command without a window. The
   command line is its own row below the interface for that reason.
 - `cargo xtask layers` fails when any crate here depends on a `wordcraft-*` or `craft-*` crate or
   on `jcj-upstream`.
-- `cargo xtask lint-roots` fails unless `wordsmith-script` and `wordsmith-format` deny indexing
+- `cargo xtask lint-roots` fails unless `wordsmith-script-model` and `wordsmith-script-format` deny indexing
   and slicing as well as the six panicking lints.
 
 A new core crate in a row, or a new crate or program, is added to the table in the same change.
@@ -282,7 +282,7 @@ A library that is neither ours nor the core's is not the table's business.
 
 ### Rules
 
-- **Golden files are the judge.** `cargo test -p wordsmith-format --test golden` compares the
+- **Golden files are the judge.** `cargo test -p wordsmith-script-format --test golden` compares the
   PDF text of three public-domain photoplays with reviewed files, and `--test migration` checks
   that every file 0.1.2 saved opens and paginates as 0.1.2 paginated it. A change that alters
   them is deliberate, reviewed and recorded (`docs/golden.md`).
@@ -302,7 +302,7 @@ A library that is neither ours nor the core's is not the table's business.
   `wordmark-mask.png` (the mark and the wordmark as white shapes the app tints; no tool here
   makes them yet). `ATTRIBUTION.md` says how each was made.
 - **`.wss` changes** get a new format version and a migration step, and a fixture of the new
-  version in `crates/wordsmith-format/tests/fixtures/` (`v1-short.wss`, `v2-notes.wss`,
+  version in `crates/script-format/tests/fixtures/` (`v1-short.wss`, `v2-notes.wss`,
   `v3-revisions.wss`, `v4-styles.wss`, `v5-ext.wss`; a version with no fixture fails a test).
   Wordsmith Manuscript also reads `.wss` files, with a reader of its own that is tested against
   copies of the same fixtures and refuses a version it was not written for. So a format change

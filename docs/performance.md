@@ -4,8 +4,8 @@ How fast the app is, measured. Each row says how to repeat it. Machine: Apple Si
 
 | What | Result | How to measure |
 | --- | --- | --- |
-| Typing in a 150-page script: one editor frame per keystroke (command, repagination, drawing the visible pages, spelling and suggestions) | median 17.2 to 17.4 ms with everything shown against 16.0 to 17.1 ms with no chrome in the same runs (the finished v0.3 interface, 2026-11-20; the machine ran slower than for the run before); median 15.6 to 15.8 ms with the v0.3 ribbon and the Script panel open, two runs (2026-11-20); median 15.2 to 16.4 ms over 20 keystrokes, two runs (the SPEC-2 features, 2026-11-20, worst 17.1 to 17.5 ms); median 16.0 to 17.6 ms over 20 keystrokes, four runs (v0.1.0; single worst frames of 18 to 180 ms vary run to run and look like machine noise); 16.3 to 16.5 ms with revisions and page locks; 14.7 to 15.6 ms with notes and the title page; 16.3 ms with autocomplete, spelling and find, 14.8 ms after spelling, 14.5 ms with the first paginator | `cargo test -p wordsmith-ui --release typing_in_a_150_page_script -- --ignored --nocapture` |
-| Paginating a 150-page script | 109 ms with empty caches, 14 ms warm (after an edit) | `cargo test -p wordsmith-script --release a_feature_length_script -- --nocapture` |
+| Typing in a 150-page script: one editor frame per keystroke (command, repagination, drawing the visible pages, spelling and suggestions) | median 17.2 to 17.4 ms with everything shown against 16.0 to 17.1 ms with no chrome in the same runs (the finished v0.3 interface, 2026-11-20; the machine ran slower than for the run before); median 15.6 to 15.8 ms with the v0.3 ribbon and the Script panel open, two runs (2026-11-20); median 15.2 to 16.4 ms over 20 keystrokes, two runs (the SPEC-2 features, 2026-11-20, worst 17.1 to 17.5 ms); median 16.0 to 17.6 ms over 20 keystrokes, four runs (v0.1.0; single worst frames of 18 to 180 ms vary run to run and look like machine noise); 16.3 to 16.5 ms with revisions and page locks; 14.7 to 15.6 ms with notes and the title page; 16.3 ms with autocomplete, spelling and find, 14.8 ms after spelling, 14.5 ms with the first paginator | `cargo test -p wordsmith-script-ui --release typing_in_a_150_page_script -- --ignored --nocapture` |
+| Paginating a 150-page script | 109 ms with empty caches, 14 ms warm (after an edit) | `cargo test -p wordsmith-script-model --release a_feature_length_script -- --nocapture` |
 
 ## The regression guard
 
@@ -16,7 +16,7 @@ anything. The timing tests above stay `#[ignore]`d and are run by hand.
 What CI checks instead is the work a keystroke does, counted by
 `wordsmith_script::work` on the test's own thread:
 `a_keystroke_in_a_long_script_does_only_its_own_work` (in
-`crates/wordsmith-ui/src/tests.rs`, part of `cargo xtask ci`) types into a
+`crates/script-ui/src/tests.rs`, part of `cargo xtask ci`) types into a
 150-page script, with the Scenes panel open and with no panels, and fails if
 a keystroke frame
 

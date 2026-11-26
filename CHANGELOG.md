@@ -24,7 +24,7 @@ text are unchanged, and every script 0.1.2 saved opens with the same pages.
   keyboard guide lists them.
 - **Bold, italic, underline and the other text styles** at a caret inside a
   word format the whole word, as word processors do.
-- **The agent server** (`wordsmith-cli mcp`) is the shared one: general tools,
+- **The agent server** (`wordsmith-script-cli mcp`) is the shared one: general tools,
   and every screenplay command as a tool of its own (`script_scene_list`,
   `script_element_action`, ...). 0.1's `scenes`, `characters`, `set_element`,
   `open_script`, `save_script`, `export_script` and `page_count` tools are
@@ -92,9 +92,32 @@ text are unchanged, and every script 0.1.2 saved opens with the same pages.
   Before, Shift with an arrow, Home or End still extended the selection
   when its own entry was turned off.
 
+### The programs' names
+
+The programs are named for Script, so that `wordsmith` stays free for the
+Wordsmith launcher and nobody takes one Wordsmith app's program for another's
+(decision 0045):
+
+- **The desktop program is `wordsmith-script`** (it was `wordsmith`) and
+  **the command line is `wordsmith-script-cli`** (it was `wordsmith-cli`). A
+  script, a shortcut or an agent's configuration that starts either by name
+  must use the new one. The command line's messages and its `--version` line
+  begin with the new name.
+- **The app's id is `org.jcjfoundation.script`**, in the pattern of the other
+  Wordsmith apps: the macOS bundle's id (it was `org.wordsmith-script.app`),
+  and on Linux the window's id, the menu entry
+  (`org.jcjfoundation.script.desktop`) and the icon's name (they were
+  `wordsmith-script`).
+- **An isolated settings folder is named by `WORDSMITH_SCRIPT_PROFILE_DIR`**
+  (it was `WORDSMITH_PROFILE_DIR`).
+- Nothing else moves: the settings folder (`wordsmith-script` on Linux,
+  `Wordsmith Script` on Windows and macOS) with its preferences, recovery
+  files, backups, dictionary and statistics, the release files' names, the
+  `.wss` file type and the name the agent server gives are as they were.
+
 ### The command line and agents
 
-`wordsmith-cli` follows the convention every app on open-source-core shares
+`wordsmith-script-cli` follows the convention every app on open-source-core shares
 ([core decision 0017](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0017-command-lines-and-agent-tools.md)),
 so a script or an agent that knows one app's command line knows the next.
 What changes for a script that calls it, and for an agent:
@@ -103,7 +126,7 @@ What changes for a script that calls it, and for an agent:
   error. Before, it printed the usage on standard output and exited with 0,
   so a caller that had lost its arguments read success. `--help`, `-h` and
   `help` still print the usage on standard output with 0.
-- **`--version` prints `wordsmith-cli <version>` alone on its first line**,
+- **`--version` prints `wordsmith-script-cli <version>` alone on its first line**,
   and "Wordsmith Script, native extension .wss" on the second. Before, both
   were on one line.
 - **Every tool of Script's own is named `script_<command>`**:
@@ -112,7 +135,7 @@ What changes for a script that calls it, and for an agent:
   tools (`execute`, `list_commands`, `type_text` and the rest) keep their
   names, and the commands' ids, which `execute` takes, are unchanged. The
   server's instructions to the agent say so.
-- **`wordsmith-cli mcp <file>` opens a script before the agent connects**,
+- **`wordsmith-script-cli mcp <file>` opens a script before the agent connects**,
   and tells the agent it is open. The file is the person's choice, so it is
   opened before `--read-root` and `--write-root` hold; what the agent opens
   and saves afterwards must still be inside those folders, a save back to
@@ -128,10 +151,15 @@ What changes for a script that calls it, and for an agent:
   unknown option.
 - Exit codes are as before: 0 done, 1 failed, 2 a wrong command line. 3, "a
   check ran and did not pass", is kept by the convention for commands that
-  check or compare; `wordsmith-cli` has none yet and never exits with 3.
+  check or compare; `wordsmith-script-cli` has none yet and never exits with 3.
 
 ### Inside
 
+- The crates and folders follow the other Wordsmith apps (decision 0045, which
+  has the whole table): `crates/script-model` (`wordsmith-script-model`, the
+  screenplay rules; it was `wordsmith-script`), `crates/script-format`
+  (`wordsmith-script-format`), `crates/script-ui` (`wordsmith-script-ui`), and
+  the programs in `apps/script`, `apps/script-cli` and `apps/script-web`.
 - Script uses the core's file dialogs (`jcj_shell::files`, core issue #28)
   and the core's rule for shifted caret keys (`KeyMap::command_for`, core
   issue #29), both new in core 0.1.20, and its own copies are deleted. The
@@ -140,7 +168,7 @@ What changes for a script that calls it, and for an agent:
 - The command line's exit codes, its `--help`, `--version` and `mcp`
   arguments and the names of its tools are the core's code (`jcj_agents::cli`,
   `AgentServer::tool_prefix`), and a test runs the built program and holds
-  it to the convention (`apps/wordsmith-cli/tests/command_line.rs`).
+  it to the convention (`apps/script-cli/tests/command_line.rs`).
 - The checks that every control runs a registered command, and that every
   menu command is on the ribbon or the File page, read what the window draws
   instead of lists kept by hand (decision 0043).
