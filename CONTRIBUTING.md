@@ -7,16 +7,21 @@ stays in the history for good. The rules below follow from that.
 ## Building and checking
 
 ```sh
+cargo xtask install-hooks             # once: pre-commit and pre-push hooks
+cargo xtask ci                        # the gate every change must pass (CI runs the same)
+cargo xtask ci --changed              # only the packages your change affects, and their dependents
 cargo run --release -p wordsmith      # the app
-cargo xtask ci                        # the gate every change must pass
-cargo xtask screenshots <folder>      # the interface pictures, drawn offscreen
+cargo run -p wordsmith-cli -- help    # the command line and MCP server
+cargo xtask screenshots               # redraw the pictures in docs/images, offscreen
 ```
 
-`cargo xtask ci` runs rustfmt, the crate-root lint check, the checks that the
-settings shared with open-source-core match its pinned release and that no
-WordCraft or craft-libs crate is named here, the privacy check, the license and
-asset attribution checks, clippy and every test. Run it before you push or open
-a pull request; CI runs it again (`.github/workflows/ci.yml`, the core's), and
+`cargo xtask help` lists every task. `cargo xtask ci` runs rustfmt, the
+crate-root lint check, the checks that no local core link is left, that every
+`jcj-` dependency names one core release, that the files and rule blocks shared
+with open-source-core match its pinned release and that no WordCraft or
+craft-libs crate is named here, the privacy check, the license and asset
+attribution checks, clippy and every test. Run it before you push or open a
+pull request; CI runs it again (`.github/workflows/ci.yml`, the core's), and
 the release runs it on Linux, macOS and Windows.
 
 ## Where things are
@@ -27,6 +32,8 @@ the release runs it on Linux, macOS and Windows.
 | `crates/wordsmith-format` | The native `.wss` format, Fountain, imports and exports, and the file commands |
 | `crates/wordsmith-ui` | The egui interface |
 | `apps/wordsmith`, `apps/wordsmith-cli`, `apps/wordsmith-web` | The desktop app, the command line and MCP server, and the web build |
+| `assets/brand` | Copies of the Wordsmith brand kit's logos, icons and palette, and Script's own theme file and derived icons (`AGENTS.md`, "Brand") |
+| `assets/fonts` | The bundled fonts, with their licenses |
 | `xtask` | The gate, bundling and screenshots |
 | `docs/guide` | The user guide |
 | `docs/decisions` | Why things are the way they are, one record per choice |
@@ -104,10 +111,15 @@ These add to the rules above; they hold only in this repository.
 
 ### Clean room and names
 
-- Labels, names, layouts, icons, templates and help text are our own. Do not
-  copy them from another screenwriting app or word processor, and do not use
-  another product's feature names or trademarks. The maintainers keep a list of
-  names to avoid: ask if you are not sure about one.
+- Naming another company, program, service or file format is fine where it is
+  a fact a reader needs: which program's files Script opens or writes, where a
+  formatting rule comes from. Cite a source by name and address
+  ([project decision 0003](https://github.com/jamescjfoundation/wordsmith/blob/main/project/decisions/0003-naming-other-companies-programs-and-formats.md)).
+- Labels, names, layouts, icons, templates and help text in the interface are
+  our own. Do not copy them from another screenwriting app or word processor,
+  and do not use another product's name or distinctive feature name as ours.
+  Script is never described as replacing, following or being inspired by
+  another product.
 - Do not inspect, run, decompile or read the files of a proprietary
   screenwriting program to find out how it behaves. Public manuals and public
   formatting guides are fine.
@@ -120,8 +132,9 @@ These add to the rules above; they hold only in this repository.
   dependency: the core wraps them (`UPSTREAM.md`).
 - Refer to an upstream issue as `storytold/wordcraft#123`, never `#123`, which
   links to an unrelated issue here.
-- No ArtCraft or WordCraft name, logo or icon, and no "Craft", in anything users
-  see. The credit lives in `NOTICE` and `ATTRIBUTION.md`.
+- No ArtCraft or WordCraft name, logo or icon, and no "Craft", in the app's
+  interface or its brand. The credit lives in `NOTICE`, `ATTRIBUTION.md` and
+  the README's acknowledgments.
 
 ### Dependencies and assets
 
@@ -134,7 +147,8 @@ These add to the rules above; they hold only in this repository.
 ### What a change brings with it
 
 - Interface changes include before and after pictures from `cargo xtask screenshots`.
-- Update the user guide, `docs/gaps.md` and `CHANGELOG.md` when behavior changes.
+- Update the user guide, `docs/gaps.md` and `CHANGELOG.md` when behavior changes. The wiki and
+  the website follow from those ([Route C](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-c)).
 
 ## Conduct
 

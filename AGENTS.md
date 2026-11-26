@@ -214,15 +214,55 @@ interface back out is not.
 
 ## Wordsmith Script's own rules
 
+### Layers
+
+| Crate or program | What it holds | Depends on |
+| --- | --- | --- |
+| `crates/wordsmith-script` | The screenplay rules: elements, typing, pagination, revisions, scene numbers, locks, reports, and the screenplay commands | Core: `jcj-doc`, `jcj-engine`, `jcj-features`, `jcj-layout`, `jcj-output`, `jcj-project`, `jcj-proof` |
+| `crates/wordsmith-format` | The `.wss` format, Fountain, imports and exports, and the file commands | `wordsmith-script`. Core: `jcj-doc`, `jcj-engine`, `jcj-features`, `jcj-interchange`, `jcj-layout`, `jcj-output`, `jcj-project` |
+| `crates/wordsmith-ui` | The interface | `wordsmith-script`, `wordsmith-format`. Core: `jcj-board`, `jcj-doc`, `jcj-engine`, `jcj-layout`, `jcj-output`, `jcj-project`, `jcj-shell`, `jcj-theme` |
+| `apps/wordsmith` | The desktop app | `wordsmith-ui`. Core: `jcj-proof`, `jcj-shell` |
+| `apps/wordsmith-cli` | The command line and the MCP server | `wordsmith-script`, `wordsmith-format`. Core: `jcj-agents`, `jcj-doc`, `jcj-engine` |
+| `apps/wordsmith-web` | The web build | `wordsmith-ui` |
+
+The table is what each `Cargo.toml` names today. Two things in it are checked:
+
+- `cargo xtask layers` fails when any crate here depends on a `wordcraft-*` or `craft-*` crate or
+  on `jcj-upstream`.
+- `cargo xtask lint-roots` fails unless `wordsmith-script` and `wordsmith-format` deny indexing
+  and slicing as well as the six panicking lints.
+
+The order among Script's own crates is a rule (decisions 0002 and 0044) that no check enforces
+yet: the screenplay rules sit under the format, both sit under the interface, and nothing below
+`wordsmith-ui` depends on it or on `jcj-shell`, `jcj-theme` or `jcj-board`, so the command line
+and the MCP server run every command without a window. A new dependency that breaks the order
+is a mistake even though the gate passes; a new core crate in a row is added to this table in
+the same change.
+
+### Rules
+
 - **Golden files are the judge.** `cargo test -p wordsmith-format --test golden` compares the
   PDF text of three public-domain photoplays with reviewed files, and `--test migration` checks
   that every file 0.1.2 saved opens and paginates as 0.1.2 paginated it. A change that alters
   them is deliberate, reviewed and recorded (`docs/golden.md`).
-- **Security problems you find**: do not describe one in a commit, branch, comment, issue or pull
-  request. Write it to `.private/` (ignored by Git) and tell the user; fix it on a neutrally
-  named branch with a test; disclosure waits for a release.
-- **Names in the interface are our own.** Never use another product's name or feature names
-  (`docs/SPEC.md`, rule 2).
+- **Names.** Code, documents, commits and fixtures may name another company, program, service
+  or file format where that is a fact a reader needs: what Script opens or writes, where a
+  formatting rule comes from. Labels, feature names, templates and help text in the interface
+  are our own, never another product's name or distinctive feature name, and Script is never
+  described as replacing or following another product
+  ([project decision 0003](https://github.com/jamescjfoundation/wordsmith/blob/main/project/decisions/0003-naming-other-companies-programs-and-formats.md)).
+  The clean-room rules still hold: `CONTRIBUTING.md`, "Clean room and names".
+- **Brand.** The logos, icons and palette in `assets/brand/` are copies from the Wordsmith brand
+  kit (`brand/wordsmith-script/production/` in the wordsmith repository). They are never edited
+  here: a change starts in the kit ([Route F](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-f)).
+  Script's own files there are `script/tokens.json`, the interface theme in `jcj-theme`'s
+  format, whose palette colors match the kit's; and the files made from the kit's artwork:
+  `icon-512.png` and `icon-256.png` (scaled from `icon-1024.png`), `mark-mask.png` and
+  `wordmark-mask.png` (the mark and the wordmark as white shapes the app tints; no tool here
+  makes them yet). `ATTRIBUTION.md` says how each was made.
 - **`.wss` changes** get a new format version and a migration step, and a fixture of the new
   version (`docs/format.md`).
+- **A change users will see** updates the guide (`docs/guide/`), `docs/gaps.md` and
+  `CHANGELOG.md` here; the wiki and the website follow from those
+  ([Route C](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-c)).
 - New assets are listed in `ATTRIBUTION.md` (`cargo xtask assets`).

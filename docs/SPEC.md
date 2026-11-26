@@ -13,10 +13,13 @@ Rules for contributors:
 
 1. Build behavior and concepts only. Write every name, UI string, dialog
    layout, icon, default template and help text yourself.
-2. Names in the interface are our own. Never use another screenwriting
-   product's name, trademarks or feature names, even where the word would fit.
-   The maintainers keep the list of names to avoid; if you are not sure about
-   a name, ask in the issue or pull request before you use it.
+2. Names in the interface are our own. A label, feature name, template or
+   help text is never another screenwriting product's name, trademark or
+   distinctive feature name, even where the word would fit. Since 2026-11-26
+   the rule covers the interface only: code, documents and commits may name
+   another company, program or file format to state a fact, such as what the
+   app opens or writes
+   ([project decision 0003](https://github.com/jamescjfoundation/wordsmith/blob/main/project/decisions/0003-naming-other-companies-programs-and-formats.md)).
 3. Never open, run, decompile or read the files of another screenwriting
    program, including its bundled templates and fonts, to find out how it
    behaves.

@@ -122,15 +122,16 @@ numbers, reports, the title page, the story board and the screenplay's
 interface. Decision 0044 records what moved where. `AGENTS.md` says how a
 change that belongs in the core is made.
 
-Before merging anything to `main`, run the gate:
+Before pushing to `main` or opening a pull request, run the gate:
 
 ```sh
 cargo xtask ci
 ```
 
 It runs rustfmt, the crate-root lint check (with no indexing in the
-screenplay crates), a check that no local core link is left, a check that the
-settings shared with the core match the pinned core release (`cargo xtask
+screenplay crates), a check that no local core link is left, a check that every
+`jcj-` dependency names one core release, a check that the files and rule
+blocks shared with the core match the pinned core release (`cargo xtask
 sync --check`), the layers check (no WordCraft or craft-libs crate is named
 here), the privacy check, the license allowlist, the asset attribution check,
 clippy and all tests. CI also runs

@@ -5,8 +5,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Describe what you want to do as a writer, in your own words. Please do not paste text, pictures or
-        feature names from other screenwriting apps; we build our own (see CONTRIBUTING.md, "Clean room and names").
+        Describe what you want to do as a writer, in your own words. Naming another program is fine. Please do
+        not paste its text or pictures: we build our own interface (see CONTRIBUTING.md, "Clean room and names").
   - type: textarea
     id: need
     attributes:

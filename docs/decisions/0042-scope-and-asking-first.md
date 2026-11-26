@@ -1,6 +1,12 @@
 # 0042: Scope, and changes that need the maintainers first
 
-Date: 2026-11-22
+Date: 2026-11-22 · Amended 2026-11-26 (naming)
+
+Amended 2026-11-26: naming another company, program, service or file format to
+state a fact is allowed
+([project decision 0003](https://github.com/jamescjfoundation/wordsmith/blob/main/project/decisions/0003-naming-other-companies-programs-and-formats.md)).
+The clean-room rules this record points at are unchanged: behavior, interface
+names and files still come only from public documents and our own design.
 
 ## Context
 
