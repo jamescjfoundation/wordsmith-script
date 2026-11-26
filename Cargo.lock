@@ -5517,7 +5517,7 @@ version = "0.2.0"
 dependencies = [
  "jcj-agents",
  "jcj-doc",
- "jcj-engine",
+ "serde_json",
  "wordsmith-format",
  "wordsmith-script",
 ]

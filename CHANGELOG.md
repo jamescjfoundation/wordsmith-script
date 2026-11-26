@@ -25,8 +25,8 @@ text are unchanged, and every script 0.1.2 saved opens with the same pages.
 - **Bold, italic, underline and the other text styles** at a caret inside a
   word format the whole word, as word processors do.
 - **The agent server** (`wordsmith-cli mcp`) is the shared one: general tools,
-  and every screenplay command as a tool of its own (`scene_list`,
-  `element_action`, ...). 0.1's `scenes`, `characters`, `set_element`,
+  and every screenplay command as a tool of its own (`script_scene_list`,
+  `script_element_action`, ...). 0.1's `scenes`, `characters`, `set_element`,
   `open_script`, `save_script`, `export_script` and `page_count` tools are
   replaced; the guide maps each.
 - **RTF export** is written by the shared RTF writer (same layout, different
@@ -77,8 +77,50 @@ text are unchanged, and every script 0.1.2 saved opens with the same pages.
   bar between them is dragged to give one more room; before, the second pane
   opened at a fixed width or height.
 
+### The command line and agents
+
+`wordsmith-cli` follows the convention every app on open-source-core shares
+([core decision 0017](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0017-command-lines-and-agent-tools.md)),
+so a script or an agent that knows one app's command line knows the next.
+What changes for a script that calls it, and for an agent:
+
+- **Run with no argument, it exits with 2** and prints the usage on standard
+  error. Before, it printed the usage on standard output and exited with 0,
+  so a caller that had lost its arguments read success. `--help`, `-h` and
+  `help` still print the usage on standard output with 0.
+- **`--version` prints `wordsmith-cli <version>` alone on its first line**,
+  and "Wordsmith Script, native extension .wss" on the second. Before, both
+  were on one line.
+- **Every tool of Script's own is named `script_<command>`**:
+  `script_scene_list`, `script_element_action`, `script_report_characters`.
+  Before, a tool had its command's name alone (`scene_list`). The general
+  tools (`execute`, `list_commands`, `type_text` and the rest) keep their
+  names, and the commands' ids, which `execute` takes, are unchanged. The
+  server's instructions to the agent say so.
+- **`wordsmith-cli mcp <file>` opens a script before the agent connects**,
+  and tells the agent it is open. The file is the person's choice, so it is
+  opened before `--read-root` and `--write-root` hold; what the agent opens
+  and saves afterwards must still be inside those folders, a save back to
+  that file included. Before, `mcp` took no file.
+- `--read-root` or `--write-root` given twice, and a second file, are usage
+  errors. Before, the last of two folders won.
+- `export-pdf` prints its page count on standard output, where results go.
+  Before, it was on standard error.
+- `export-pdf` treats any argument that starts with `-` as an option, so a
+  mistyped one-dash option is a usage error; before, it was read as a file
+  name. `convert` checks the output's format before it reads the input.
+- A word that starts with `-` in the command's place is reported as an
+  unknown option.
+- Exit codes are as before: 0 done, 1 failed, 2 a wrong command line. 3, "a
+  check ran and did not pass", is kept by the convention for commands that
+  check or compare; `wordsmith-cli` has none yet and never exits with 3.
+
 ### Inside
 
+- The command line's exit codes, its `--help`, `--version` and `mcp`
+  arguments and the names of its tools are the core's code (`jcj_agents::cli`,
+  `AgentServer::tool_prefix`), and a test runs the built program and holds
+  it to the convention (`apps/wordsmith-cli/tests/command_line.rs`).
 - The checks that every control runs a registered command, and that every
   menu command is on the ribbon or the File page, read what the window draws
   instead of lists kept by hand (decision 0043).

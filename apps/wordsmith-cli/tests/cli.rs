@@ -77,7 +77,8 @@ fn the_mcp_server_answers_over_standard_input() {
             r#"{{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{{"name":"type_text","arguments":{{"text":"INT. KITCHEN - NIGHT"}}}}}}"#
         )
         .expect("write");
-        writeln!(stdin, r#"{{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{{"name":"scene_list","arguments":{{}}}}}}"#).expect("write");
+        writeln!(stdin, r#"{{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{{"name":"script_scene_list","arguments":{{}}}}}}"#)
+            .expect("write");
     }
     drop(child.stdin.take());
     let out = child.wait_with_output().expect("ends");
@@ -105,7 +106,8 @@ fn an_agent_opens_a_script_and_lists_its_scenes() {
             r#"{{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{{"name":"execute","arguments":{{"command":"file.openPath","params":{{"path":{path}}}}}}}}}"#
         )
         .expect("write");
-        writeln!(stdin, r#"{{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{{"name":"scene_list","arguments":{{}}}}}}"#).expect("write");
+        writeln!(stdin, r#"{{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{{"name":"script_scene_list","arguments":{{}}}}}}"#)
+            .expect("write");
     }
     drop(child.stdin.take());
     let out = child.wait_with_output().expect("ends");

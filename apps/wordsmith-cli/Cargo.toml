@@ -11,7 +11,7 @@ publish.workspace = true
 [dependencies]
 wordsmith-script.workspace = true
 wordsmith-format.workspace = true
-jcj-engine.workspace = true
+serde_json.workspace = true
 jcj-doc.workspace = true
 jcj-agents.workspace = true
 
