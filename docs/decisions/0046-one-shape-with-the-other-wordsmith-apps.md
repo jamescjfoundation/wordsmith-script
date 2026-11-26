@@ -22,6 +22,7 @@ other apps are asked to follow by an issue in their repositories.
 | --- | --- | --- |
 | Test files | `crates/wordsmith-format/tests/fixtures/`, `…/tests/golden/` | `tests/fixtures/`, `tests/golden/` at the root |
 | The list of fixtures | none | `docs/fixtures.md`, and a rule in `AGENTS.md` |
+| The script that made the golden scripts | `tools/golden/convert.py` | `tools/make-golden-scripts.py`, flat in `tools/` like the others' `make-fixtures.py` |
 | Rewriting a reviewed file | `UPDATE_GOLDEN=1` for the golden scripts, `UPDATE_GUIDE=1` for the guide's keys | `UPDATE_GOLDEN=1` for every one; `docs/golden.md` lists the files and logs each change |
 | The guide's page of keys | `docs/guide/keyboard.md` | `docs/guide/keys.md` |
 | The guide's page for the command line and agents | `docs/guide/cli-and-mcp.md` | `docs/guide/command-line-and-agents.md` |
@@ -29,7 +30,9 @@ other apps are asked to follow by an issue in their repositories.
 | The changelog | a heading for each planned version, "(not released yet)" | `## Unreleased` first, in the core's form; a version gets its heading and date when it is released (decision 0047) |
 | What is planned | `ROADMAP.md`, `docs/gaps.md`, `docs/progress.md` and the questions in `docs/history/` | Issues in this repository under the milestone `v1`. `ROADMAP.md` links to it and holds no list |
 | What the app does not do | `docs/gaps.md`: limits, missing features, unfinished work and tooling notes in one list | `docs/gaps.md` holds only standing limits a writer should know; anything to be done is an issue |
-| Finished plans and logs | in `docs/`, some reading as current | `docs/history/`, each with a first line saying it is history |
+| The log of work | `docs/progress.md`, the first build's, ended 2026-11-22 | `docs/progress.md` is kept again, one row per piece of work landed, from the rebuild on; the first build's log is `docs/history/progress-first-build.md` |
+| Finished plans | in `docs/`, some reading as current | A first line saying it is history. `docs/REUSE.md` and `docs/provenance.md` stay where the decision records cite them; the rest is in `docs/history/` |
+| Timings | `docs/performance.md`, the first build's numbers read as current | The same file: how to measure and what guards speed first, the first build's numbers last and marked as its own |
 
 What Script keeps that the others lack:
 

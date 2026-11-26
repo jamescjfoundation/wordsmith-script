@@ -191,6 +191,14 @@ For people who work on the code.
   changed (decision 0046, `docs/golden.md`).
 - The version is 0.9.0, the first that will be published; it was 0.2.0,
   which never was (decision 0047).
+- What is planned is the `v1` milestone of this repository's issues.
+  `ROADMAP.md` links to it and holds no list. `docs/gaps.md` keeps only the
+  limits a writer should know; every other line it had is an issue, or was
+  out of date and is gone. The first build's log is
+  `docs/history/progress-first-build.md` and `docs/progress.md` starts at the
+  rebuild; `docs/REUSE.md`, `docs/provenance.md` and the timings in
+  `docs/performance.md` say in their first lines that they are the first
+  build's.
 - Script uses the core's file dialogs (`jcj_shell::files`, core issue #28)
   and the core's rule for shifted caret keys (`KeyMap::command_for`, core
   issue #29), both new in core 0.1.20, and its own copies are deleted. The

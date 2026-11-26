@@ -1,12 +1,11 @@
 # Wordsmith Script: what to reuse from ArtCraft
 
-As of 2026-11-19
-
-Since 0.2 (2026-11-24) nothing of WordCraft is copied here: the app is built
-on open-source-core, which uses WordCraft and craft-libs through its own
-adapters (decision 0044, `UPSTREAM.md`). The plan below is kept as written for
-the record; before that, from 2026-11-22, the copied crates were a trimmed
-fork (decision 0039).
+> History. The plan the first build of the app was made from, as of 2026-11-19. It was carried
+> out and then replaced: since 2026-11-24 nothing of WordCraft is copied here, and the app is
+> built on open-source-core, which uses WordCraft and craft-libs through its own adapters
+> (decision 0044, `UPSTREAM.md`). It is kept as it was written, because the decision records cite
+> it by section, and it is not maintained. Nothing below is a plan or a rule now: the rules are
+> in `AGENTS.md`, `CONTRIBUTING.md` and the core's decisions.
 
 What this repository takes from these projects is code: crates copied from
 WordCraft and pinned craft-libs crates, each under its own MIT OR Apache-2.0

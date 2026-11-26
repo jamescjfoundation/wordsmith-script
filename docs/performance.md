@@ -1,11 +1,26 @@
 # Performance
 
-How fast the app is, measured. Each row says how to repeat it. Machine: Apple Silicon Mac, release build, 2026-11-19.
+How fast the app is, how to measure it, and what keeps it from getting slower
+unnoticed.
 
-| What | Result | How to measure |
-| --- | --- | --- |
-| Typing in a 150-page script: one editor frame per keystroke (command, repagination, drawing the visible pages, spelling and suggestions) | median 17.2 to 17.4 ms with everything shown against 16.0 to 17.1 ms with no chrome in the same runs (the finished v0.3 interface, 2026-11-20; the machine ran slower than for the run before); median 15.6 to 15.8 ms with the v0.3 ribbon and the Script panel open, two runs (2026-11-20); median 15.2 to 16.4 ms over 20 keystrokes, two runs (the SPEC-2 features, 2026-11-20, worst 17.1 to 17.5 ms); median 16.0 to 17.6 ms over 20 keystrokes, four runs (v0.1.0; single worst frames of 18 to 180 ms vary run to run and look like machine noise); 16.3 to 16.5 ms with revisions and page locks; 14.7 to 15.6 ms with notes and the title page; 16.3 ms with autocomplete, spelling and find, 14.8 ms after spelling, 14.5 ms with the first paginator | `cargo test -p wordsmith-script-ui --release typing_in_a_150_page_script -- --ignored --nocapture` |
-| Paginating a 150-page script | 109 ms with empty caches, 14 ms warm (after an edit) | `cargo test -p wordsmith-script-model --release a_feature_length_script -- --nocapture` |
+## How to measure
+
+Release builds, on the machine in front of you. Both tests print their
+numbers; the first is `#[ignore]`d, so it runs only when asked for.
+
+| What | How to measure |
+| --- | --- |
+| Typing in a 150-page script: one editor frame per keystroke (command, repagination, drawing the visible pages, spelling and suggestions) | `cargo test -p wordsmith-script-ui --release typing_in_a_150_page_script -- --ignored --nocapture` |
+| Paginating a 150-page script | `cargo test -p wordsmith-script-model --release a_feature_length_script -- --nocapture` |
+
+## Measured on the rebuilt app
+
+Nothing yet. The app has not been timed since it was rebuilt on
+open-source-core, and Linux and Windows never were
+([issue 18](https://github.com/jamescjfoundation/wordsmith-script/issues/18)).
+The numbers at the end of this page are the first build's. When a
+measurement is taken, it goes here with its date, the system and the kind of
+machine.
 
 ## The regression guard
 
@@ -35,7 +50,18 @@ not counted; the timing test is still the way to measure it.
 To see the counts while working: `wordsmith_script::work::so_far()` before
 and after, as the guard does.
 
-## Element registry reads (2026-11-22)
+## The first build's numbers
+
+> History. Measured on the first build of the app, before the rebuild on open-source-core, on
+> one Apple Silicon Mac, release builds, 2026-11-19 to 2026-11-22. Kept as written; "v0.1" and
+> "v0.3" name that build's plans. They say what the app could do, not what it does now.
+
+| What | Result |
+| --- | --- |
+| Typing in a 150-page script: one editor frame per keystroke (command, repagination, drawing the visible pages, spelling and suggestions) | median 17.2 to 17.4 ms with everything shown against 16.0 to 17.1 ms with no chrome in the same runs (the finished v0.3 interface, 2026-11-20; the machine ran slower than for the run before); median 15.6 to 15.8 ms with the v0.3 ribbon and the Script panel open, two runs (2026-11-20); median 15.2 to 16.4 ms over 20 keystrokes, two runs (the SPEC-2 features, 2026-11-20, worst 17.1 to 17.5 ms); median 16.0 to 17.6 ms over 20 keystrokes, four runs (v0.1.0; single worst frames of 18 to 180 ms vary run to run and look like machine noise); 16.3 to 16.5 ms with revisions and page locks; 14.7 to 15.6 ms with notes and the title page; 16.3 ms with autocomplete, spelling and find, 14.8 ms after spelling, 14.5 ms with the first paginator |
+| Paginating a 150-page script | 109 ms with empty caches, 14 ms warm (after an edit) |
+
+### Element registry reads (2026-11-22)
 
 The counters showed a keystroke at 150 pages read the element registry from
 the script's JSON settings 23 to 28 times (and an idle frame 9 or 10 times),
@@ -63,7 +89,7 @@ Notes:
   element registry is now cached; see above.)
 - Linux and Windows have not been measured.
 
-## After v0.1
+### After v0.1
 
 Typing at 150 pages is responsive but sits at about one 60 Hz frame. The
 element registry is now read once per change rather than about 24 times a

@@ -1,8 +1,10 @@
-# Progress
+# Progress of the first build
 
-The log of the first build: one line per branch merged into `main`, newest
-last. It ends on 2026-11-22 and has not been kept since: changes now land on
-`main` directly, and what changed is in `CHANGELOG.md` and the commit history.
+> History. The log of the first build of the app, 2026-11-19 to 2026-11-22: one line per branch
+> merged, newest last. It is kept as it was written and is not maintained. The branches, tags
+> and releases it names were never published and are not in this repository (decision 0047),
+> and it names the crates and programs as they were then (decision 0045). The log since the
+> rebuild on open-source-core is `docs/progress.md`.
 
 | Date | Branch | What changed |
 | --- | --- | --- |

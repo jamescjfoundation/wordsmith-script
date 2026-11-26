@@ -329,7 +329,19 @@ A library that is neither ours nor the core's is not the table's business.
   file (`cargo xtask docs` fails on a marker with no issue). A marker, its row and its issue
   change together; when Script moves onto the core's code, the marker and the copy go and the
   row says "used".
-- **A change users will see** updates the guide (`docs/guide/`), `docs/gaps.md` and
-  `CHANGELOG.md` here; the wiki and the website follow from those
+- **A change users will see** updates the guide (`docs/guide/`) and `CHANGELOG.md` here, under
+  `## Unreleased`; the wiki and the website follow from those
   ([Route C](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-c)).
+  Every piece of work that lands on `main` adds a row to `docs/progress.md`.
+- **What is planned is the issues**, under the milestone
+  [`v1`](https://github.com/jamescjfoundation/wordsmith-script/milestone/1) (decision 0046).
+  No file here holds a list of work to do: `ROADMAP.md` links to the milestone. Something
+  missing or broken is an issue, in the milestone when 1.0.0 needs it; what waits for the core
+  is a core issue with its row in `docs/core-candidates.md`. `docs/gaps.md` holds only the
+  standing limits a writer should know, each with its reason, and changes by a decision. Close
+  the issue in the change that does the work.
+- **Versions** (decision 0047). The first public release is 0.9.0, then 1.0.0; nothing
+  earlier was published. A release turns `## Unreleased` into `## <version> (<date>)` and is
+  tagged `v<version>`. `docs/history/` and the changelog's "Before the first release" are kept
+  as written: do not bring them up to date.
 - New assets are listed in `ATTRIBUTION.md` (`cargo xtask assets`).

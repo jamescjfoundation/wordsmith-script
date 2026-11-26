@@ -1,7 +1,12 @@
 # Provenance
 
-Every source consulted beyond `docs/SPEC.md` and `docs/REUSE.md`: where, when
-and what we took from it. Add a row whenever you open something new.
+> History. The sources the first build of the app consulted beyond `docs/SPEC.md` and
+> `docs/REUSE.md`, on 2026-11-19: where, when and what was taken. It is a closed record and no
+> row is added. A new source is recorded where it is used: a fixture in `docs/fixtures.md`, an
+> asset in `ATTRIBUTION.md`, a formatting rule in the specification or the decision that takes
+> it. The rows about copied WordCraft and craft-libs code describe code that is no longer here
+> (`UPSTREAM.md`); the rows for the fonts and the golden scripts still say where those files
+> came from.
 
 | Date | Source | What we took |
 | --- | --- | --- |

@@ -1,20 +1,15 @@
 # Roadmap
 
-These are deliberately out of scope (decision 0042):
+What is planned for Wordsmith Script is the
+[`v1` milestone](https://github.com/jamescjfoundation/wordsmith-script/milestone/1)
+of this repository's issues. This file holds no list, so it cannot fall
+behind.
 
-- Proprietary file formats. Interchange is Fountain,
-  our native format, PDF, RTF and plain text. A proprietary format needs a
-  legitimately published description first.
-- Real-time collaboration.
-- Cloud sync.
-- AI features. Hooks may exist behind a flag that is off by default.
-- Production breakdown tagging and scheduling export.
+- The first public release is 0.9.0, a preview; 1.0.0 follows when the
+  milestone is done (decision 0047).
+- Ideas for after that are the
+  [open issues with no milestone](https://github.com/jamescjfoundation/wordsmith-script/issues?q=is%3Aissue+is%3Aopen+no%3Amilestone).
+- What the app will not do, and why, is in `docs/gaps.md`.
+- What it waits for in open-source-core is in `docs/core-candidates.md`.
 
-Later candidates, unordered: dark colors in the PDF, pictures in the script and
-in story board beats, alternate lines, threaded note replies, read-aloud, and
-the rest of `docs/gaps.md`.
-
-Already built from the earlier list of candidates (see `CHANGELOG.md`):
-TV episode, stage-play and other templates, scene colors and the structure
-strip, writing statistics, goals and the sprint timer, dual dialogue, the
-representation report, and story board and index card PDFs.
+To propose something, open an issue.

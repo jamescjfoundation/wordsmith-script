@@ -20,6 +20,8 @@ names the file here that holds the code. A marker is written
 `core-candidate: open-source-core#N`, and `cargo xtask docs` fails on one that
 names no issue. A new marker, or a new need, gets its issue and its row in the
 same change. Last checked against the issues and core v0.1.20 on 2026-11-26.
+Which of these 1.0.0 needs is decided in Script's own plan:
+[issue 9](https://github.com/jamescjfoundation/wordsmith-script/issues/9).
 
 ## Markers in the code
 

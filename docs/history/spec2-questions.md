@@ -1,5 +1,9 @@
 # Questions for the SPEC-2 author
 
+> History. The ten questions as they were logged on 2026-11-19, none answered. They are kept
+> open in [issue 10](https://github.com/jamescjfoundation/wordsmith-script/issues/10), with the
+> same numbers, and an answer goes there and into a decision record, not into this file.
+
 SPEC-2 rule 4: anything missing or unclear goes to the spec author in
 writing and is logged here. Nothing below is settled by looking at another
 product. Until an answer comes, v0.1's behaviour stays (decision 0030).

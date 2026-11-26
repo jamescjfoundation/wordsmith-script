@@ -138,17 +138,18 @@ clippy and all tests. CI also runs
 [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) (`deny.toml`, the
 core's) for licenses, security advisories and crate sources. `cargo xtask
 wasm` is the web build; it fails until the core's shell builds for the web
-(`docs/gaps.md`).
+(`docs/core-candidates.md`).
 
-- `docs/SPEC.md`: the behavior spec v0.1 was built from.
-- `docs/SPEC-2.md`: the clean-room functional spec for work after v0.1 (decision 0030).
-- `docs/REUSE.md`: what we reuse, and the license and branding rules.
-- `docs/decisions/`: the choices the spec left open.
-- `docs/gaps.md`: what the app does not do yet.
+- What is planned: the [`v1` milestone](https://github.com/jamescjfoundation/wordsmith-script/milestone/1) of the issues. `ROADMAP.md` links there and holds no list.
+- `CHANGELOG.md`: what the next release will bring, and what each release changed. `docs/progress.md`: one line per piece of work landed.
+- `docs/gaps.md`: what the app will not do, and why.
+- `docs/SPEC.md`: the behavior spec the first build was made from.
+- `docs/SPEC-2.md`: the clean-room functional spec for work after it (decision 0030).
+- `docs/decisions/`: the choices the specs left open, and the ones made since.
+- `docs/format.md`: the `.wss` format. `docs/fixtures.md` and `docs/golden.md`: the files the tests read and the reviewed results they compare with.
 - `docs/core-candidates.md`: what the app waits for in open-source-core, and its code that is general enough to move there.
-- `docs/history/`: the plans, spec audits and spec questions from the first build, kept for the record.
-- `docs/progress.md`: the log of the first build, one line per merged branch. `CHANGELOG.md`: what changed.
-- `ROADMAP.md`: what comes next.
+- `docs/performance.md`: how to measure the app's speed, and what keeps it.
+- `docs/history/`: the first build's plans, log, spec audits and spec questions, kept for the record. `docs/REUSE.md` and `docs/provenance.md` are history too, and say so.
 
 ## Acknowledgments
 

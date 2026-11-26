@@ -38,7 +38,8 @@ the release runs it on Linux, macOS and Windows.
 | `xtask` | The gate, bundling and screenshots |
 | `docs/guide` | The user guide |
 | `docs/decisions` | Why things are the way they are, one record per choice |
-| `docs/history` | The first build's plans and audits, kept for the record and not maintained |
+| `docs/history` | The first build's plans, log and audits, kept for the record and not maintained |
+| `docs/gaps.md`, `ROADMAP.md` | What the app will not do; where the plan is (the `v1` milestone of the issues) |
 
 The document model, layout, PDF, the command engine, the shared document
 features, the window around the script and the agent server come from
@@ -152,8 +153,11 @@ These add to the rules above; they hold only in this repository.
 ### What a change brings with it
 
 - Interface changes include before and after pictures from `cargo xtask screenshots`.
-- Update the user guide, `docs/gaps.md` and `CHANGELOG.md` when behavior changes. The wiki and
-  the website follow from those ([Route C](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-c)).
+- Update the user guide and `CHANGELOG.md` (under `## Unreleased`) when behavior changes. The
+  wiki and the website follow from those ([Route C](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-c)).
+- Work that is planned, missing or broken is an issue, not a line in a file: the plan is the
+  [`v1` milestone](https://github.com/jamescjfoundation/wordsmith-script/milestone/1). Close the
+  issue in the change that does the work, and add a row to `docs/progress.md`.
 
 ## Conduct
 
