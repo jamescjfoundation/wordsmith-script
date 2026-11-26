@@ -6,7 +6,7 @@ printed in the United States before 1931 and is in the public domain there; sour
 are in docs/provenance.md. Run it once with the three Gutenberg plain-text files; the results
 are reviewed by eye and committed under tests/golden/.
 
-    python3 tools/golden/convert.py WRITING_THE_PHOTOPLAY.txt HOW_TO_WRITE_PHOTOPLAYS.txt THE_PHOTODRAMA.txt OUT_DIR
+    python3 tools/make-golden-scripts.py WRITING_THE_PHOTOPLAY.txt HOW_TO_WRITE_PHOTOPLAYS.txt THE_PHOTODRAMA.txt OUT_DIR
 
 How 1910s scenario form maps to screenplay elements (the texts are kept word for word, only
 re-wrapped):

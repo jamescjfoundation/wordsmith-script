@@ -36,7 +36,7 @@ data, not shipped with the app.
 
 ## How they were transcribed
 
-`tools/golden/convert.py` converts the Project Gutenberg plain text of each
+`tools/make-golden-scripts.py` converts the Project Gutenberg plain text of each
 book (sources and checksums in `docs/provenance.md`) into Fountain. The texts
 are kept word for word; the 1910s scenario form maps to screenplay elements as
 the script's header explains: numbered scene lines become scene headings
@@ -103,4 +103,4 @@ and keep rules more than (MORE)/(CONT'D); the unit tests in
 | --- | --- | --- |
 | 2026-11-19 | the three `.golden.txt` | First version, read by eye page by page ("How they were transcribed") |
 | 2026-11-24 | none | The rebuild on open-source-core left every golden file and every page plan as it was ("The rebuild on open-source-core") |
-| 2026-11-26 | none; the files moved | The golden scripts and their results moved from `crates/wordsmith-format/tests/golden/` to `tests/golden/`, the fixtures to `tests/fixtures/`, and the guide's `keyboard.md` became `keys.md` (decisions 0045 and 0046). No byte of any of them changed. The keys page is rewritten with `UPDATE_GOLDEN=1` now; it was `UPDATE_GUIDE=1` |
+| 2026-11-26 | none; the files moved | The golden scripts and their results moved from `crates/wordsmith-format/tests/golden/` to `tests/golden/`, the fixtures to `tests/fixtures/`, the converter from `tools/golden/convert.py` to `tools/make-golden-scripts.py`, and the guide's `keyboard.md` became `keys.md` (decisions 0045 and 0046). No byte of any of them changed. The keys page is rewritten with `UPDATE_GOLDEN=1` now; it was `UPDATE_GUIDE=1` |

@@ -48,7 +48,7 @@ They are never written again: no build can make them now.
 ## The golden scripts (`tests/golden/*.fountain`)
 
 Three public-domain photoplays, transcribed into Fountain by
-`tools/golden/convert.py`. `docs/golden.md` says why they are public domain
+`tools/make-golden-scripts.py`. `docs/golden.md` says why they are public domain
 and how they were transcribed; `docs/provenance.md` has the sources' addresses
 and checksums.
 
