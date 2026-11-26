@@ -56,7 +56,6 @@ log = "0.4"
 chrono = { version = "0.4.45", default-features = false, features = ["std"] }
 proptest = "1"
 image = { version = "0.25", default-features = false }
-raw-window-handle = "0.6.2"
 # The window, at the egui version the core pins (the patch block points it at the same fork).
 egui = { version = "0.37", default-features = false }
 eframe = { version = "0.37", default-features = false, features = ["accesskit", "glow", "wayland", "x11"] }

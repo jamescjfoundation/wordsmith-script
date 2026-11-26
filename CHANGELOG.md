@@ -76,6 +76,18 @@ text are unchanged, and every script 0.1.2 saved opens with the same pages.
   the strip. A split view's two panes start at half the space each, and the
   bar between them is dragged to give one more room; before, the second pane
   opened at a fixed width or height.
+- The file dialogs of Open, Import, Save As, the exports and Compare are
+  shown by the shared shell. What you will notice:
+  - The window is not stopped while a dialog is up: it keeps drawing, and
+    where the system leaves it usable (the Open dialog on macOS does) you
+    can go on working in it. Before, the window stood still until the
+    dialog closed.
+  - One dialog shows at a time; another asked for meanwhile waits its turn.
+  - A dialog's answer goes to the script that asked for it. If another tab
+    is in front by then, the app goes back to that script first; if the
+    script was closed, nothing is done and the status bar says so.
+  - When the system cannot show a dialog, the status bar says why. Before,
+    nothing was said.
 - A shifted caret key that you turned off on the Keys page does nothing.
   Before, Shift with an arrow, Home or End still extended the selection
   when its own entry was turned off.
@@ -120,8 +132,11 @@ What changes for a script that calls it, and for an agent:
 
 ### Inside
 
-- Script uses the core's rule for shifted caret keys (`KeyMap::command_for`,
-  core issue #29), new in core 0.1.20, and its own copy is deleted.
+- Script uses the core's file dialogs (`jcj_shell::files`, core issue #28)
+  and the core's rule for shifted caret keys (`KeyMap::command_for`, core
+  issue #29), both new in core 0.1.20, and its own copies are deleted. The
+  desktop app no longer depends on `rfd` or `raw-window-handle` itself, so
+  the build holds one version of the dialog library instead of two.
 - The command line's exit codes, its `--help`, `--version` and `mcp`
   arguments and the names of its tools are the core's code (`jcj_agents::cli`,
   `AgentServer::tool_prefix`), and a test runs the built program and holds

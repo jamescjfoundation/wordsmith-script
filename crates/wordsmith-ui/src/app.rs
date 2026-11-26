@@ -12,7 +12,7 @@ use jcj_shell::{About, App, Cmd, Page, PageSpec, Shell, ShellOptions, TabSpec};
 use serde_json::{Value, json};
 
 use crate::commands::{custom_element, macro_slot};
-use crate::editor::{Editor, ToShell, UnsavedAnswer, has_native_file, script_name};
+use crate::editor::{Editor, FILE_CHOSEN, FILE_CLOSED, ToShell, UnsavedAnswer, has_native_file, script_name};
 use crate::ribbon::widgets::Rb;
 
 /// The app's name.
@@ -99,8 +99,9 @@ impl Editor {
     }
 
     /// Pass on what the editor asked of the shell: pages, the palette, the theme, panels,
-    /// recent scripts, "save changes first?" and the status bar's message.
+    /// recent scripts, file dialogs, "save changes first?" and the status bar's message.
     pub fn flush(&mut self, shell: &mut Shell) {
+        self.show_file_asks(shell);
         let panels = crate::sidebar::panels();
         for ask in std::mem::take(&mut self.to_shell) {
             match ask {
@@ -138,7 +139,7 @@ impl Editor {
         }
     }
 
-    /// Run a command the shell's controls queued: the shell's answers ("save changes first?"),
+    /// Run a command the shell queued: its answers ("save changes first?", a file dialog's),
     /// macros' and custom elements' own commands, Print with the File page's choices, and every
     /// other command by id.
     pub fn run_cmd(&mut self, cmd: &Cmd) {
@@ -149,6 +150,8 @@ impl Editor {
         if id == ids::UNSAVED_ANSWER {
             let answer = cmd.params.get("answer").and_then(Value::as_str).and_then(UnsavedAnswer::from_key).unwrap_or(UnsavedAnswer::Cancel);
             self.answer_unsaved(answer);
+        } else if id == FILE_CHOSEN || id == FILE_CLOSED {
+            self.file_answered(&cmd.params, id == FILE_CHOSEN);
         } else if let Some(slot) = macro_slot(id) {
             self.run("macro.run", json!({"slot": slot}));
         } else if let Some(element) = custom_element(id) {

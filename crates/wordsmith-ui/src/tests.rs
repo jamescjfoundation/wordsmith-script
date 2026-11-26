@@ -4,6 +4,7 @@
 use std::ops::{Deref, DerefMut};
 
 use egui::{Event, Key, Modifiers, Pos2, RawInput, Rect, vec2};
+use jcj_shell::files::{FileAnswer, FileDialogs, FileKind};
 use jcj_shell::workspace::{Layout, Side};
 use jcj_shell::{Page, Shell};
 use serde_json::{Value, json};
@@ -336,13 +337,142 @@ fn export_pdf_asks_for_a_path_and_writes_the_file() {
     let target = dir.join("chosen.pdf");
     let answer = target.clone();
     let mut ed = editor();
-    ed.run("file.exportPdfAs", json!({}));
-    let asks = std::mem::take(&mut ed.file_asks);
+    // The editor's own `run`: the window's would hand the dialog on to the shell.
+    ed.ed.run("file.exportPdfAs", json!({}));
+    let mut asks = std::mem::take(&mut ed.file_asks);
     assert_eq!(asks.len(), 1, "a file dialog was asked for");
-    assert!(asks[0].save && asks[0].filters[0].1 == ["pdf"]);
-    ed.answer_file(asks[0].then, Some(answer));
+    let ask = asks.remove(0);
+    assert!(ask.dialog.kind == FileKind::Save && ask.dialog.filters[0].1 == ["pdf"]);
+    ed.answer_file(ask, Some(answer));
     assert!(std::fs::read(&target).unwrap().starts_with(b"%PDF-"), "{}", ed.message);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The window's part of the shell's file dialogs, with `answer` standing in for the system's.
+fn dialogs(answer: impl FnMut(&jcj_shell::files::FileAsk) -> FileAnswer + 'static) -> FileDialogs {
+    let mut files = FileDialogs::new();
+    files.answer_with(Some(Box::new(answer)));
+    files
+}
+
+/// What a window does between two frames: show the dialogs the editor asked the shell for, then
+/// run the commands their answers queued.
+fn answer_dialogs(ctx: &egui::Context, w: &mut Window, files: &mut FileDialogs) {
+    w.ed.flush(&mut w.shell);
+    files.tick(&mut w.shell, ctx);
+    files.tick(&mut w.shell, ctx);
+    w.shell.run_queue(&mut w.ed);
+    assert!(!files.is_open() && files.waiting() == 0 && w.shell.file_asks_waiting() == 0, "every dialog was answered");
+}
+
+#[test]
+fn save_as_asks_the_shell_for_a_dialog_and_saves_where_it_answers() {
+    let dir = temp_dir("save-as");
+    let target = dir.join("mine.wss");
+    let ctx = ctx();
+    let mut w = editor();
+    w.run("text.insert", json!({"text": "int. hall"}));
+    w.run("file.saveAs", json!({}));
+    assert_eq!(w.shell.file_asks_waiting(), 1, "the shell holds the dialog for the window to show");
+    assert!(w.file_asks.is_empty());
+    let answer = target.clone();
+    let mut files = dialogs(move |ask| {
+        assert_eq!((ask.kind, ask.title.as_str(), ask.file_name.as_deref()), (FileKind::Save, "Save Script", Some("Untitled.wss")));
+        assert_eq!(ask.filters, [("Wordsmith Script".to_owned(), vec!["wss".to_owned()])]);
+        FileAnswer::Chosen(vec![answer.clone()])
+    });
+    answer_dialogs(&ctx, &mut w, &mut files);
+    assert!(std::fs::read_to_string(&target).unwrap().starts_with("Wordsmith Script "), "{}", w.message);
+    assert_eq!(w.session.path.as_deref(), Some(target.as_path()));
+    assert!(!w.session.dirty);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_dialogs_answer_goes_to_the_tab_that_asked() {
+    let dir = temp_dir("tab-answer");
+    let ctx = ctx();
+    let mut w = editor();
+    w.run("text.insert", json!({"text": "int. first"}));
+    w.run("file.saveAs", json!({}));
+    // The dialog does not stop the window: another script is started while it is up.
+    w.new_tab();
+    w.run("text.insert", json!({"text": "int. second"}));
+    assert_eq!(w.active_tab, 1);
+    let answer = dir.join("first.wss");
+    let mut files = dialogs(move |_| FileAnswer::Chosen(vec![answer.clone()]));
+    answer_dialogs(&ctx, &mut w, &mut files);
+    assert_eq!(w.active_tab, 0, "the answer shows the script it is for");
+    assert!(std::fs::read_to_string(dir.join("first.wss")).unwrap().contains("INT. FIRST"));
+    assert_eq!(w.tab_names(), [("first".to_string(), false), ("Untitled".to_string(), true)]);
+
+    // A dialog whose script was closed meanwhile does nothing, and says so.
+    w.switch_tab(1);
+    w.run("file.saveAs", json!({}));
+    assert!(w.close_tab(true));
+    let answer = dir.join("second.wss");
+    let mut files = dialogs(move |_| FileAnswer::Chosen(vec![answer.clone()]));
+    answer_dialogs(&ctx, &mut w, &mut files);
+    assert!(!dir.join("second.wss").exists());
+    assert!(w.shell.message.contains("is closed"), "{}", w.shell.message);
+    assert_eq!(w.session.path.as_deref(), Some(dir.join("first.wss").as_path()), "the open script is left alone");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_step_that_waits_on_a_save_dialog_goes_with_the_dialog() {
+    let dir = temp_dir("waiting-step");
+    let ctx = ctx();
+    // Closing the window with unsaved changes, answered "Save", in a script with no file yet:
+    // the close waits on the Save dialog.
+    let closing = |w: &mut Window| {
+        w.run("text.insert", json!({"text": "int. hall"}));
+        assert!(!w.may_close());
+        w.answer_unsaved(crate::editor::UnsavedAnswer::Save);
+        w.ed.flush(&mut w.shell);
+        assert_eq!(w.shell.file_asks_waiting(), 1);
+    };
+    let save_to = |name: &str| {
+        let path = dir.join(name);
+        dialogs(move |_| FileAnswer::Chosen(vec![path.clone()]))
+    };
+
+    // A place chosen: the script is saved and the window may close.
+    let mut w = editor();
+    closing(&mut w);
+    answer_dialogs(&ctx, &mut w, &mut save_to("saved.wss"));
+    assert!(dir.join("saved.wss").is_file() && w.close_confirmed);
+
+    // The dialog closed without a choice, or not shown at all: the close is given up, and a
+    // later Save As saves without closing the window.
+    for (name, lost) in [("closed.wss", FileAnswer::Cancelled), ("unshown.wss", FileAnswer::Unavailable("no dialog here".into()))] {
+        let mut w = editor();
+        closing(&mut w);
+        let unshown = lost != FileAnswer::Cancelled;
+        answer_dialogs(&ctx, &mut w, &mut dialogs(move |_| lost.clone()));
+        assert!(!w.close_confirmed && w.session.dirty, "{name}");
+        assert_eq!(w.shell.message.contains("could not be shown"), unshown, "{name}: {}", w.shell.message);
+        w.run("file.saveAs", json!({}));
+        answer_dialogs(&ctx, &mut w, &mut save_to(name));
+        assert!(dir.join(name).is_file() && !w.session.dirty, "{name}");
+        assert!(!w.close_confirmed, "{name}: the window stays open");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_file_dialog_carries_the_options_it_was_asked_with() {
+    let mut w = editor();
+    w.run("text.insert", json!({"text": "int. hall"}));
+    // A report's dialog keeps the report's options, even when another dialog is asked for
+    // before it is answered.
+    w.dialog_params = Some(json!({"kind": "scenes"}));
+    w.ed.run("report.export", json!({"kind": "scenes"}));
+    w.ed.run("file.saveAs", json!({}));
+    assert!(w.dialog_params.is_none());
+    let asks: Vec<(&str, Value)> = w.file_asks.iter().map(|a| (a.then, Value::Object(a.params.clone()))).collect();
+    assert_eq!(asks, [("report.export", json!({"kind": "scenes"})), ("file.saveAsPath", json!({}))]);
+    assert!(w.file_asks.iter().all(|a| a.tab == w.tab_id()));
 }
 
 #[test]

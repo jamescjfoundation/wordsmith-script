@@ -23,6 +23,16 @@ same pages; once saved by 0.2 they open only in 0.2 or later.
 New, Open, Import and closing the window ask before unsaved changes are
 lost.
 
+Open, Save As and the exports ask where with your system's own file dialog.
+The window is not stopped while a dialog is up: it keeps drawing, and where
+your system leaves it usable (the Open dialog on macOS does) you can go on
+working. One dialog shows at a time; a second one asked for meanwhile waits
+its turn. A dialog belongs to the script that asked for it. If you have moved
+to another tab by the time you choose, the app goes back to that script and
+opens, saves or exports there; if you have closed that script, nothing is
+done and the status bar says so. When your system cannot show a dialog, the
+status bar says why.
+
 **Auto-save** saves a script that has a file every 15 minutes, once you stop
 typing for 10 seconds. Every save also keeps a timestamped **backup** in the
 Backups folder of the app's settings folder; the newest 1,000 of each script

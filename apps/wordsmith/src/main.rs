@@ -18,8 +18,6 @@ use serde_json::json;
 use wordsmith_ui::Editor;
 use wordsmith_ui::prefs::{Prefs, PrefsFile};
 
-mod files;
-
 /// Script's settings folder: `WORDSMITH_PROFILE_DIR` when it is set (an isolated profile), else
 /// the platform's folder for the app (`~/.config/wordsmith-script`, `%APPDATA%\Wordsmith Script`,
 /// `~/Library/Application Support/Wordsmith Script`).
@@ -37,6 +35,8 @@ fn settings_dir_from(profile: Option<std::ffi::OsString>) -> Option<PathBuf> {
 
 struct Window {
     shell: Shell,
+    /// The window's part of the shell's file dialogs.
+    files: jcj_shell::files::FileDialogs,
     editor: Editor,
     /// Preferences kept between runs, when there is a settings folder: the file, and the
     /// preferences as last read or shown.
@@ -93,7 +93,16 @@ impl Window {
             // The File page's New page: recent scripts, templates, first steps.
             shell.open_file_page(Page::New);
         }
-        Window { shell, editor, prefs, dictionary, settings, stats_saved: Instant::now(), restart_asked: false }
+        Window {
+            shell,
+            files: jcj_shell::files::FileDialogs::new(),
+            editor,
+            prefs,
+            dictionary,
+            settings,
+            stats_saved: Instant::now(),
+            restart_asked: false,
+        }
     }
 
     /// Write the statistics when they changed (at most once a minute, unless `force`).
@@ -149,7 +158,9 @@ impl eframe::App for Window {
 
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         self.shell.ui(ui, &mut self.editor);
-        files::answer(&mut self.editor, frame);
+        // Show the next file dialog the editor asked the shell for, over this window, once the
+        // frame is drawn. An answer runs its command in a later frame.
+        self.files.show(&mut self.shell, ui.ctx(), Some(&*frame));
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {

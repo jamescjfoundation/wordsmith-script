@@ -141,9 +141,11 @@ What the rebuild on the core left for later, each with what it waits for.
   the updater's finishing step (`--finish-update`), so 0.2 on Windows offers
   the download instead (core issue #36). On macOS updates are offered as
   downloads, as in 0.1.
-- **File dialogs** come from the `rfd` crate in `apps/wordsmith` directly: the
-  core has no file-dialog interface for apps yet (marked `core-candidate`,
-  core issue #28).
+- **File dialogs** are the shell's since core 0.1.20. A dialog does not stop
+  the window, so its answer goes to the tab that asked for it. The tests
+  answer in the system's place; how a real dialog behaves on each system is
+  not checked here. When a dialog cannot be shown the status bar says so and
+  nothing else happens: the shell does not tell the app (core issue #43).
 - **Icons**: the shell draws only its general icons on the ribbon, the rails
   and the File page; Script's own icons are used in its panels and status bar
   (core issue #38).

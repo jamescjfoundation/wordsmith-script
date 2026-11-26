@@ -142,7 +142,10 @@ What users see differently:
   shape and written back in it (going back to 0.1 would read default
   preferences). The update check reads the same GitHub releases with the same
   file names; its work folder is named after the app's id.
-- File dialogs are the system's own, modal.
+- File dialogs are the system's own. Until core 0.1.20 Script showed them
+  itself and the window waited for each; since then the shell shows them
+  (`jcj_shell::files`) and the window goes on, so each dialog's answer
+  carries the tab, the options and the waiting step it was asked with.
 
 ## Consequences
 

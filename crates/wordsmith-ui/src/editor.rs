@@ -13,6 +13,7 @@ use egui::{Color32, Event, Pos2, Rect, Sense, Stroke, TextureHandle, TextureOpti
 use jcj_doc::StoryRef;
 use jcj_engine::Session;
 use jcj_shell::Page;
+use jcj_shell::files::FileAsk as ShellFileAsk;
 use jcj_shell::theme::Mode;
 use jcj_shell::workspace::Side;
 use serde_json::{Value, json};
@@ -83,34 +84,50 @@ impl Default for Backups {
     }
 }
 
-/// A file dialog the editor needs: the window shows it (a native dialog on the desktop) and
-/// hands the answer back with [`Editor::answer_file`], which runs the command `then` with the
-/// chosen path.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// The command the shell runs when a file was chosen in a dialog the editor asked for:
+/// `{"ask": number, "path": the choice}`. It is the shell's answer, not a command of the app's.
+pub(crate) const FILE_CHOSEN: &str = "file.dialogChosen";
+/// The command the shell runs when such a dialog was closed without a choice: `{"ask": number}`.
+pub(crate) const FILE_CLOSED: &str = "file.dialogClosed";
+/// Most file dialogs whose answers the editor waits for; the oldest beyond that is forgotten.
+const MAX_FILES_OUT: usize = 64;
+
+/// A file dialog the editor needs. The shell shows it ([`Editor::flush`] hands it over) and its
+/// answer comes back as a command; [`Editor::answer_file`] then runs the command `then` with
+/// the chosen path.
+///
+/// A dialog does not stop the window: while one is up the writer may switch tabs or ask for
+/// another. So an ask carries what its answer needs, taken when it was asked: the tab it is
+/// for, the options of the command it runs, and the step that waits on its save.
+#[derive(Clone, Debug, PartialEq)]
 pub struct FileAsk {
-    /// The dialog's title.
-    pub title: String,
-    /// A save dialog (else an open dialog).
-    pub save: bool,
-    /// The file types offered: a name and its extensions.
-    pub filters: Vec<(String, Vec<String>)>,
-    /// The file name a save dialog starts with.
-    pub file_name: Option<String>,
+    /// The dialog: open or save, its title, the file types offered, the name it suggests.
+    pub dialog: ShellFileAsk,
     /// The command the chosen path runs.
     pub then: &'static str,
+    /// The parameters that command gets beside the path.
+    pub params: serde_json::Map<String, Value>,
+    /// The tab the dialog is for ([`Editor::tab_id`]).
+    pub tab: u64,
+    /// What to do once the save this dialog asks about completes.
+    after_save: Option<Then>,
 }
 
 impl FileAsk {
     fn open(title: &str, then: &'static str) -> Self {
-        FileAsk { title: title.into(), save: false, filters: Vec::new(), file_name: None, then }
+        FileAsk::of(ShellFileAsk::open().title(title), then)
     }
 
     fn save(title: &str, file_name: String, then: &'static str) -> Self {
-        FileAsk { title: title.into(), save: true, filters: Vec::new(), file_name: Some(file_name), then }
+        FileAsk::of(ShellFileAsk::save().title(title).file_name(file_name), then)
+    }
+
+    fn of(dialog: ShellFileAsk, then: &'static str) -> Self {
+        FileAsk { dialog, then, params: serde_json::Map::new(), tab: 0, after_save: None }
     }
 
     fn filter(mut self, name: &str, extensions: &[&str]) -> Self {
-        self.filters.push((name.into(), extensions.iter().map(|e| (*e).to_string()).collect()));
+        self.dialog = self.dialog.filter(name, extensions);
         self
     }
 }
@@ -324,8 +341,12 @@ pub struct Editor {
     dismissed: Option<(u64, jcj_doc::Pos)>,
     /// The caret's rectangle on screen in the last frame, for placing the suggestion list.
     caret_screen: Option<Rect>,
-    /// File dialogs waiting for the window to show them ([`Editor::answer_file`]).
+    /// File dialogs asked for and not yet handed to the shell ([`Editor::flush`]).
     pub file_asks: Vec<FileAsk>,
+    /// File dialogs the shell has, whose answers have not come back, each under the number its
+    /// answer names.
+    files_out: Vec<(u64, FileAsk)>,
+    next_file_ask: u64,
     /// "Save changes first?", while it is asked, and what follows the answer.
     pub unsaved: Option<Then>,
     /// The shell shows the question in [`Editor::unsaved`].
@@ -370,6 +391,10 @@ pub struct Editor {
     /// Open scripts as tabs: the one being edited is `session` and its slot here is empty.
     pub tabs: Vec<Option<Session>>,
     pub active_tab: usize,
+    /// A number for each tab, in tab order, that stays the tab's own while others open and
+    /// close.
+    tab_ids: Vec<u64>,
+    next_tab_id: u64,
     /// A second view beside or below the main one.
     pub split: Option<crate::workspace::Split>,
     /// Where the split view's divider sits.
@@ -430,6 +455,8 @@ impl Editor {
             paginator: Default::default(),
             paginated: None,
             file_asks: Vec::new(),
+            files_out: Vec::new(),
+            next_file_ask: 0,
             unsaved: None,
             unsaved_asked: false,
             import_question: None,
@@ -453,6 +480,8 @@ impl Editor {
             show_highlights: true,
             tabs: vec![None],
             active_tab: 0,
+            tab_ids: vec![0],
+            next_tab_id: 1,
             split: None,
             split_share: Default::default(),
             stats: Default::default(),
@@ -746,6 +775,8 @@ impl Editor {
         let mut s = crate::new_session();
         s.author = self.session.author.clone();
         self.tabs.push(Some(s));
+        self.tab_ids.push(self.next_tab_id);
+        self.next_tab_id += 1;
         self.switch_tab(self.tabs.len() - 1);
     }
 
@@ -761,6 +792,9 @@ impl Editor {
         }
         self.session.discard_recovery_copy();
         self.tabs.remove(self.active_tab);
+        if self.active_tab < self.tab_ids.len() {
+            self.tab_ids.remove(self.active_tab);
+        }
         let j = self.active_tab.min(self.tabs.len() - 1);
         if let Some(s) = self.tabs.get_mut(j).and_then(Option::take) {
             self.session = s;
@@ -768,6 +802,11 @@ impl Editor {
         self.active_tab = j;
         self.reset_caches();
         true
+    }
+
+    /// The number of the tab being edited: its own for as long as the tab is open.
+    pub fn tab_id(&self) -> u64 {
+        self.tab_ids.get(self.active_tab).copied().unwrap_or_default()
     }
 
     /// The files of the open scripts that have one, in tab order.
@@ -937,7 +976,58 @@ impl Editor {
     }
 
     fn ask_export_path(&mut self) {
-        self.file_asks.push(FileAsk::save("Export PDF", "Script.pdf".into(), "file.exportPdf").filter("PDF", &["pdf"]));
+        self.push_file_ask(FileAsk::save("Export PDF", "Script.pdf".into(), "file.exportPdf").filter("PDF", &["pdf"]));
+    }
+
+    /// Queue a file dialog for the tab being edited. What its answer needs is taken now and
+    /// travels with it, because the window goes on while the dialog is up: the writer's leave
+    /// to replace unsaved changes, the options a window set for the command, and the step that
+    /// waits on the save.
+    fn push_file_ask(&mut self, mut ask: FileAsk) {
+        ask.tab = self.tab_id();
+        if ask.then == "file.openPath" {
+            ask.params.insert("discard".into(), json!(std::mem::take(&mut self.discard_ok)));
+        }
+        // Options a window set for the command the dialog runs (a report's kind).
+        if let Some(Value::Object(extra)) = self.dialog_params.take() {
+            for (k, x) in extra {
+                ask.params.entry(k).or_insert(x);
+            }
+        }
+        if ask.then == "file.saveAsPath" {
+            ask.after_save = self.after_save.take();
+        }
+        self.file_asks.push(ask);
+    }
+
+    /// Hand the file dialogs asked for to the shell, which shows one at a time and answers each
+    /// with [`FILE_CHOSEN`] or [`FILE_CLOSED`], naming the ask by its number.
+    pub(crate) fn show_file_asks(&mut self, shell: &mut jcj_shell::Shell) {
+        for ask in std::mem::take(&mut self.file_asks) {
+            let id = self.next_file_ask;
+            self.next_file_ask += 1;
+            let tag = json!({"ask": id});
+            if !shell.ask_file_or(ask.dialog.clone(), jcj_shell::Cmd::with(FILE_CHOSEN, tag.clone()), jcj_shell::Cmd::with(FILE_CLOSED, tag)) {
+                self.message = "Too many file dialogs are waiting. Close one and try again.".into();
+                continue;
+            }
+            // An ask whose dialog could not be shown is never answered: it stays here, and what
+            // it carries is never run. Only so many are kept.
+            if self.files_out.len() >= MAX_FILES_OUT {
+                self.files_out.remove(0);
+            }
+            self.files_out.push((id, ask));
+        }
+    }
+
+    /// The shell's answer to a file dialog: `chosen` with the choice as `"path"` in `params`,
+    /// or closed without one. An answer to an ask the editor does not hold does nothing.
+    pub(crate) fn file_answered(&mut self, params: &Value, chosen: bool) {
+        let id = params.get("ask").and_then(Value::as_u64);
+        let Some(at) = self.files_out.iter().position(|(n, _)| Some(*n) == id) else { return };
+        let (_, ask) = self.files_out.remove(at);
+        let path = params.get("path").and_then(Value::as_str).filter(|_| chosen).map(PathBuf::from);
+        self.answer_file(ask, path);
     }
 
     /// A file dialog for a file command; its answer runs the command that takes the path.
@@ -980,29 +1070,25 @@ impl Editor {
             }
             _ => return,
         };
-        self.file_asks.push(ask);
+        self.push_file_ask(ask);
     }
 
-    /// The answer to a file dialog the editor asked for (`None`: it was cancelled): runs the
-    /// command it was asked for, with the chosen path.
-    pub fn answer_file(&mut self, then: &str, path: Option<PathBuf>) {
-        let Some(path) = path else {
-            // Nothing waits on a dialog the writer closed.
-            self.dialog_params = None;
-            self.discard_ok = false;
-            self.after_save = None;
+    /// The answer to a file dialog the editor asked for (`None`: it was closed without a
+    /// choice): runs the command it was asked for, with the chosen path, in the tab that asked.
+    pub fn answer_file(&mut self, ask: FileAsk, path: Option<PathBuf>) {
+        // Nothing waits on a dialog the writer closed: what the ask carried goes with it.
+        let Some(path) = path else { return };
+        let Some(tab) = self.tab_ids.iter().position(|id| *id == ask.tab) else {
+            self.message = "The script that file dialog was for is closed, so nothing was done.".into();
             return;
         };
-        let path = path.display().to_string();
-        let mut params =
-            if then == "file.openPath" { json!({"path": path, "discard": std::mem::take(&mut self.discard_ok)}) } else { json!({"path": path}) };
-        // Options a window set for the command the dialog runs (a report's kind).
-        if let (Some(Value::Object(extra)), Some(p)) = (self.dialog_params.take(), params.as_object_mut()) {
-            for (k, x) in extra {
-                p.entry(k).or_insert(x);
-            }
+        self.switch_tab(tab);
+        let FileAsk { then, mut params, after_save, .. } = ask;
+        params.insert("path".into(), json!(path.display().to_string()));
+        if after_save.is_some() {
+            self.after_save = after_save;
         }
-        self.run_now(then, params);
+        self.run_now(then, Value::Object(params));
         if then == "file.saveAsPath" && self.session.dirty {
             // The save failed: nothing waits on it any more.
             self.after_save = None;
