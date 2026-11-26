@@ -33,20 +33,20 @@ Wordsmith is five repositories and two forks, all under [jamescjfoundation](http
 
 - Each app builds on open-source-core at one release tag and carries its shared files (`cargo xtask sync`). Only the core reaches the forks.
 - Wordsmith Book also builds on Wordsmith Manuscript's model and format crates, at a book-view tag. Wordsmith Manuscript reads Wordsmith Script's `.wss` files.
-- Each app takes its logos, icons and palette from the brand kit, unchanged. The wiki and the website describe the apps from each app's guide, changelog and releases.
+- Each app takes its logos, icons and palette from the brand kit, unchanged, by the kit's tool. Each app's `docs/guide/` is its one user guide: the wiki's pages for the app are built from it. The website and the wiki read each app's latest release from its GitHub releases.
 
 | The change | Where it goes | Route |
 | --- | --- | --- |
 | A fix in a `jcj-` crate, or something any app would share | open-source-core first, then the app's pin | [A](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-a) |
 | Something one app needs from another app | An issue in the providing app's repository | [B](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-b) |
-| A change users will see in an app | The app's `docs/guide/` and `CHANGELOG.md`, then the wiki and website | [C](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-c) |
-| A wiki page | wordsmith, `website/wiki/content/docs/<app>/` | [D](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-d) |
-| Website text, or an app's status on the site | wordsmith, `website/tools/build.py` | [E](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-e) |
-| A logo, icon or brand color | wordsmith, `brand/source/`, then the copies | [F](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-f) |
-| Screenshots | Drawn in the app, then copied to wordsmith | [G](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-g) |
+| A change users will see in an app | The app's `docs/guide/` and `CHANGELOG.md`; then wordsmith builds the wiki's pages from the guide | [C](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-c) |
+| A wiki page | About one app: that app's `docs/guide/`, never the wiki's copy. About the project: wordsmith, `website/wiki/content/docs/start/` | [D](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-d) |
+| Website text, or the words for an app's state on the site | wordsmith, `website/tools/build.py` and `website/data/apps/` | [E](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-e) |
+| A logo, icon or brand color | wordsmith, `brand/source/`; then its tool writes the copies into each app's `assets/brand/` | [F](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-f) |
+| Screenshots | Drawn in the app into `docs/images/`; wordsmith's tool carries them | [G](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-g) |
 | A security problem | Never public: `.private/` and a maintainer | [H](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-h) |
 | A core release, or moving an app to a newer core | open-source-core, then each app | [I](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-i) |
-| An app release | The app, then the website and wiki | [J](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-j) |
+| An app release | The app; the website and wiki pick it up by themselves | [J](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-j) |
 | A change in WordCraft or craft-libs | Our fork, then the core | [K](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-k) |
 | A change that spans two repositories | The provider first; each change names the other | [L](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-l) |
 | Working with all the repositories, or with only one | Side by side as sibling folders | [M](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-m) |

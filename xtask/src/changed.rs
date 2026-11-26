@@ -15,12 +15,18 @@
 //! - Anything else (documentation no test reads, workflows, scripts) affects nothing that needs
 //!   building. The checks that read such files need no build and always run.
 //!
+//! The same question is asked of a lock file for the build output CI keeps between runs
+//! ([`stale_packages`], `cargo xtask prune-target`): a dependency that moved, and everything
+//! built on it, is output no later build will use.
+//!
 //! Owned by open-source-core (`template/xtask/src/`); copied into apps by `cargo xtask sync`.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use super::corepin::{Locked, locked};
 use super::json::{self, Value};
+use super::link;
 use super::util::{TaskResult, cargo_output, git_output};
 
 /// Files whose change can affect every package.
@@ -405,6 +411,170 @@ pub fn task(root: &Path, args: &[String]) -> TaskResult {
     Ok(())
 }
 
+/// The packages with tests in their documentation: `cargo test --doc` is run for these, and
+/// fails when asked for a package that has none (a program, say).
+pub fn doc_tested(meta: &Value) -> BTreeSet<String> {
+    let members: BTreeSet<&str> = meta.get("workspace_members").map(Value::items).unwrap_or_default().iter().filter_map(Value::as_str).collect();
+    let mut out = BTreeSet::new();
+    for p in meta.get("packages").map(Value::items).unwrap_or_default() {
+        let tested = |t: &Value| t.get("doctest").is_some_and(|d| matches!(d, Value::Bool(true)));
+        if p.str_of("id").is_some_and(|id| members.contains(id))
+            && p.get("targets").map(Value::items).unwrap_or_default().iter().any(tested)
+            && let Some(name) = p.str_of("name")
+        {
+            out.insert(name.to_owned());
+        }
+    }
+    out
+}
+
+/// The part of `scope` that has doc tests.
+pub fn doc_test_scope(root: &Path, scope: &Affected) -> Result<Affected, String> {
+    let out = cargo_output(root, &["metadata", "--format-version", "1", "--locked", "--no-deps"])?;
+    let tested = doc_tested(&json::parse(&out)?);
+    Ok(Affected::Some(match scope {
+        Affected::All => tested.into_iter().collect(),
+        Affected::Some(names) => names.iter().filter(|n| tested.contains(n.as_str())).cloned().collect(),
+    }))
+}
+
+/// The name a lock-file dependency entry starts with (`name`, `name version` or
+/// `name version (source)`).
+fn entry_name(entry: &str) -> &str {
+    entry.split(' ').next().unwrap_or(entry)
+}
+
+/// The names of the packages whose build output a move from the lock file `old` to `new` makes
+/// stale: every name that `new` does not hold exactly as `old` did (its versions, their sources
+/// and what each depends on), and every package of `old` built on one of those, however far up.
+/// Cargo gives a package's output a new place when anything below it changes, so the old output
+/// of all of them is never read again.
+///
+/// It goes by name, so a second version of a name that did not itself change is named too. That
+/// errs toward building again, which costs a little time once and never a wrong build: Cargo
+/// decides what is fresh, not this list.
+pub fn stale_packages(old: &[Locked], new: &[Locked]) -> BTreeSet<String> {
+    fn held(lock: &[Locked]) -> BTreeMap<&str, BTreeSet<(&str, &str, &[String])>> {
+        let mut out: BTreeMap<&str, BTreeSet<(&str, &str, &[String])>> = BTreeMap::new();
+        for p in lock {
+            out.entry(p.name.as_str()).or_default().insert((p.version.as_str(), p.source.as_str(), p.deps.as_slice()));
+        }
+        out
+    }
+    let (before, after) = (held(old), held(new));
+    let mut stale: BTreeSet<String> =
+        before.iter().filter(|(name, as_was)| after.get(*name) != Some(as_was)).map(|(name, _)| (*name).to_owned()).collect();
+    loop {
+        let built_on_stale = |p: &&Locked| !stale.contains(&p.name) && p.deps.iter().any(|d| stale.contains(entry_name(d)));
+        let more: Vec<String> = old.iter().filter(built_on_stale).map(|p| p.name.clone()).collect();
+        if more.is_empty() {
+            return stale;
+        }
+        stale.extend(more);
+    }
+}
+
+/// The package or crate name an entry of a build folder belongs to, in the layout Cargo used
+/// before 1.100: `serde` for `serde-<hash>` (a folder of `.fingerprint/` or `build/`),
+/// `serde_json` for `libserde_json-<hash>.rlib` and `serde_json-<hash>.d` (files of `deps/`).
+/// `None` for anything Cargo did not name that way.
+fn unit_name(entry: &str, is_deps: bool) -> Option<&str> {
+    let stem = if is_deps { entry.split('.').next()? } else { entry };
+    let (name, hash) = stem.rsplit_once('-')?;
+    (hash.len() == 16 && hash.bytes().all(|b| b.is_ascii_hexdigit()) && !name.is_empty()).then_some(name)
+}
+
+/// The folders under `target` that hold build output: `target/<profile>` and
+/// `target/<target triple>/<profile>`.
+fn profile_dirs(target: &Path) -> Vec<PathBuf> {
+    let subdirs = |dir: &Path| -> Vec<PathBuf> {
+        std::fs::read_dir(dir).map(|entries| entries.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect()).unwrap_or_default()
+    };
+    let holds_output = |dir: &PathBuf| dir.join("build").is_dir() || dir.join(".fingerprint").is_dir();
+    let mut out = Vec::new();
+    for dir in subdirs(target) {
+        if holds_output(&dir) {
+            out.push(dir);
+        } else {
+            out.extend(subdirs(&dir).into_iter().filter(holds_output));
+        }
+    }
+    out.sort();
+    out
+}
+
+/// Remove from `target` the build output of the packages in `names`; the number of files and
+/// folders removed.
+///
+/// Cargo 1.100 keeps everything it builds of a package in one folder, `build/<name>/`, which
+/// goes whole. An older Cargo (the minimum Rust version is built with one) spreads it: a
+/// package is `name-<hash>` in `.fingerprint/` and `build/`, and its crates are files in
+/// `deps/`, where a `-` in a name is written `_` and `lib` stands before a library.
+pub fn remove_output(target: &Path, names: &BTreeSet<String>) -> Result<usize, String> {
+    let crates: BTreeSet<String> = names.iter().map(|n| n.replace('-', "_")).collect();
+    let mut removed = 0;
+    for profile in profile_dirs(target) {
+        for name in names {
+            let whole = profile.join("build").join(name);
+            if whole.is_dir() {
+                std::fs::remove_dir_all(&whole).map_err(|e| format!("cannot remove {}: {e}", whole.display()))?;
+                removed += 1;
+            }
+        }
+        for (folder, is_deps) in [(".fingerprint", false), ("build", false), ("deps", true)] {
+            let Ok(entries) = std::fs::read_dir(profile.join(folder)) else { continue };
+            for entry in entries.flatten() {
+                let file_name = entry.file_name();
+                let Some(unit) = file_name.to_str().and_then(|n| unit_name(n, is_deps)) else { continue };
+                let hit = if is_deps {
+                    crates.contains(unit) || unit.strip_prefix("lib").is_some_and(|c| crates.contains(c))
+                } else {
+                    names.contains(unit)
+                };
+                if !hit {
+                    continue;
+                }
+                let path = entry.path();
+                let gone = if path.is_dir() { std::fs::remove_dir_all(&path) } else { std::fs::remove_file(&path) };
+                gone.map_err(|e| format!("cannot remove {}: {e}", path.display()))?;
+                removed += 1;
+            }
+        }
+    }
+    Ok(removed)
+}
+
+/// `cargo xtask prune-target <older lock file> [--target <folder>]`: remove from `target/` the
+/// build output that the move from that lock file to the one in use made stale. CI keeps the
+/// build output of dependencies between runs, with a copy of the lock file it was built from;
+/// after a dependency moves, a run starts from the newest output it finds, and without this the
+/// old output of everything that moved would be kept and stored again for good.
+pub fn prune_task(root: &Path, args: &[String]) -> TaskResult {
+    let usage = "usage: cargo xtask prune-target <older lock file> [--target <folder>]";
+    let (mut older, mut target) = (None, root.join("target"));
+    let mut it = args.iter();
+    while let Some(arg) = it.next() {
+        match arg.as_str() {
+            "--target" => target = link::absolute(root, it.next().ok_or(usage)?),
+            flag if flag.starts_with("--") => return Err(format!("unknown argument '{flag}'. {usage}")),
+            file if older.is_none() => older = Some(link::absolute(root, file)),
+            _ => return Err(usage.to_owned()),
+        }
+    }
+    let older = older.ok_or(usage)?;
+    // Linked, the build has a lock file of its own.
+    let linked = root.join(link::LINK_DIR).join("Cargo.lock");
+    let in_use = if linked.is_file() { linked } else { root.join("Cargo.lock") };
+    let read = |p: &Path| std::fs::read_to_string(p).map_err(|e| format!("cannot read {}: {e}", p.display()));
+    let stale = stale_packages(&locked(&read(&older)?), &locked(&read(&in_use)?));
+    let removed = remove_output(&target, &stale)?;
+    println!(
+        "ok: {} package(s) moved since that lock file or are built on one that did; removed {removed} file(s) and folder(s) of their build output",
+        stale.len()
+    );
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -567,5 +737,170 @@ mod tests {
     fn cargo_arguments() {
         assert_eq!(Affected::All.cargo_args(), vec!["--workspace"]);
         assert_eq!(Affected::Some(files(&["a", "b"])).cargo_args(), vec!["-p", "a", "-p", "b"]);
+    }
+
+    fn lock(packages: &[(&str, &str, &str, &[&str])]) -> Vec<Locked> {
+        let mut text = String::from("version = 4\n");
+        for (name, version, source, deps) in packages {
+            text.push_str(&format!("\n[[package]]\nname = \"{name}\"\nversion = \"{version}\"\n"));
+            if !source.is_empty() {
+                text.push_str(&format!("source = \"{source}\"\n"));
+            }
+            if !deps.is_empty() {
+                let list: Vec<String> = deps.iter().map(|d| format!(" \"{d}\",\n")).collect();
+                text.push_str(&format!("dependencies = [\n{}]\n", list.concat()));
+            }
+        }
+        locked(&text)
+    }
+
+    const REGISTRY: &str = "registry+https://github.com/rust-lang/crates.io-index";
+
+    #[test]
+    fn a_moved_dependency_makes_everything_built_on_it_stale() {
+        let old = lock(&[
+            ("app", "1.0.0", "", &["ui", "text"]),
+            ("ui", "0.3.0", REGISTRY, &["draw", "log"]),
+            ("draw", "0.2.0", REGISTRY, &["math"]),
+            ("math", "1.0.0", REGISTRY, &[]),
+            ("text", "2.0.0", REGISTRY, &["log"]),
+            ("log", "0.4.0", REGISTRY, &[]),
+        ]);
+        let names = |s: BTreeSet<String>| s.into_iter().collect::<Vec<_>>().join(" ");
+        // The same lock file: nothing.
+        assert_eq!(names(stale_packages(&old, &old)), "");
+        // `math` moved: `draw` and `ui` were built on it, and so was the app. `text` and `log` were not.
+        let mut new = lock(&[("math", "1.0.1", REGISTRY, &[])]);
+        new.extend(old.iter().filter(|p| p.name != "math").map(|p| Locked {
+            name: p.name.clone(),
+            version: p.version.clone(),
+            source: p.source.clone(),
+            deps: p.deps.clone(),
+        }));
+        assert_eq!(names(stale_packages(&old, &new)), "app draw math ui");
+        // A package that is gone, one whose source moved (a git commit), and one that depends on something new.
+        let old = lock(&[
+            ("app", "1.0.0", "", &["gone", "core-doc", "leaf"]),
+            ("gone", "1.0.0", REGISTRY, &[]),
+            ("core-doc", "0.1.0", "git+https://example.invalid/core?tag=v0.1.0#aaaa", &[]),
+            ("leaf", "1.0.0", REGISTRY, &[]),
+            ("other", "1.0.0", REGISTRY, &["leaf"]),
+        ]);
+        let new = lock(&[
+            ("app", "1.0.0", "", &["core-doc", "leaf"]),
+            ("core-doc", "0.1.0", "git+https://example.invalid/core?tag=v0.1.1#bbbb", &[]),
+            ("leaf", "1.0.0", REGISTRY, &[]),
+            ("other", "1.0.0", REGISTRY, &["leaf", "extra"]),
+            ("extra", "1.0.0", REGISTRY, &[]),
+        ]);
+        assert_eq!(names(stale_packages(&old, &new)), "app core-doc gone other");
+        // Two versions of one name, of which one moved: the name is stale, and what uses either.
+        let old = lock(&[
+            ("a", "1.0.0", REGISTRY, &["syn 1.0.0"]),
+            ("b", "1.0.0", REGISTRY, &["syn 2.0.0"]),
+            ("syn", "1.0.0", REGISTRY, &[]),
+            ("syn", "2.0.0", REGISTRY, &[]),
+        ]);
+        let new = lock(&[
+            ("a", "1.0.0", REGISTRY, &["syn 1.0.0"]),
+            ("b", "1.0.0", REGISTRY, &["syn 2.0.1"]),
+            ("syn", "1.0.0", REGISTRY, &[]),
+            ("syn", "2.0.1", REGISTRY, &[]),
+        ]);
+        assert_eq!(names(stale_packages(&old, &new)), "a b syn");
+    }
+
+    #[test]
+    fn reads_the_name_of_a_piece_of_build_output() {
+        assert_eq!(unit_name("serde_json-0123456789abcdef", false), Some("serde_json"));
+        assert_eq!(unit_name("jcj-doc-0123456789abcdef", false), Some("jcj-doc"));
+        assert_eq!(unit_name("libserde_json-0123456789abcdef.rlib", true), Some("libserde_json"));
+        assert_eq!(unit_name("serde_json-0123456789abcdef.d", true), Some("serde_json"));
+        assert_eq!(unit_name("app-0123456789abcdef.exe", true), Some("app"));
+        assert_eq!(unit_name("serde_derive-0123456789abcdef.dll.lib", true), Some("serde_derive"));
+        // Not Cargo's naming: no hash, a short one, or no name.
+        for other in ["serde", "serde-json", "serde-0123", "-0123456789abcdef", "serde-0123456789abcdeg", ".cargo-lock"] {
+            assert_eq!(unit_name(other, false), None, "{other}");
+        }
+    }
+
+    #[test]
+    fn removes_the_output_of_the_named_packages_and_no_other() {
+        let target = std::env::temp_dir().join(format!("jcj-prune-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&target);
+        let h = "0123456789abcdef";
+        let other = "fedcba9876543210";
+        // The layout of Cargo 1.100: one folder for each package.
+        let new_layout = [
+            format!("release/build/my-dep/{h}/out"),
+            format!("release/build/my-dep/{other}/fingerprint"),
+            format!("release/build/my-dep-two/{h}/out"),
+            format!("release/build/libc/{h}/out"),
+            format!("release/build/kept/{h}/out"),
+            "release/incremental".to_owned(),
+        ];
+        for folder in &new_layout {
+            std::fs::create_dir_all(target.join(folder)).unwrap();
+        }
+        std::fs::write(target.join(format!("release/build/my-dep/{h}/out/libmy_dep-{h}.rlib")), "x").unwrap();
+        let folders = [
+            format!("debug/.fingerprint/my-dep-{h}"),
+            format!("debug/.fingerprint/my-dep-{other}"),
+            format!("debug/.fingerprint/my-dep-two-{h}"),
+            format!("debug/build/my-dep-{h}/out"),
+            format!("debug/build/kept-{h}"),
+            format!("x86_64-unknown-linux-gnu/release/.fingerprint/my-dep-{h}"),
+            "debug/deps".to_owned(),
+            "x86_64-unknown-linux-gnu/release/deps".to_owned(),
+            "tmp/.fingerprint-like".to_owned(),
+        ];
+        for folder in &folders {
+            std::fs::create_dir_all(target.join(folder)).unwrap();
+        }
+        let files = [
+            format!("debug/deps/libmy_dep-{h}.rlib"),
+            format!("debug/deps/libmy_dep-{h}.rmeta"),
+            format!("debug/deps/my_dep-{h}.d"),
+            format!("debug/deps/my_dep_two-{h}.d"),
+            format!("debug/deps/libc-{h}.d"),
+            format!("debug/deps/liblibc-{h}.rlib"),
+            format!("debug/deps/libkept-{h}.rlib"),
+            format!("x86_64-unknown-linux-gnu/release/deps/libmy_dep-{h}.rlib"),
+            "debug/deps/my_dep.txt".to_owned(),
+            "debug/.cargo-lock".to_owned(),
+        ];
+        for file in &files {
+            std::fs::write(target.join(file), "x").unwrap();
+        }
+        let names: BTreeSet<String> = ["my-dep", "libc", "not-there"].iter().map(|s| (*s).to_owned()).collect();
+        // In the older layout: three folders and three files of `my-dep` under debug, a folder
+        // and a file under the other profile, and the two files of `libc`. In the new one: the
+        // folders of `my-dep` and of `libc`.
+        assert_eq!(remove_output(&target, &names), Ok(12));
+        let left = |p: &str| target.join(p).exists();
+        assert!(!left("release/build/my-dep") && !left("release/build/libc"));
+        assert!(left("release/build/my-dep-two") && left("release/build/kept") && left("release/incremental"));
+        assert!(!left(&folders[0]) && !left(&folders[1]) && !left(&format!("debug/build/my-dep-{h}")) && !left(&folders[5]));
+        assert!(left(&folders[2]) && left(&folders[4]), "a longer name and another package stay");
+        assert!(!left(&files[0]) && !left(&files[1]) && !left(&files[2]) && !left(&files[4]) && !left(&files[5]) && !left(&files[7]));
+        assert!(left(&files[3]) && left(&files[6]) && left(&files[8]) && left(&files[9]));
+        // Nothing to do, and no build folder at all, are both fine.
+        assert_eq!(remove_output(&target, &names), Ok(0));
+        assert_eq!(remove_output(&target.join("nothing-here"), &names), Ok(0));
+        let _ = std::fs::remove_dir_all(&target);
+    }
+
+    #[test]
+    fn doc_tests_are_asked_only_of_packages_that_have_them() {
+        let meta = json::parse(
+            r#"{"workspace_members":["path+file:///r/lib#0.1.0","path+file:///r/app#0.1.0","path+file:///r/macros#0.1.0"],
+                "packages":[
+                  {"id":"path+file:///r/lib#0.1.0","name":"lib","targets":[{"kind":["lib"],"doctest":true},{"kind":["test"],"doctest":false}]},
+                  {"id":"path+file:///r/app#0.1.0","name":"app","targets":[{"kind":["bin"],"doctest":false}]},
+                  {"id":"path+file:///r/macros#0.1.0","name":"macros","targets":[{"kind":["proc-macro"],"doctest":true}]},
+                  {"id":"registry+https://example.invalid#dep@1.0.0","name":"dep","targets":[{"kind":["lib"],"doctest":true}]}]}"#,
+        )
+        .unwrap();
+        assert_eq!(doc_tested(&meta).into_iter().collect::<Vec<_>>(), ["lib", "macros"]);
     }
 }

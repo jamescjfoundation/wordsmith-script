@@ -93,7 +93,8 @@ pub const CHECKS: &[(&str, &str)] = &[
 ];
 
 /// The tasks that build the product, last in the gate. CI runs these two in a job of their own.
-pub const BUILD: &[(&str, &str)] = &[("clippy", "clippy on all targets, warnings are errors"), ("test", "all tests")];
+pub const BUILD: &[(&str, &str)] =
+    &[("clippy", "clippy on all targets, warnings are errors"), ("test", "all tests: by cargo-nextest when it is installed, else by `cargo test`")];
 
 /// The shared tasks that are run by name and are no part of the gate.
 const OTHER: &[(&str, &str)] = &[
@@ -106,6 +107,7 @@ const OTHER: &[(&str, &str)] = &[
     ("install-hooks", "use the repository's git hooks (pre-commit and pre-push)"),
     ("third-party-licenses [file]", "write the dependency license texts (default dist/THIRD-PARTY-LICENSES.txt)"),
     ("privacy [--staged] [--range <git range>]", "the privacy check on staged lines, or on a range of commits"),
+    ("prune-target <older lock file> [--target <folder>]", "remove the build output that a move from that lock file made stale (CI's cache)"),
 ];
 
 /// Names an app's own task may not take: the shared tasks, and the words `main` reads itself.
@@ -190,6 +192,7 @@ fn run(root: &Path, app: &App, task: &str, rest: &[String]) -> TaskResult {
         }),
         "third-party-licenses" => licenses::task(root, app.shipped, app.product, rest.first().map(String::as_str)),
         "privacy" => privacy::task(root, rest),
+        "prune-target" => changed::prune_task(root, rest),
         "screenshots" if app.screenshots.is_some() => screenshots(root, app),
         name => {
             if let Some(own) = app.tasks.iter().find(|t| t.name == name) {
@@ -314,7 +317,7 @@ fn run_task(name: &str, root: &Path, app: &App, scope: &Affected) -> TaskResult 
         "privacy" => privacy::task(root, &[]),
         "licenses" => check_licenses(root),
         "clippy" => scoped(root, scope, &["clippy", "--locked", "--all-targets"], &["--", "-D", "warnings"]),
-        "test" => scoped(root, scope, &["test", "--locked"], &[]),
+        "test" => test(root, scope, &[]),
         own => match app.tasks.iter().find(|t| t.name == own) {
             Some(task) => (task.run)(root, &[]),
             None => Err(format!("no runner for task '{own}'")),
@@ -334,6 +337,53 @@ pub fn scoped(root: &Path, scope: &Affected, head: &[&str], tail: &[&str]) -> Ta
     args.extend(pkgs.iter().map(String::as_str));
     args.extend(tail);
     cargo(root, &args)
+}
+
+/// The first line `cargo nextest --version` prints, when cargo-nextest is installed.
+pub fn nextest(root: &Path) -> Option<String> {
+    cargo_output(root, &["nextest", "--version"]).ok().and_then(|out| out.lines().next().map(|line| line.trim().to_owned()))
+}
+
+/// The cargo commands that run the tests, each as its arguments before the packages. With
+/// cargo-nextest: the tests, then the tests in documentation, which it does not run. Without
+/// it, `cargo test` runs both. `flags` are added to each (`--all-features`).
+pub fn test_commands(with_nextest: bool, flags: &[&str]) -> Vec<Vec<String>> {
+    let command = |head: &[&str]| head.iter().chain(flags).map(|s| (*s).to_owned()).collect::<Vec<String>>();
+    if with_nextest {
+        vec![command(&["nextest", "run", "--locked", "--no-tests=pass"]), command(&["test", "--locked", "--doc"])]
+    } else {
+        vec![command(&["test", "--locked"])]
+    }
+}
+
+/// The `test` task: every test of the packages in `scope`. cargo-nextest runs them when it is
+/// installed: each test in a process of its own, all test programs at once, where `cargo test`
+/// runs one program after another. Both run the same tests, and the task says which ran, so a
+/// result here and one in CI can be told apart when they differ.
+pub fn test(root: &Path, scope: &Affected, flags: &[&str]) -> TaskResult {
+    if scope.is_empty() {
+        println!("nothing to do: no package affected");
+        return Ok(());
+    }
+    let version = nextest(root);
+    match &version {
+        Some(version) => println!("tests run by {version}; the tests in documentation by `cargo test --doc`"),
+        None => println!(
+            "tests run by `cargo test`: cargo-nextest is not installed. CI uses it, and it is faster \
+             (https://nexte.st/docs/installation/pre-built-binaries/)"
+        ),
+    }
+    for command in test_commands(version.is_some(), flags) {
+        let head: Vec<&str> = command.iter().map(String::as_str).collect();
+        // `cargo test --doc` fails for a package with no library, so it is asked only for the others.
+        let scope = if head.contains(&"--doc") { changed::doc_test_scope(root, scope)? } else { scope.clone() };
+        if scope.is_empty() {
+            println!("no package here has tests in its documentation");
+            continue;
+        }
+        scoped(root, &scope, &head, &[])?;
+    }
+    Ok(())
 }
 
 /// The lines of `cargo tree --format "{p}\t{l}"` whose license is not on the allowlist (core
@@ -417,7 +467,7 @@ mod tests {
 
     #[test]
     fn an_apps_task_may_not_take_a_shared_name() {
-        for name in ["fmt", "clippy", "ci", "sync", "dev-link", "affected", "screenshots", "privacy", "third-party-licenses"] {
+        for name in ["fmt", "clippy", "ci", "sync", "dev-link", "affected", "screenshots", "privacy", "third-party-licenses", "prune-target"] {
             let tasks = [Task::other(name, "", nothing)];
             let found = table_problems(&App { tasks: Box::leak(Box::new(tasks)), ..App::DEFAULT });
             assert!(found.iter().any(|p| p.contains("shared task's name")), "{name}: {found:?}");
@@ -446,6 +496,19 @@ mod tests {
         assert!(asked(&args(&["--base"]), &tasks, &main).is_err());
         assert!(asked(&args(&["--skip", "nothing"]), &tasks, &main).is_err());
         assert!(asked(&args(&["--fast"]), &tasks, &main).is_err());
+    }
+
+    #[test]
+    fn the_tests_run_the_same_with_and_without_nextest() {
+        let words = |c: &[Vec<String>]| c.iter().map(|c| c.join(" ")).collect::<Vec<_>>();
+        assert_eq!(words(&test_commands(false, &[])), ["test --locked"]);
+        // cargo-nextest does not run the tests in documentation: a second command does.
+        assert_eq!(words(&test_commands(true, &[])), ["nextest run --locked --no-tests=pass", "test --locked --doc"]);
+        assert_eq!(
+            words(&test_commands(true, &["--all-features"])),
+            ["nextest run --locked --no-tests=pass --all-features", "test --locked --doc --all-features"]
+        );
+        assert_eq!(words(&test_commands(false, &["--all-features"])), ["test --locked --all-features"]);
     }
 
     #[test]

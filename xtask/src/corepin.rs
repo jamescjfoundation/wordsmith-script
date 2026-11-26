@@ -189,12 +189,12 @@ pub fn temporary_pin_verdict(rev: &str, place: &Place) -> Result<String, String>
 /// A package in a lock file.
 #[derive(Debug, Default)]
 pub struct Locked {
-    name: String,
-    version: String,
+    pub name: String,
+    pub version: String,
     /// Empty for a package of the workspace or one used by path.
-    source: String,
+    pub source: String,
     /// The entries of its `dependencies` list, as written.
-    deps: Vec<String>,
+    pub deps: Vec<String>,
 }
 
 /// The packages of a lock file.
