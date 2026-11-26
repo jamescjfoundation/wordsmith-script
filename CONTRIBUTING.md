@@ -50,7 +50,7 @@ line and the MCP server all run the same commands, so a new feature is a
 command first and a button second.
 
 <!-- BEGIN open-source-core: contributing -->
-<!-- Owned by open-source-core (template/CONTRIBUTING.md). Change it there, never in a copy: `cargo xtask sync` rewrites the copies. -->
+<!-- Owned by open-source-core (template/CONTRIBUTING.md). Change it there, never in a copy: its tooling rewrites the copies. -->
 ## Rules for a public repository
 
 ### Personal information

@@ -105,6 +105,32 @@ pub fn report(failures: Vec<String>, ok_message: &str) -> TaskResult {
     Err(format!("{} problem(s)", failures.len()))
 }
 
+/// What to tell someone whose clone does not run the repository's git hooks, given what
+/// `core.hooksPath` is set to and what it should be; `None` when the hooks are on.
+pub fn hooks_notice(set: &str, wanted: &str) -> Option<String> {
+    if set.trim().trim_end_matches('/') == wanted {
+        return None;
+    }
+    Some(format!(
+        "warning: this clone's git hooks are off (core.hooksPath is {}, not `{wanted}`). Run `cargo xtask install-hooks` once: \
+         pre-commit then checks formatting, privacy and that no dev-link is left; pre-push runs `cargo xtask ci --changed`.",
+        if set.trim().is_empty() { "not set".to_owned() } else { format!("`{}`", set.trim()) }
+    ))
+}
+
+/// Warn, without failing, when this clone does not run the hooks in `wanted` (`hooks` in an app).
+/// A fresh clone and a fresh worktree start without them, and nothing else says so. Silent in CI,
+/// where no hook runs.
+pub fn warn_if_hooks_off(root: &Path, wanted: &str) {
+    if std::env::var_os("CI").is_some() {
+        return;
+    }
+    let set = git_output(root, &["config", "--get", "core.hooksPath"]).unwrap_or_default();
+    if let Some(notice) = hooks_notice(&set, wanted) {
+        println!("\n{notice}");
+    }
+}
+
 /// The tasks a `ci` run is told to leave out: `--skip a --skip b` or `--skip a,b`.
 pub fn skipped(args: &[String], known: &[&str]) -> Result<Vec<String>, String> {
     let mut skip = Vec::new();
@@ -142,6 +168,14 @@ mod tests {
         let (_, path) = parse_pkg("craft-ui v0.1.0 (https://example.invalid/x?tag=v0.1.0#abc)").unwrap();
         assert_eq!(path, None);
         assert!(parse_pkg("").is_none());
+    }
+
+    #[test]
+    fn says_when_the_hooks_are_off() {
+        assert_eq!(hooks_notice("hooks\n", "hooks"), None);
+        assert_eq!(hooks_notice("template/hooks/", "template/hooks"), None);
+        assert!(hooks_notice("", "hooks").is_some_and(|n| n.contains("not set") && n.contains("install-hooks")));
+        assert!(hooks_notice(".husky", "hooks").is_some_and(|n| n.contains("`.husky`")));
     }
 
     #[test]

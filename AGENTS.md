@@ -55,19 +55,20 @@ Before changing a repository, read its own `AGENTS.md`. Its rules apply inside i
 <!-- END wordsmith project block -->
 
 <!-- BEGIN open-source-core: app -->
-<!-- Owned by open-source-core (template/AGENTS.md). Change it there, never in a copy: `cargo xtask sync` rewrites the copies. -->
+<!-- Owned by open-source-core (template/AGENTS.md). Change it there, never in a copy: its tooling rewrites the copies. -->
 ## Before you commit
 
 ```sh
-cargo xtask install-hooks   # once: pre-commit (fmt, privacy) and pre-push (ci --changed)
+cargo xtask install-hooks   # once: pre-commit (fmt, privacy, no dev-link) and pre-push (ci --changed)
 cargo xtask ci --changed    # what CI will run for your change; `cargo xtask ci` for everything
 cargo xtask sync            # after moving to a new core release: shared files, blocks and patch block
 ```
 
 What the core owns is changed in the core, never here: `rust-toolchain.toml`, `rustfmt.toml`,
 `clippy.toml`, `deny.toml`, `CODE_OF_CONDUCT.md`, the shared modules in `xtask/src/`,
-`.github/workflows/ci.yml` and `core-pin.yml`, `hooks/`, the patch block in `Cargo.toml`, and the
-blocks marked `open-source-core` in `AGENTS.md`, `SECURITY.md` and `CONTRIBUTING.md`.
+`.github/workflows/ci.yml` and `core-pin.yml`, `.github/pull_request_template.md`, `hooks/`, the
+patch block in `Cargo.toml`, and the blocks marked `open-source-core` in `AGENTS.md`,
+`SECURITY.md` and `CONTRIBUTING.md`.
 `cargo xtask sync --check` fails if any of them differs from the pinned core release.
 `xtask/src/main.rs`, any module an app adds beside it, and everything outside the marked blocks
 are the app's own.
@@ -79,12 +80,13 @@ are the app's own.
 - Depend only on the core's `jcj-` crates and, under a contract, another app's crates
   ([core decision 0015](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0015-apps-that-depend-on-apps.md));
   never on `jcj-upstream`, `wordcraft-*` or `craft-*` (`cargo xtask layers`).
-- The app's brand (name, colors as `tokens.json`, fonts, logo) lives in the app's repository or
-  in its project's brand kit, never in the core.
+- The app's brand (its name, logo, icons, fonts and colors) lives in the app's repository, or in
+  its project's brand kit with copies in the app, never in the core. The app's interface theme
+  is its own `tokens.json`, which the core's theming code reads.
 <!-- END open-source-core: app -->
 
 <!-- BEGIN open-source-core: public -->
-<!-- Owned by open-source-core (template/AGENTS.md). Change it there, never in a copy: `cargo xtask sync` rewrites the copies. -->
+<!-- Owned by open-source-core (template/AGENTS.md). Change it there, never in a copy: its tooling rewrites the copies. -->
 ## What is public
 
 This repository is public, history included, forever
@@ -106,7 +108,7 @@ or `--mirror`.
 <!-- END open-source-core: public -->
 
 <!-- BEGIN open-source-core: app-and-core -->
-<!-- Owned by open-source-core (template/AGENTS.md). Change it there, never in a copy: `cargo xtask sync` rewrites the copies. -->
+<!-- Owned by open-source-core (template/AGENTS.md). Change it there, never in a copy: its tooling rewrites the copies. -->
 ## Building between an app and the core
 
 "The core" is [open-source-core](https://github.com/jamescjfoundation/open-source-core); "an app"
@@ -124,8 +126,8 @@ Ask in order; the first "yes" decides.
    [core decision 0004](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0004-follow-hold-own.md)).
 2. **Would it look or work the same in any foundation app?** The window, ribbon, panels, dialogs,
    File page, preferences, auto-save, updates, saving and backups, spelling, find and replace,
-   undo, format import and export, PDF and printing, cards and boards, theming, agent control: the
-   core.
+   undo, format import and export, PDF and printing, cards and boards, theming, entries kept
+   beside documents, interface translations, agent control: the core.
 3. **Does a second app already need it, or have a written plan to use it?** The core.
 4. **Otherwise** the app. Screenplay elements, Fountain, scene numbers, (MORE)/(CONT'D), a
    manuscript binder's compile rules and a book's themes are app code.
@@ -187,7 +189,8 @@ interface back out is not.
 
 - Name WordCraft or craft-libs types in an app repository. Use the `jcj-` interfaces; if one is
   missing, add it to the core.
-- Put a product name, color, logo, or screenplay, manuscript or book concept into the core.
+- Put a product name, color, logo, or screenplay, manuscript or book concept into the core's
+  code, interface text or `template/`.
 - Change a core interface from a change made in an app repository.
 - Copy code from one app repository into another.
 - Release the core, or move an upstream pin, on a commit whose full gate has not passed. A

@@ -1,7 +1,7 @@
 # Security
 
 <!-- BEGIN open-source-core: security -->
-<!-- Owned by open-source-core (template/SECURITY.md). Change it there, never in a copy: `cargo xtask sync` rewrites the copies. -->
+<!-- Owned by open-source-core (template/SECURITY.md). Change it there, never in a copy: its tooling rewrites the copies. -->
 ## Reporting a problem
 
 Report security problems privately, not in a public issue, pull request or discussion. Use

@@ -40,8 +40,10 @@ pub const MANAGED: &[(&str, &str)] = &[
     ("template/xtask/src/licenses.rs", "xtask/src/licenses.rs"),
     ("template/xtask/src/changed.rs", "xtask/src/changed.rs"),
     ("template/xtask/src/corepin.rs", "xtask/src/corepin.rs"),
+    ("template/xtask/src/docs.rs", "xtask/src/docs.rs"),
     ("template/.github/workflows/ci.yml", ".github/workflows/ci.yml"),
     ("template/.github/workflows/core-pin.yml", ".github/workflows/core-pin.yml"),
+    ("template/.github/pull_request_template.md", ".github/pull_request_template.md"),
     ("template/hooks/pre-commit", "hooks/pre-commit"),
     ("template/hooks/pre-push", "hooks/pre-push"),
     ("template/CODE_OF_CONDUCT.md", "CODE_OF_CONDUCT.md"),
@@ -241,7 +243,11 @@ pub fn choose_core(meta: &json::Value) -> Result<PathBuf, String> {
 /// What the template's `main.rs` runs that an app's own `main.rs`, started from an older template,
 /// may not run yet: the call to look for, and what it is. A managed module that nothing calls
 /// checks nothing, and `main.rs` is the app's own, so `sync` can only say so.
-const RUN_FROM_MAIN: &[(&str, &str)] = &[("corepin::task", "the core-pin check")];
+const RUN_FROM_MAIN: &[(&str, &str)] = &[
+    ("corepin::task", "the core-pin check"),
+    ("docs::app_task", "the docs check"),
+    ("util::warn_if_hooks_off", "the warning when this clone's git hooks are off"),
+];
 
 /// The entries of [`RUN_FROM_MAIN`] an app's `xtask/src/main.rs` does not call.
 pub fn not_run(main: &str) -> Vec<String> {
@@ -270,6 +276,9 @@ pub fn app_task(app: &Path, check: bool) -> TaskResult {
 /// `cargo xtask sync <app dir> [--check]` in the core.
 pub fn core_task(core: &Path, app: &str, check: bool) -> TaskResult {
     let app = PathBuf::from(app);
+    for note in not_run(&std::fs::read_to_string(app.join("xtask/src/main.rs")).unwrap_or_default()) {
+        println!("note: {note}");
+    }
     if check { report(differences(core, &app)?, "the app's shared files, marked blocks and patch block match this core") } else { write(core, &app) }
 }
 
@@ -410,7 +419,8 @@ mod tests {
 
     #[test]
     fn says_what_an_older_main_does_not_run() {
-        assert!(not_run("\"core-pin\" => corepin::task(&root, rest),").is_empty());
+        let wired = "\"core-pin\" => corepin::task(&root, rest),\n\"docs\" => docs::app_task(&root),\nutil::warn_if_hooks_off(root, \"hooks\");";
+        assert!(not_run(wired).is_empty());
         let notes = not_run("mod sync;");
         assert_eq!(notes.len(), RUN_FROM_MAIN.len());
         assert!(notes[0].contains("the core-pin check"));

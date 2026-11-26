@@ -76,7 +76,7 @@ and every script 0.1.2 saved opens with the same pages.
 - The checks that every control runs a registered command, and that every
   menu command is on the ribbon or the File page, read what the window draws
   instead of lists kept by hand (decision 0043).
-- Built on open-source-core 0.1.17 (before, 0.1.1), so new work starts from
+- Built on open-source-core 0.1.18 (before, 0.1.1), so new work starts from
   the newest shared base. The releases between add interfaces Script does not
   call yet and one fix it shows (the Preferences fields above); no code of
   Script's changed. The golden scripts' PDF text and the page plans of every

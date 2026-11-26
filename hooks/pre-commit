@@ -1,6 +1,8 @@
 #!/bin/sh
 # Installed by `cargo xtask install-hooks` (git config core.hooksPath). Owned by open-source-core.
-# Fast checks only: formatting and the privacy scan of the lines being committed.
+# Fast checks only: formatting, the privacy scan of the lines being committed, and that no local
+# core dev-link is about to be committed (the pre-push gate would catch it only after the commit).
 set -e
 cargo fmt --all -- --check || { echo "pre-commit: run 'cargo fmt --all'"; exit 1; }
 cargo xtask privacy --staged
+cargo xtask unlinked

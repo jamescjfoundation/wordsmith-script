@@ -1603,7 +1603,7 @@ impl Editor {
 
 /// What a shifted key with no command of its own does: a caret movement's key extends the
 /// selection, and Shift+Backspace still deletes back.
-// core-candidate: the shell's keys leave caret keys to the document; every app on the engine
+// core-candidate: open-source-core#29. The shell's keys leave caret keys to the document; every app on the engine
 // needs this rule.
 fn shifted(map: &jcj_shell::keys::KeyMap, shortcut: &str) -> Option<jcj_shell::Cmd> {
     let mut s = jcj_shell::keys::parse_shortcut(shortcut)?;

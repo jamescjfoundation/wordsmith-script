@@ -3,7 +3,7 @@
 //! the editor asks for ([`wordsmith_ui::editor::FileAsk`]) is shown over the window, and its answer
 //! runs the command it was asked for.
 //!
-// core-candidate: the shell has no file dialogs yet. Every app needs them, so they belong in
+// core-candidate: open-source-core#28. The shell has no file dialogs yet. Every app needs them, so they belong in
 // `jcj-shell` (over the dialogs the core's upstream layer already carries), answered on a worker
 // as the old interface's were; until then the window shows them here, modally.
 
