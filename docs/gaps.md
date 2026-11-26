@@ -1,7 +1,8 @@
 # What Wordsmith Script does not do
 
 The standing limits of the app: what a writer should know it will not do, with
-the reason. Nothing here is waiting to be built.
+the reason. None of it is planned work in this repository. Where a limit
+waits for open-source-core, its core issue is linked.
 
 What is missing and planned, or broken, is an issue:
 

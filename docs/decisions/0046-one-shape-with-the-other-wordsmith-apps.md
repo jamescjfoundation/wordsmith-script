@@ -39,9 +39,18 @@ What Script keeps that the others lack:
 - **Two specifications**, `docs/SPEC.md` and `docs/SPEC-2.md` (decision 0030).
 - **The issue forms** in `.github/ISSUE_TEMPLATE/`. With the plan kept as
   issues they matter more, not less; the core is asked to carry them for every
-  app, as it carries the pull request template.
+  app, as it carries the pull request template
+  ([core issue 44](https://github.com/jamescjfoundation/open-source-core/issues/44)).
 - **`UPSTREAM.md`** at the root, a legal file the `assets` check wants: Script
   is the one app that once held copied upstream code.
+- **`docs/gaps.md` and `ROADMAP.md`**, which decision records cite by name.
+  One now holds limits only and the other a link.
+
+One difference is left as it is: the interface theme is
+`assets/brand/script/tokens.json` here and `assets/brand/tokens.json` in the
+other two. The brand kit in the wordsmith repository records each app's path
+and checks the file there, so the move is made in both repositories together
+or not at all; it is asked about in the wordsmith repository.
 
 ## Consequences
 

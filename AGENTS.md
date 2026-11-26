@@ -289,7 +289,10 @@ A library that is neither ours nor the core's is not the table's business.
   and come back the same (`crates/script-format/tests/round_trips.rs`), every file 0.1.2 saved
   opens with the same pages, and the golden scripts' PDFs are read back word for word.
   **Today:** the imports from plain text, RTF and PDF and the exports to RTF, text and HTML
-  have no word-for-word test, and a Fountain import leaves out notes written inside the text.
+  have no word-for-word test
+  ([issue 11](https://github.com/jamescjfoundation/wordsmith-script/issues/11)), and a Fountain
+  import leaves out notes written inside the text
+  ([issue 12](https://github.com/jamescjfoundation/wordsmith-script/issues/12)).
 - **Golden files are the judge.** The golden scripts' PDF text, the pages 0.1.2 planned for
   every file it saved, and the guide's page of keys are compared with reviewed files
   (`docs/golden.md` lists them and their tests). A change that alters one is deliberate:
