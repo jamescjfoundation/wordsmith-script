@@ -15,9 +15,9 @@ cargo xtask screenshots <folder>      # the interface pictures, drawn offscreen
 `cargo xtask ci` runs rustfmt, the crate-root lint check, the checks that the
 settings shared with open-source-core match its pinned release and that no
 WordCraft or craft-libs crate is named here, the privacy check, the license and
-asset attribution checks, clippy and every test. Run it before you open a pull
-request; CI runs it again (`.github/workflows/ci.yml`, the core's), and the
-release runs it on Linux, macOS and Windows.
+asset attribution checks, clippy and every test. Run it before you push or open
+a pull request; CI runs it again (`.github/workflows/ci.yml`, the core's), and
+the release runs it on Linux, macOS and Windows.
 
 ## Where things are
 
@@ -42,45 +42,65 @@ Every action in the app is a command in one registry. The window, the command
 line and the MCP server all run the same commands, so a new feature is a
 command first and a button second.
 
+<!-- BEGIN open-source-core: contributing -->
+<!-- Owned by open-source-core (template/CONTRIBUTING.md). Change it there, never in a copy: `cargo xtask sync` rewrites the copies. -->
 ## Rules for a public repository
 
 ### Personal information
 
-Never commit, or paste into an issue or pull request:
-
-- anyone's name, email address, phone number or account, other than the
-  commit author line you chose (see "Commits" below);
-- local paths, user names, host names, IP addresses or machine details
-  (`/Users/<name>/…`, `C:\Users\<name>\…`, `/home/<name>/…`);
-- files from a real machine: `preferences.json`, crash recovery files,
-  auto-save or backup copies, logs, or screenshots of a desktop;
-- a real person's screenplay or notes. Test scripts and screenshots use
-  public-domain works (the ones in `crates/wordsmith-format/tests/golden`) or
-  text you wrote for the purpose;
-- passwords, tokens, keys or `.env` files.
-
-When someone attaches a file with personal content to an issue, a maintainer
-deletes or edits the attachment and asks for a made-up example instead.
-
-The app follows the same rule. It sends no telemetry and never sends script
-content anywhere. Any network request it makes must be listed in the README's
-Privacy section and must have a setting to turn it off.
+Never commit, or paste into an issue or pull request: anyone's name, email address or account
+(other than your commit author line); local paths, user names, host names or machine details;
+files from a real machine (preferences, recovery, auto-save or backup files, logs, desktop
+screenshots); anyone's private writing; passwords, tokens or keys. Test fixtures are
+public-domain texts or written for the test. `cargo xtask privacy` checks files and commit
+identities.
 
 ### Security problems
 
-Follow `SECURITY.md`. In short: report privately, keep the problem out of public
-issues, pull requests, commit messages, branch names, code comments and files
-until a release fixes it, and then disclose it in an advisory and the
-changelog.
+Follow `SECURITY.md`: report privately and keep the problem out of public places until a release
+fixes it.
 
 ### Private working notes
 
-Reviews, audits, plans that mention open security problems, and anything else
-you keep while working but that is not ready to be public go in `.private/` at
-the top of your checkout. Git ignores that folder. Write the public part of what
-you learned as a decision record, a guide page or a changelog entry, in words
-an outsider can follow. Do not refer to private conversations ("as discussed",
-"the owner said"); give the reason itself.
+Reviews, audits and working notes go in `.private/` (ignored by Git). One is published only when
+a maintainer says so, under `docs/history/`, with a first line saying it is history
+([core decision 0012](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0012-working-in-the-open.md)).
+Write the public part as a decision record or changelog entry, giving the reason itself rather
+than "as discussed".
+
+## Commits, pushes and pull requests
+
+- While no app built on the core has a public release, a push to `main` is allowed once
+  `cargo xtask ci` passes. A pull request is optional; its author may merge it once its checks
+  pass
+  ([core decision 0013](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0013-app-and-core.md)).
+- A release is cut, and in the core an upstream pin is moved, only on a commit whose full gate
+  has passed; a person or an agent may do either (core decisions
+  [0004](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0004-follow-hold-own.md)
+  and
+  [0011](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0011-releases-and-versioning.md)).
+- Contributions are licensed as the project is, MIT OR Apache-2.0, with no extra terms. No CLA.
+- Use your GitHub no-reply address (`git config user.email <id>+<login>@users.noreply.github.com`).
+- One concern per commit or pull request; say what changed, why, and how you checked it.
+- Update `CHANGELOG.md` and the decision records when behavior changes. A core change that apps
+  must act on says so under "What apps must do".
+- AI-assisted contributions are welcome; you are responsible for every line.
+<!-- END open-source-core: contributing -->
+
+## Wordsmith Script's own rules
+
+These add to the rules above; they hold only in this repository.
+
+### Scripts and the app's own privacy
+
+- Never commit a real person's screenplay or notes. Test scripts and screenshots use
+  public-domain works (the ones in `crates/wordsmith-format/tests/golden`) or text you wrote for
+  the purpose.
+- When someone attaches a file with personal content to an issue, a maintainer deletes or edits
+  the attachment and asks for a made-up example instead.
+- The app follows the same rule. It sends no telemetry and never sends script content anywhere.
+  Any network request it makes must be listed in the README's Privacy section and must have a
+  setting to turn it off.
 
 ### Clean room and names
 
@@ -105,25 +125,16 @@ an outsider can follow. Do not refer to private conversations ("as discussed",
 
 ### Dependencies and assets
 
-- Every dependency's license must be on the allowlist in
-  `docs/decisions/0001-license-allowlist.md`. `cargo xtask ci` checks it.
+- Every dependency's license must be on the core's allowlist
+  ([core decision 0001](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0001-licenses-and-supply-chain.md)),
+  which `deny.toml` carries. `cargo xtask ci` checks it.
 - Fonts, images, dictionaries and other data must be under an allowed license
   and listed in `ATTRIBUTION.md`. Icons are drawn in code.
 
-## Commits and pull requests
+### What a change brings with it
 
-- Contributions are licensed as the project is, MIT OR Apache-2.0, at the
-  user's option, with no extra terms (Apache-2.0 section 5). There is no CLA.
-- Commits are public with the name and email in your Git settings. If you do
-  not want your email public, use your GitHub noreply address
-  (`git config user.email <id>+<login>@users.noreply.github.com`).
-- Keep one concern per pull request. Say what changed and why, and how you
-  checked it. Interface changes include before and after pictures from
-  `cargo xtask screenshots`.
-- Update the user guide, `docs/gaps.md` and `CHANGELOG.md` when behavior
-  changes.
-- AI-assisted contributions are welcome. You are responsible for every line, as
-  if you wrote it; the same rules apply.
+- Interface changes include before and after pictures from `cargo xtask screenshots`.
+- Update the user guide, `docs/gaps.md` and `CHANGELOG.md` when behavior changes.
 
 ## Conduct
 

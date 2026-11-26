@@ -8,6 +8,8 @@
 //! license files in each package's source, which Cargo has already downloaded. A package that
 //! ships no license file gets the standard text of its license, said as such; a license we have
 //! no standard text for stops the bundle.
+//!
+//! Core decisions: <https://github.com/jamescjfoundation/open-source-core/tree/main/docs/decisions>.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

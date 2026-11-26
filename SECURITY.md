@@ -1,18 +1,37 @@
 # Security
 
+<!-- BEGIN open-source-core: security -->
+<!-- Owned by open-source-core (template/SECURITY.md). Change it there, never in a copy: `cargo xtask sync` rewrites the copies. -->
 ## Reporting a problem
 
-Report security problems privately, not in a public issue, pull request or
-discussion. Use GitHub's private reporting: the **Security** tab of this
-repository, then **Report a vulnerability**. Only the maintainers see the
-report.
+Report security problems privately, not in a public issue, pull request or discussion. Use
+GitHub's private reporting: the **Security** tab of this repository, then **Report a
+vulnerability**. Only the maintainers see the report.
 
-Please include what you ran, what happened and what you expected. If you attach
-a script or other file to show the problem, remove anything personal from it
-first. A small made-up script is best.
+Include what you ran, what happened and what you expected. If you attach a file to show the
+problem, remove anything personal from it first; a small made-up example is best.
 
-We aim to reply within seven days. We will tell you when a fix is ready and
-credit you in the advisory and the changelog, unless you ask us not to.
+We aim to reply within seven days, tell you when a fix is ready, and credit you in the advisory
+and the changelog unless you ask us not to.
+
+A problem in the parts every app shares (the window, saving and backups, format import and
+export, agent tools, updates) is fixed in
+[open-source-core](https://github.com/jamescjfoundation/open-source-core). Report it there or in
+the app where you found it; we move the report to where the fix belongs.
+
+## How we handle a report
+
+1. **Keep it private until the fix ships.** Not in a public issue, pull request, commit message,
+   branch name, code comment or file in the repository. Discuss it in the private advisory;
+   working notes go in `.private/` (ignored by Git).
+2. **Fix it in the open, quietly.** The change says what the code now does, not how the old code
+   could be abused, and adds a test that would have caught it.
+3. **Release the fix.** A fix in the core is released there first, and every app then moves to
+   that release and releases in turn.
+4. **Disclose:** publish the advisory and add a **Security** entry to `CHANGELOG.md`.
+
+If a problem is already public or being exploited, go straight to a fix and an advisory.
+<!-- END open-source-core: security -->
 
 ## What counts
 
@@ -30,25 +49,3 @@ asked for. For example:
 - Crash recovery, auto-save or backup files readable by other users.
 
 Only the latest release is supported. Fixes are not backported.
-
-## How we handle a report
-
-Maintainers and contributors follow these steps for every security problem,
-whether it was reported or found in a review:
-
-1. **Keep it private until the fix ships.** Do not describe the problem in a
-   public issue, pull request, discussion, commit message, branch name, code
-   comment or file in the repository. Discuss it in the private advisory.
-   Working notes stay out of the repository (see "Private working notes" in
-   `CONTRIBUTING.md`).
-2. **Fix it in the open, quietly.** The fix lands through a normal pull request.
-   Its title and commit messages say what the code now does ("Exports go
-   through the checked writer"), not how to exploit the old code. Add a test
-   that would have caught it.
-3. **Release.** Ship a release with the fix.
-4. **Disclose.** Then publish the GitHub security advisory, and add a
-   **Security** entry to `CHANGELOG.md` that names the problem, the versions
-   affected and the version that fixes it.
-
-If a problem is already public, or is being exploited, skip straight to a fix
-and an advisory.

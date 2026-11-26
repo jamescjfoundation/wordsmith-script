@@ -1,8 +1,8 @@
 # Code of conduct
 
-Wordsmith Script is made by volunteers for writers. We want everyone who
-takes part, in issues, pull requests, reviews and discussions, to be treated
-with respect.
+This project is made by volunteers for the people who use it. We want everyone
+who takes part, in issues, pull requests, reviews and discussions, to be
+treated with respect.
 
 ## Expected
 
@@ -11,7 +11,7 @@ with respect.
 - Criticise work, not people. Explain what you would change and why.
 - Accept that maintainers decide what goes in, and say why when they say no.
 - Respect people's privacy: do not post anyone's personal information, and do
-  not share scripts or files that were not meant for the public.
+  not share writing or files that were not meant for the public.
 
 ## Not accepted
 

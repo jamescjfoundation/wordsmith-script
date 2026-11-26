@@ -16,6 +16,7 @@
 # GitHub stops a scheduled workflow in a repository with no commit for 60 days; run it by hand
 # then (workflow_dispatch) and it is scheduled again.
 #
+# Core decisions: https://github.com/jamescjfoundation/open-source-core/tree/main/docs/decisions
 # Only GitHub's own actions, pinned to full commit SHAs, and only this run's own token.
 name: Core pin
 

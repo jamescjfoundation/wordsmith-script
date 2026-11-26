@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! Every product crate root must forbid `unsafe` and deny the panicking lints (decision 0003).
+//! Every product crate root must forbid `unsafe` and deny the panicking lints (core decision 0003).
 //!
 //! Owned by open-source-core (`template/xtask/src/`); copied into apps by `cargo xtask sync`.
+//! Core decisions: <https://github.com/jamescjfoundation/open-source-core/tree/main/docs/decisions>.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};

@@ -5,14 +5,16 @@
 //! all on our allowlist? `A OR B` passes if either side passes, `A AND B`
 //! only if both do. Input comes from `cargo tree`, so it is treated as
 //! untrusted: length and nesting are bounded and unknown syntax fails.
+//!
+//! Core decisions: <https://github.com/jamescjfoundation/open-source-core/tree/main/docs/decisions>.
 
-/// License ids on the allowlist, spelled as SPDX ids (open-source-core decision 0001).
+/// License ids on the allowlist, spelled as SPDX ids (core decision 0001).
 pub const ALLOWED: &[&str] =
     &["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "ISC", "OFL-1.1", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "Unlicense"];
 
 /// Licenses outside the plain allowlist that were reviewed and approved
 /// because WordCraft and its dependencies cannot build without them.
-/// Reasons and conditions are in open-source-core decision 0001. Add to
+/// Reasons and conditions are in core decision 0001. Add to
 /// this list only with a maintainer's approval recorded there.
 pub const REVIEWED_EXCEPTIONS: &[&str] = &["Zlib", "Unicode-3.0", "IJG", "BSL-1.0", "CDLA-Permissive-2.0"];
 

@@ -3,17 +3,20 @@
 # Built so nobody waits on it (core decision 0003):
 #
 # - The gate is `cargo xtask ci`, the same command the pre-push hook runs, so CI confirms what the
-#   developer already saw. It also fails if the app's shared settings or patch block differ from
-#   the pinned core release, if a local core dev-link was committed, or if the app names or builds
-#   more than one core release (how far behind the pin is: core-pin.yml).
+#   developer already saw. It also fails if the app's shared files, marked blocks or patch block
+#   differ from the pinned core release, if a local core dev-link was committed, or if the app
+#   names or builds more than one core release (how far behind the pin is: core-pin.yml).
 # - Pushes check only what changed since the last commit that passed CI on main (found through
 #   the GitHub API, so a cancelled run's changes are never skipped), plus everything that depends
 #   on it. Manifests, the lock file or the toolchain changing means everything.
 # - Cheap checks (no compile of the product), cargo-deny and the build run as parallel jobs.
-# - Documentation-only pushes do not run CI. A newer push cancels an older run.
+# - Documentation-only pushes do not run CI: the pre-push hook checks the marked blocks in the
+#   Markdown files, and so does the next push that is not documentation only. A newer push
+#   cancels an older run.
 # - Caches are restored everywhere but saved only from main, so they stay warm and small.
 # - Release builds and other platforms belong in the app's own workflows.
 #
+# Core decisions: https://github.com/jamescjfoundation/open-source-core/tree/main/docs/decisions
 # Only GitHub's own actions, pinned to full commit SHAs.
 name: CI
 

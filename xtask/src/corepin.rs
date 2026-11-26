@@ -2,8 +2,8 @@
 //! `cargo xtask core-pin`: an app builds on one core release, and how far behind that release is.
 //!
 //! An app names the core in its root `Cargo.toml`, every `jcj-` line at the same release tag, and
-//! moves to the newest core before new work starts on it and before its own release (decision
-//! 0011). Nothing in Cargo keeps that true, so this module checks it:
+//! moves to the newest core before new work starts on it and before its own release (core
+//! decision 0011). Nothing in Cargo keeps that true, so this module checks it:
 //!
 //! - **One tag.** Every line that names the core's git address carries a release tag
 //!   (`tag = "vX.Y.Z"`), and all of them the same one.
@@ -19,6 +19,7 @@
 //! itself, or a copy that uses the core by path) passes all three.
 //!
 //! Owned by open-source-core (`template/xtask/src/`); copied into apps by `cargo xtask sync`.
+//! Core decisions: <https://github.com/jamescjfoundation/open-source-core/tree/main/docs/decisions>.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;

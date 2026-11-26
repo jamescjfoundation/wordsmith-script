@@ -1,6 +1,8 @@
 # The exact Rust release that builds, checks and tests open-source-core, so every
-# machine and CI runner uses the same compiler (decision 0003). Raise it on purpose,
+# machine and CI runner uses the same compiler (core decision 0003). Raise it on purpose,
 # in its own change. The minimum supported version is `rust-version` in Cargo.toml.
+# Owned by open-source-core; `cargo xtask sync` copies it into every app. Core decisions:
+# https://github.com/jamescjfoundation/open-source-core/tree/main/docs/decisions
 [toolchain]
 channel = "1.100.0"
 components = ["rustfmt", "clippy"]

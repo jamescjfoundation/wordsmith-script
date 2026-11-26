@@ -2,6 +2,9 @@
 //! Just enough JSON to read `cargo metadata`. xtask has no dependencies (core decision 0003), so it
 //! carries this instead of a JSON crate. Input is treated as untrusted: nesting is bounded and
 //! anything outside RFC 8259 fails.
+//!
+//! Owned by open-source-core (`template/xtask/src/`); copied into apps by `cargo xtask sync`.
+//! Core decisions: <https://github.com/jamescjfoundation/open-source-core/tree/main/docs/decisions>.
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {

@@ -1,7 +1,8 @@
 # cargo-deny: licenses, security advisories, banned patterns and allowed sources for every crate
-# in Cargo.lock (decision 0001). CI runs `cargo deny --locked check`. It repeats the license check
-# of `cargo xtask licenses` with a second, independent tool and adds RustSec advisories and where
-# each crate comes from. Owned by open-source-core; `cargo xtask sync` copies it into every app.
+# in Cargo.lock (core decision 0001). CI runs `cargo deny --locked check`. It repeats the license
+# check of `cargo xtask licenses` with a second, independent tool and adds RustSec advisories and
+# where each crate comes from. Owned by open-source-core; `cargo xtask sync` copies it into every app.
+# Core decisions: https://github.com/jamescjfoundation/open-source-core/tree/main/docs/decisions
 
 [graph]
 all-features = true
@@ -20,7 +21,7 @@ ignore = [
     # ZipStreamReader or AES-encrypted entries. WordCraft reads entries by name into memory and
     # never extracts to disk or streams; the zip crate is built without its `aes` feature; the
     # core's own zip code (jcj-project, jcj-interchange) must not call extract() or
-    # ZipStreamReader either (decision 0001). Leaves when WordCraft moves to zip >= 9.
+    # ZipStreamReader either (core decision 0001). Leaves when WordCraft moves to zip >= 9.
     { id = "RUSTSEC-2026-0367", reason = "zip extract() only; never called (docs/UPSTREAM.md)" },
     { id = "RUSTSEC-2026-0368", reason = "zip extract() only; never called (docs/UPSTREAM.md)" },
     { id = "RUSTSEC-2026-0369", reason = "zip extract()/ZipStreamReader only; never called (docs/UPSTREAM.md)" },
@@ -36,7 +37,7 @@ ignore = [
 
 [licenses]
 version = 2
-# Must match decision 0001 and template/xtask/src/spdx.rs.
+# Must match core decision 0001 and template/xtask/src/spdx.rs.
 allow = [
     "MIT",
     "Apache-2.0",
@@ -50,7 +51,7 @@ allow = [
     "CC-BY-4.0",
     "CC-BY-SA-4.0",
     "Unlicense",
-    # Reviewed exceptions (decision 0001): `REVIEWED_EXCEPTIONS` in template/xtask/src/spdx.rs.
+    # Reviewed exceptions (core decision 0001): `REVIEWED_EXCEPTIONS` in template/xtask/src/spdx.rs.
     "Zlib",
     "Unicode-3.0",
     "IJG",
