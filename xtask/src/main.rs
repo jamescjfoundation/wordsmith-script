@@ -91,6 +91,7 @@ fn main() -> ExitCode {
         "dev-unlink" => link::dev_unlink(&root),
         "sync" => sync::app_task(&root, rest.iter().any(|a| a == "--check")),
         "core-pin" => corepin::task(&root, rest),
+        "affected" => changed::task(&root, rest),
         "deny" => cargo(&root, &["deny", "--locked", "check"]),
         "install-hooks" => util::git_output(&root, &["config", "core.hooksPath", "hooks"]).map(|_| println!("git hooks on")),
         "third-party-licenses" => licenses::task(&root, SHIPPED, PRODUCT, rest.first().map(String::as_str)),
@@ -341,22 +342,6 @@ mod tests {
         }
         assert!(OTHER_TASKS.iter().any(|(n, _)| *n == "wasm"));
         assert_eq!(SHIPPED, ["wordsmith", "wordsmith-cli"]);
-    }
-
-    #[test]
-    fn the_core_workflow_skips_only_tasks_that_exist() {
-        // The core's CI workflow runs `ci --skip <list>` in two jobs; an unknown name fails it.
-        let root = workspace_root();
-        let workflow = std::fs::read_to_string(root.join(".github/workflows/ci.yml")).unwrap();
-        let names: Vec<&str> = TASKS.iter().map(|(n, _)| *n).collect();
-        let mut seen = 0;
-        for line in workflow.lines().filter(|l| l.contains("cargo xtask ci")) {
-            let Some((_, list)) = line.split_once("--skip ") else { continue };
-            let list = list.split_whitespace().next().unwrap();
-            assert!(util::skipped(&["--skip".to_owned(), list.to_owned()], &names).is_ok(), "{line}");
-            seen += 1;
-        }
-        assert!(seen >= 2, "no --skip lists found in ci.yml");
     }
 
     #[test]

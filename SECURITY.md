@@ -17,7 +17,7 @@ and the changelog unless you ask us not to.
 A problem in the parts every app shares (the window, saving and backups, format import and
 export, agent tools, updates) is fixed in
 [open-source-core](https://github.com/jamescjfoundation/open-source-core). Report it there or in
-the app where you found it; we move the report to where the fix belongs.
+the repository where you found it; we move the report to where the fix belongs.
 
 ## How we handle a report
 
@@ -27,8 +27,10 @@ the app where you found it; we move the report to where the fix belongs.
 2. **Fix it in the open, quietly.** The change says what the code now does, not how the old code
    could be abused, and adds a test that would have caught it.
 3. **Release the fix.** A fix in the core is released there first, and every app then moves to
-   that release and releases in turn.
-4. **Disclose:** publish the advisory and add a **Security** entry to `CHANGELOG.md`.
+   that release and releases in turn. A repository that publishes without releases (a website,
+   say) publishes the fix.
+4. **Disclose:** publish the advisory and, where the repository keeps a changelog, add a
+   **Security** entry to it.
 
 If a problem is already public or being exploited, go straight to a fix and an advisory.
 <!-- END open-source-core: security -->

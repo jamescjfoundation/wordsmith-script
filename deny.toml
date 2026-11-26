@@ -37,7 +37,8 @@ ignore = [
 
 [licenses]
 version = 2
-# Must match core decision 0001 and template/xtask/src/spdx.rs.
+# Must match core decision 0001 and the shared xtask module spdx.rs (`template/xtask/src/` in the
+# core, `xtask/src/` in an app).
 allow = [
     "MIT",
     "Apache-2.0",
@@ -51,7 +52,7 @@ allow = [
     "CC-BY-4.0",
     "CC-BY-SA-4.0",
     "Unlicense",
-    # Reviewed exceptions (core decision 0001): `REVIEWED_EXCEPTIONS` in template/xtask/src/spdx.rs.
+    # Reviewed exceptions (core decision 0001): `REVIEWED_EXCEPTIONS` in the shared xtask module spdx.rs.
     "Zlib",
     "Unicode-3.0",
     "IJG",

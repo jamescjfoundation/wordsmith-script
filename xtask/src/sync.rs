@@ -2,8 +2,9 @@
 //! `cargo xtask sync`: keep an app repository's shared settings and rules identical to the core's.
 //!
 //! Every app carries the same toolchain, lint, cargo-deny and license settings, the same shared
-//! xtask modules, the same workflows, an exact copy of the core's `[patch]` block, and the core's
-//! rules as marked blocks in its `AGENTS.md`, `SECURITY.md` and `CONTRIBUTING.md`. This module
+//! xtask modules, the same workflow files (each calls a shared workflow kept in the core), the
+//! same Dependabot settings, an exact copy of the core's `[patch]` block, and the core's rules
+//! as marked blocks in its `AGENTS.md`, `SECURITY.md` and `CONTRIBUTING.md`. This module
 //! copies them from a core checkout into an app (`sync`) or reports any difference (`--check`, run
 //! by the app's CI).
 //!
@@ -44,6 +45,7 @@ pub const MANAGED: &[(&str, &str)] = &[
     ("template/.github/workflows/ci.yml", ".github/workflows/ci.yml"),
     ("template/.github/workflows/core-pin.yml", ".github/workflows/core-pin.yml"),
     ("template/.github/pull_request_template.md", ".github/pull_request_template.md"),
+    ("template/.github/dependabot.yml", ".github/dependabot.yml"),
     ("template/hooks/pre-commit", "hooks/pre-commit"),
     ("template/hooks/pre-push", "hooks/pre-push"),
     ("template/CODE_OF_CONDUCT.md", "CODE_OF_CONDUCT.md"),
@@ -247,6 +249,7 @@ const RUN_FROM_MAIN: &[(&str, &str)] = &[
     ("corepin::task", "the core-pin check"),
     ("docs::app_task", "the docs check"),
     ("util::warn_if_hooks_off", "the warning when this clone's git hooks are off"),
+    ("changed::task", "the `affected` task, which the CI workflow asks what to build"),
 ];
 
 /// The entries of [`RUN_FROM_MAIN`] an app's `xtask/src/main.rs` does not call.
@@ -419,7 +422,8 @@ mod tests {
 
     #[test]
     fn says_what_an_older_main_does_not_run() {
-        let wired = "\"core-pin\" => corepin::task(&root, rest),\n\"docs\" => docs::app_task(&root),\nutil::warn_if_hooks_off(root, \"hooks\");";
+        let wired = "\"core-pin\" => corepin::task(&root, rest),\n\"docs\" => docs::app_task(&root),\nutil::warn_if_hooks_off(root, \"hooks\");\n\
+                     \"affected\" => changed::task(&root, rest),";
         assert!(not_run(wired).is_empty());
         let notes = not_run("mod sync;");
         assert_eq!(notes.len(), RUN_FROM_MAIN.len());

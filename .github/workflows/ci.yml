@@ -1,31 +1,37 @@
 # CI for an app built on open-source-core. Owned by the core (template/.github/workflows/ci.yml)
 # and kept identical in every app by `cargo xtask sync`; put app-only jobs in another workflow file.
-# Built so nobody waits on it (core decision 0003):
 #
-# - The gate is `cargo xtask ci`, the same command the pre-push hook runs, so CI confirms what the
-#   developer already saw. It also fails if the app's shared files, marked blocks or patch block
-#   differ from the pinned core release, if a local core dev-link was committed, or if the app
-#   names or builds more than one core release (how far behind the pin is: core-pin.yml).
-# - Pushes check only what changed since the last commit that passed CI on main (found through
-#   the GitHub API, so a cancelled run's changes are never skipped), plus everything that depends
-#   on it. Manifests, the lock file or the toolchain changing means everything.
-# - Cheap checks (no compile of the product), cargo-deny and the build run as parallel jobs.
-# - Documentation-only pushes do not run CI: the pre-push hook checks the marked blocks in the
-#   Markdown files, and so does the next push that is not documentation only. A newer push
-#   cancels an older run.
-# - Caches are restored everywhere but saved only from main, so they stay warm and small.
-# - Release builds and other platforms belong in the app's own workflows.
+# This file only says when CI runs. The jobs are the core's shared workflow, called at the tag
+# `workflows-v1`:
+# https://github.com/jamescjfoundation/open-source-core/blob/workflows-v1/.github/workflows/shared-ci.yml
+# The core moves that tag to a commit whose own CI run passed, so a fix to CI reaches every app
+# at once, with no core release and no change here. The tag asks of an app only what every core
+# release from 0.1.19 on gives it; a workflow that needs more gets a new tag, and this file
+# names it from the core release that brings what it needs (core decision 0003).
+#
+# What runs, in three parallel jobs:
+#
+# - checks: `cargo xtask ci` without clippy and tests. On every push to main and every pull
+#   request, a change to Markdown alone included. It fails if the app's shared files, marked
+#   blocks or patch block differ from the pinned core release, if a local core dev-link was
+#   committed, or if the app names or builds more than one core release (how far behind the pin
+#   is: core-pin.yml).
+# - cargo-deny.
+# - build: clippy and tests for what changed since the last commit that passed CI on main, and
+#   for everything that depends on it. A changed file that a package's sources name (a design, a
+#   font, a fixture, a golden file, a page a test compares) counts as that package's. Manifests,
+#   the lock file or the toolchain changing means everything.
+#
+# A newer push cancels an older run. Release builds and other platforms belong in the app's own
+# workflows.
 #
 # Core decisions: https://github.com/jamescjfoundation/open-source-core/tree/main/docs/decisions
-# Only GitHub's own actions, pinned to full commit SHAs.
 name: CI
 
 on:
   push:
     branches: [main]
-    paths-ignore: ["**.md", "docs/**", "LICENSE-*", "NOTICE", ".github/dependabot.yml"]
   pull_request:
-    paths-ignore: ["**.md", "docs/**", "LICENSE-*", "NOTICE", ".github/dependabot.yml"]
   workflow_dispatch:
     inputs:
       full:
@@ -35,140 +41,18 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  CARGO_TERM_COLOR: always
-  CARGO_INCREMENTAL: "0"
-  CARGO_NET_RETRY: "10"
-  RUST_BACKTRACE: "short"
-  CARGO_DENY_VERSION: "0.20.2"
-
 jobs:
-  # Everything that needs no product build: formatting, crate roots, no dev-link, one core
-  # release, shared settings, layers, privacy (all files and every commit identity) and the
-  # license allowlist.
-  checks:
-    name: checks (fmt, sync, layers, privacy, licenses)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0 # privacy checks every commit identity
-      - name: Toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - name: Restore cargo home
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: cargo-home-${{ hashFiles('Cargo.lock') }}
-          restore-keys: cargo-home-
-      - name: cargo xtask ci (checks only)
-        run: cargo xtask ci --skip clippy,test
-
-  deny:
-    name: cargo-deny (licenses, advisories, sources)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - name: Cached cargo-deny
-        id: deny-bin
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cargo/bin/cargo-deny
-          key: cargo-deny-${{ env.CARGO_DENY_VERSION }}-${{ hashFiles('rust-toolchain.toml') }}
-      - name: Install cargo-deny
-        if: steps.deny-bin.outputs.cache-hit != 'true'
-        run: cargo install --locked cargo-deny --version "$CARGO_DENY_VERSION"
-      - name: cargo deny check
-        run: cargo deny --locked check
-
-  # Clippy and tests for the packages this change affects.
-  build:
-    name: clippy and tests (affected packages)
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0 # to diff against the last green commit
-      - name: Toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - name: What to check
-        id: base
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EVENT: ${{ github.event_name }}
-          PR_BASE: ${{ github.event.pull_request.base.sha }}
-          FULL: ${{ inputs.full }}
-        run: |
-          base=""
-          if [ "$EVENT" = "pull_request" ]; then
-            base="$PR_BASE"
-          elif [ "$FULL" != "true" ]; then
-            # The newest commit on main whose CI run passed; everything after it is checked.
-            base=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main \
-                   --status success --limit 20 --json headSha --jq '.[].headSha' \
-                   | while read -r sha; do
-                       if git merge-base --is-ancestor "$sha" HEAD 2>/dev/null; then echo "$sha"; break; fi
-                     done)
-          fi
-          if [ -n "$base" ]; then
-            echo "args=--changed --base $base" >> "$GITHUB_OUTPUT"
-            echo "Checking changes since $base"
-          else
-            echo "args=" >> "$GITHUB_OUTPUT"
-            echo "No green base found: checking everything"
-          fi
-      - name: Restore cargo home and target
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-                        target
-          key: build-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
-          restore-keys: |
-            build-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('Cargo.lock') }}-
-            build-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml') }}-
-      - name: cargo xtask ci (clippy and tests)
-        run: cargo xtask ci ${{ steps.base.outputs.args }} --skip fmt,lint-roots,unlinked,sync,layers,privacy,licenses
-      - name: Trim the target folder before saving
-        if: github.ref == 'refs/heads/main'
-        run: rm -rf target/debug/incremental target/debug/examples target/nextest
-      - name: Save cargo home and target (main only)
-        if: github.ref == 'refs/heads/main'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-                        target
-          key: build-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml') }}-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
-      - name: Save cargo home for the checks job (main only)
-        if: github.ref == 'refs/heads/main'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        continue-on-error: true # already saved for this lock file
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: cargo-home-${{ hashFiles('Cargo.lock') }}
+  gate:
+    # The shared workflow's jobs get this token and no more: read the code, and read the list of
+    # workflow runs to find the last one that passed.
+    permissions:
+      contents: read
+      actions: read
+    uses: jamescjfoundation/open-source-core/.github/workflows/shared-ci.yml@workflows-v1
+    with:
+      full: ${{ inputs.full == true }}

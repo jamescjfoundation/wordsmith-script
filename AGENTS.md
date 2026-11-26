@@ -66,12 +66,14 @@ cargo xtask sync            # after moving to a new core release: shared files, 
 
 What the core owns is changed in the core, never here: `rust-toolchain.toml`, `rustfmt.toml`,
 `clippy.toml`, `deny.toml`, `CODE_OF_CONDUCT.md`, the shared modules in `xtask/src/`,
-`.github/workflows/ci.yml` and `core-pin.yml`, `.github/pull_request_template.md`, `hooks/`, the
-patch block in `Cargo.toml`, and the blocks marked `open-source-core` in `AGENTS.md`,
-`SECURITY.md` and `CONTRIBUTING.md`.
+`.github/workflows/ci.yml` and `core-pin.yml`, `.github/pull_request_template.md`,
+`.github/dependabot.yml`, `hooks/`, the patch block in `Cargo.toml`, and the blocks marked
+`open-source-core` in `AGENTS.md`, `SECURITY.md` and `CONTRIBUTING.md`.
 `cargo xtask sync --check` fails if any of them differs from the pinned core release.
 `xtask/src/main.rs`, any module an app adds beside it, and everything outside the marked blocks
-are the app's own.
+are the app's own. The two workflow files only say when CI runs: the jobs are the core's shared
+workflows, which they call, so a fix to CI is made in the core and reaches the app without a
+change here.
 
 ## House rules for code
 
@@ -105,6 +107,9 @@ Before you write a commit, branch name, issue, pull request or comment, check it
 Commit with a GitHub no-reply address or a foundation bot identity. Where a repository has
 `cargo xtask`, `cargo xtask privacy` checks its files and every commit. Never push with `--all`
 or `--mirror`.
+
+The Foundation's name is always written "The James C. J. Foundation", with its capital "The"
+wherever it stands in a sentence, never in a shorter form.
 <!-- END open-source-core: public -->
 
 <!-- BEGIN open-source-core: app-and-core -->

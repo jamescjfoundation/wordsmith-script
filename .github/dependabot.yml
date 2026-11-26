@@ -1,34 +1,21 @@
-# Weekly update pull requests for Rust crates and GitHub Actions (decision 0040).
-# Each update still has to pass CI, including cargo-deny's license, advisory and
-# source checks.
+# Weekly update proposals for GitHub Actions, so the commit each action is pinned to does not go
+# stale. Owned by open-source-core (template/.github/dependabot.yml) and kept identical in every
+# app by `cargo xtask sync`.
+#
+# Only the app's own workflow files hold pinned actions. `ci.yml` and `core-pin.yml` call the
+# core's shared workflows, whose pins are updated in the core and reach the app with the tag
+# those two files name; the tag itself is the core's to move, so it is left alone here.
+#
+# Cargo is not listed. The `jcj-` crates move with the core pin (`cargo xtask core-pin`), the
+# crates the core pins move with the core, and a crate only the app uses moves when the app
+# refreshes its lock file. `cargo deny` checks advisories on every push.
+#
+# Who merges one of these pull requests: CONTRIBUTING.md, "Commits, pushes and pull requests".
 version: 2
 updates:
-  - package-ecosystem: cargo
-    directory: /
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 3
-    groups:
-      # Compatible updates arrive as one pull request; anything breaking comes on its own.
-      crates:
-        update-types: [minor, patch]
-    ignore:
-      # craft-libs and the krilla and hayro crates it patches share one git revision, the
-      # one WordCraft pins; they are upgraded together and by hand (UPSTREAM.md).
-      - dependency-name: "craft-*"
-      - dependency-name: "krilla"
-      - dependency-name: "hayro-*"
-      # egui and eframe stay on 0.36.2 until craft-libs moves (decision 0038).
-      - dependency-name: "egui"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      - dependency-name: "eframe"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 2
-    groups:
-      actions:
-        patterns: ["*"]
+    ignore:
+      - dependency-name: "jamescjfoundation/open-source-core*"

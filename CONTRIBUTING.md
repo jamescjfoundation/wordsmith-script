@@ -59,8 +59,8 @@ Never commit, or paste into an issue or pull request: anyone's name, email addre
 (other than your commit author line); local paths, user names, host names or machine details;
 files from a real machine (preferences, recovery, auto-save or backup files, logs, desktop
 screenshots); anyone's private writing; passwords, tokens or keys. Test fixtures are
-public-domain texts or written for the test. `cargo xtask privacy` checks files and commit
-identities.
+public-domain texts or written for the test. The repository's privacy check
+(`cargo xtask privacy` where it has `cargo xtask`) checks files and commit identities.
 
 ### Security problems
 
@@ -70,27 +70,31 @@ fixes it.
 ### Private working notes
 
 Reviews, audits and working notes go in `.private/` (ignored by Git). One is published only when
-a maintainer says so, under `docs/history/`, with a first line saying it is history
+a maintainer says so, under `docs/history/` where the repository has a `docs/` folder, with a
+first line saying it is history
 ([core decision 0012](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0012-working-in-the-open.md)).
 Write the public part as a decision record or changelog entry, giving the reason itself rather
 than "as discussed".
 
 ## Commits, pushes and pull requests
 
-- While no app built on the core has a public release, a push to `main` is allowed once
-  `cargo xtask ci` passes. A pull request is optional; its author may merge it once its checks
-  pass
+- While no app built on the core has a public release, a push to `main` is allowed once the
+  repository's gate passes (`cargo xtask ci` where it has `cargo xtask`). A pull request is
+  optional; its author may merge it once its checks pass
   ([core decision 0013](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0013-app-and-core.md)).
 - A release is cut, and in the core an upstream pin is moved, only on a commit whose full gate
   has passed; a person or an agent may do either (core decisions
   [0004](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0004-follow-hold-own.md)
   and
   [0011](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0011-releases-and-versioning.md)).
-- Contributions are licensed as the project is, MIT OR Apache-2.0, with no extra terms. No CLA.
+- Contributions are licensed as the repository's license files say (MIT OR Apache-2.0 for
+  code), with no extra terms. No CLA.
 - Use your GitHub no-reply address (`git config user.email <id>+<login>@users.noreply.github.com`).
 - One concern per commit or pull request; say what changed, why, and how you checked it.
-- Update `CHANGELOG.md` and the decision records when behavior changes. A core change that apps
-  must act on says so under "What apps must do".
+- A pull request opened by Dependabot is merged by anyone with write access once its checks
+  pass.
+- Update the changelog and the decision records, where the repository keeps them, when behavior
+  changes. A core change that apps must act on says so under "What apps must do".
 - AI-assisted contributions are welcome; you are responsible for every line.
 <!-- END open-source-core: contributing -->
 

@@ -131,21 +131,35 @@ pub fn warn_if_hooks_off(root: &Path, wanted: &str) {
     }
 }
 
-/// The tasks a `ci` run is told to leave out: `--skip a --skip b` or `--skip a,b`.
+/// The tasks a `ci` run is told to leave out: `--skip a --skip b` or `--skip a,b`, and
+/// `--only a,b` for every task but those. `--only` is how a CI job runs the slow tasks alone
+/// without having to know the names of all the others, which differ from app to app.
 pub fn skipped(args: &[String], known: &[&str]) -> Result<Vec<String>, String> {
     let mut skip = Vec::new();
+    let mut only: Option<Vec<&str>> = None;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
-        let list = match arg.strip_prefix("--skip=") {
-            Some(list) => list,
-            None if arg == "--skip" => args.next().ok_or("--skip needs a task name")?,
-            None => return Err(format!("unknown argument '{arg}' for ci")),
+        let (flag, list) = match arg.split_once('=') {
+            Some((flag @ ("--skip" | "--only"), list)) => (flag, list),
+            None if arg == "--skip" || arg == "--only" => (arg.as_str(), args.next().ok_or_else(|| format!("{arg} needs a task name"))?.as_str()),
+            _ => return Err(format!("unknown argument '{arg}' for ci")),
         };
         for name in list.split(',').filter(|n| !n.is_empty()) {
             if !known.contains(&name) {
-                return Err(format!("--skip: there is no task '{name}'"));
+                return Err(format!("{flag}: there is no task '{name}'"));
             }
-            skip.push(name.to_owned());
+            if flag == "--only" {
+                only.get_or_insert_with(Vec::new).push(name);
+            } else {
+                skip.push(name.to_owned());
+            }
+        }
+    }
+    if let Some(only) = only {
+        for name in known.iter().filter(|name| !only.contains(name)) {
+            if !skip.iter().any(|s| s == name) {
+                skip.push((*name).to_owned());
+            }
         }
     }
     Ok(skip)
@@ -188,5 +202,22 @@ mod tests {
         assert!(skipped(&args(&["--skip"]), &known).is_err());
         assert!(skipped(&args(&["--skip", "nothing"]), &known).is_err());
         assert!(skipped(&args(&["fmt"]), &known).is_err());
+    }
+
+    #[test]
+    fn ci_can_run_named_tasks_only() {
+        let args = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        // An app's own task ("assets") is left out without the caller having to name it.
+        let known = ["fmt", "assets", "clippy", "test"];
+        assert_eq!(skipped(&args(&["--only", "clippy,test"]), &known), Ok(vec!["fmt".to_owned(), "assets".to_owned()]));
+        assert_eq!(skipped(&args(&["--only=test"]), &known), Ok(vec!["fmt".to_owned(), "assets".to_owned(), "clippy".to_owned()]));
+        assert_eq!(skipped(&args(&["--only", "clippy", "--only", "test"]), &known), Ok(vec!["fmt".to_owned(), "assets".to_owned()]));
+        // Both: what --only keeps, less what --skip names.
+        assert_eq!(
+            skipped(&args(&["--skip", "test", "--only", "clippy,test"]), &known),
+            Ok(vec!["test".to_owned(), "fmt".to_owned(), "assets".to_owned()])
+        );
+        assert!(skipped(&args(&["--only"]), &known).is_err());
+        assert!(skipped(&args(&["--only", "nothing"]), &known).is_err());
     }
 }

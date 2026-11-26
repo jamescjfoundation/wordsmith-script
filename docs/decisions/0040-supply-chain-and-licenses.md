@@ -66,6 +66,10 @@ The repository is public and ships binaries. Several gaps remained:
   at most three open. It leaves alone what is pinned on purpose: craft-libs,
   krilla and the hayro crates (one shared revision, UPSTREAM.md), and egui and
   eframe beyond 0.36 (decision 0038).
+  *Amended 2026-11-26:* from open-source-core 0.1.19 the settings file is the
+  core's, carried by `cargo xtask sync`: weekly updates for GitHub Actions
+  only. Cargo updates for the shared crates are decided in the core; a crate
+  only Script uses moves when its lock file is refreshed.
 - **Actions pinned by commit.** Every action is GitHub's own and is named by its
   full commit SHA, with the version in a comment, so Dependabot can update both.
   The CI checkout sets `persist-credentials: false`.
