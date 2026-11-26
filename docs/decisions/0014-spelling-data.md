@@ -1,6 +1,11 @@
 # 0014: Spelling data
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: general part moved to the core
+([core decision 0007](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0007-engine-agents-output.md))
+
+Since decision 0044 (2026-11-24) spelling data and the personal dictionary come
+from the core's `jcj-proof`; the core's record says which word lists it uses.
+Script embeds no language data of its own and names no craft-libs crate.
 
 Spelling ships without craft-i18n's SCOWL dictionaries. English spelling uses
 craft-proof's built-in public-domain Moby word list (about 160,000 words) with craft-proof's

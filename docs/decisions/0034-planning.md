@@ -1,6 +1,9 @@
 # 0034: Boards, the strip and planning PDFs
 
-Date: 2026-11-20
+Date: 2026-11-20 · Status: accepted
+
+Since decision 0044 (2026-11-24) boards and cards are drawn by the core's
+`jcj-board`; the board's data and the planning PDFs are still built here.
 
 ## Decision
 

@@ -1,6 +1,10 @@
 # 0019: Import classification rules
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: accepted
+
+Since decision 0044 (2026-11-24) the RTF reader and writer and the PDF text
+reader under these rules are the core's (`jcj-interchange`, `jcj-output`). The
+classification rules and the shape of each export are Script's, unchanged.
 
 `wordsmith-format::import` reads plain text, RTF and text-based PDF into a
 script. The spec asks that plain-text and RTF import ask whether the text is a

@@ -107,9 +107,10 @@ the newest version, so an older file that is saved again can then be opened
 only by a version of the app that reads it.
 
 `crates/wordsmith-format/tests/fixtures` keeps one small file per version
-(`v1-short.wss`, `v2-notes.wss`, `v3-revisions.wss`, `v4-styles.wss`), each
-using what its version added. The tests read every one on every build, save
-it again and check that nothing was lost. `tests/fixtures/saved-by-0.1.2/`
+(the table under "Other readers" names them), each using what its version
+added. The tests read every one on every build, save it again and check that
+nothing was lost, and a version with no file fails a test.
+`tests/fixtures/saved-by-0.1.2/`
 keeps the files Wordsmith Script 0.1.2 saved for each golden script and each
 fixture, with the pages 0.1.2 planned for them: a test opens every one, saves
 it in the newest format, reopens it and checks that it paginates exactly as
@@ -122,6 +123,40 @@ it in the newest format, reopens it and checks that it paginates exactly as
 | 3 | Revision marks (`{r2}…{/r}`, `revised=2`) and locked page starts (`{p7}`), decisions 0024 and 0026 | None needed: braces were already escaped |
 | 4 | More character styles (`{sD,K}…{/s}`: `D` double, `W` words-only and `O` dotted underline, `K` strike, `U` raised, `L` lowered, `C` capitals, `M` small capitals, `H` and a highlighter name, `S#RRGGBB` any highlight color, `F#RRGGBB` text color), decision 0032; tracked changes (the `I3` and `X3` codes and the `revisions` settings key), decision 0035 | None needed: braces were already escaped |
 | 5 | Script's data becomes the document's extension data (`ext`), on open-source-core (decision 0044); the shared document features keep theirs under `core.` keys; change tracking is `trackChanges`. The text, the `@` line attributes and the marks are as in version 4: `#12A`, `omitted=`, `beat=`, `bookmark=`, `scene=`, `dual` and `revised=` now read into and write from the paragraph's extension data (`script.scene_number`, `script.omitted`, `script.beat`, `core.bookmark`, `script.scene_id`, `script.dual`, and the paragraph mark's `core.revised`), and `{n}`, `{r}`, `{p}` into the run marks `core.note`, `core.revised`, `core.page_lock` | `appData` is renamed `ext`; `wordsmith.notes`, `wordsmith.noteTypes`, `wordsmith.revisions`, `wordsmith.locks`, `wordsmith.bookmarks`, `wordsmith.watermark`, `wordsmith.headerFooter` and `wordsmith.spelling` become `core.notes`, `core.note_types`, `core.revisions`, `core.page_locks`, `core.bookmarks`, `core.watermark`, `core.header_footer` and `core.spelling` with the same values; `wordsmith.tracking` `{"on": true}` becomes `trackChanges: true` |
+
+## Other readers
+
+Wordsmith Script is not the only program that reads `.wss`. Wordsmith
+Manuscript shows a script kept in one of its projects and counts its words,
+with a reader of its own (`crates/manuscript-io/src/screenplay.rs` in the
+[wordsmith-manuscript](https://github.com/jamescjfoundation/wordsmith-manuscript)
+repository). That reader takes the title, each paragraph's element and its
+text with the marks taken off. It reads every version up to the one it was
+written for and refuses a newer file, so a script saved in a new format does
+not open there until Manuscript has followed.
+
+A format change is therefore two changes:
+
+1. Here: the new version number, its migration step, its row in the table
+   above, and its fixture (below).
+2. In Manuscript: an issue in the wordsmith-manuscript repository, opened with
+   the change here
+   ([Route B](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-b)).
+   It names the new version, says what changed in the text and its marks, and
+   names the fixture. Manuscript's reader is changed there, never from here.
+
+Both sides test against the same files, one per format version. They live
+here, in `crates/wordsmith-format/tests/fixtures/`; Manuscript keeps unchanged
+copies in its `tests/fixtures/scripts/`. When a fixture here changes,
+Manuscript takes its copy again, so the issue says that too.
+
+| Version | Fixture | What it uses |
+| --- | --- | --- |
+| 1 | `v1-short.wss` | The first format: elements and plain text |
+| 2 | `v2-notes.wss` | A note's anchor, an escaped brace, emphasis, an empty line inside a paragraph, a page break |
+| 3 | `v3-revisions.wss` | A locked page's start, revised text and a paragraph with a deletion, stored scene numbers |
+| 4 | `v4-styles.wss` | The `{s…}` styles, tracked changes and their records, a bookmark, dual dialogue |
+| 5 | `v5-ext.wss` | The settings' `ext` (a `core.` key and a `wordsmith.` key) and `trackChanges`, a stored scene number and a scene id, a note's anchor, escapes |
 
 ## Limits
 

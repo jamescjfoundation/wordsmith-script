@@ -1,8 +1,11 @@
 # 0008: Screenplay data lives in the document's `app_data`
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: replaced by
+[core decision 0006](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0006-extension-data.md)
 
-Status: replaced by open-source-core decision 0006 (extension data): `app_data` became the document's `ext` (decision 0044).
+Since decision 0044 (2026-11-24) `app_data` is the document's `ext`, and the
+fields Script had added to the model are typed extension keys. Script's own
+`wordsmith.` keys are unchanged.
 
 ## Context
 

@@ -1,0 +1,41 @@
+Wordsmith Script 5
+=== settings ===
+{
+  "core": {
+    "title": "Harbour Lights"
+  },
+  "ext": {
+    "core.notes": {
+      "1": {
+        "author": "Writer",
+        "text": "Is the pier lit?"
+      }
+    },
+    "wordsmith.sceneNumbers": {
+      "locked": true,
+      "show": true
+    }
+  },
+  "trackChanges": true
+}
+=== script ===
+@SceneHeading #1 scene=1
+EXT. HARBOUR - NIGHT
+
+@Action
+Rain *hammers* the {n1}pier{/n}. A \*star\* and a \{brace} show.
+
+@Character
+MARA
+
+@Parenthetical
+(low)
+
+@Dialogue
+We go **now**.
+\
+Before the tide.
+
+@Transition page-break
+CUT TO:
+

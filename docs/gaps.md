@@ -106,11 +106,12 @@ built stay (decision 0030).
 
 ## On open-source-core (0.2, decision 0044)
 
-What the rebuild on the core left for later, each with what it waits for:
+What the rebuild on the core left for later, each with what it waits for.
+`docs/core-candidates.md` has the core issue for each and its state:
 
 - **PDF files name WordCraft** as their creator and producer. WordCraft's PDF
   writer fixes both names; letting an app name itself needs a patch on the
-  core's WordCraft fork and a new pin there, which is a maintainer's decision.
+  core's WordCraft fork and a new pin there (core issue #5).
   0.1.x wrote "Wordsmith Script".
 - **Pagination is still Script's own planner**, over the core's measuring
   primitives, page labels and page plans (`jcj_layout::measure`,
@@ -121,30 +122,36 @@ What the rebuild on the core left for later, each with what it waits for:
   line when it keeps a speaker with the start of the speech. It also cannot yet
   count a scene's pages for "CONTINUED: (2)", force a page to start at a page
   lock inside a paragraph, or add placeholder pages for deleted locked pages.
-  Each is a general hook the core would need first.
+  Each is a general hook the core would need first (core issue #34).
 - **The story board's data** (beats, lanes, several boards) stays Script's:
   the core's board (`jcj-board`) has no lanes and one board, and it is an
-  interface crate.
+  interface crate (lanes: core issue #12).
 - **Script's text markers in `.wss`** (`**`, `*`, `_` and the note, revision,
   lock and style marks) are read and written by Script's own codec, not by
   `jcj_interchange::emphasis`: the format's markers are one grammar.
 - **The engine's catalog**: every registry now carries WordCraft's ~420
   word-processor commands. Script shows only its own in its interface, and
-  agents see the whole list through `list_commands`.
+  agents see the whole list through `list_commands` (core issue #37).
 - **The web build does not build.** The core's shell turns on its desktop
   pieces (dialogs, the update check) for every target, and the update check's
   TLS library needs a C compiler for wasm32 that the build machines lack.
   `wordsmith-web` builds and tests for the desktop; `cargo xtask wasm` fails.
-  It needs the shell to leave those pieces out on wasm32.
+  It needs the shell to leave those pieces out on wasm32 (core issue #35).
 - **An update cannot finish in place on Windows**: the shell has no hook for
   the updater's finishing step (`--finish-update`), so 0.2 on Windows offers
-  the download instead. On macOS updates are offered as downloads, as in 0.1.
+  the download instead (core issue #36). On macOS updates are offered as
+  downloads, as in 0.1.
 - **File dialogs** come from the `rfd` crate in `apps/wordsmith` directly: the
-  core has no file-dialog interface for apps yet (marked `core-candidate`).
+  core has no file-dialog interface for apps yet (marked `core-candidate`,
+  core issue #28).
 - **Icons**: the shell draws only its general icons on the ribbon, the rails
-  and the File page; Script's own icons are used in its panels and status bar.
+  and the File page; Script's own icons are used in its panels and status bar
+  (core issue #38).
 - **Shell keys**: Shift with a caret key extending the selection, and keys
   typed in the same frame as text, are handled in Script's editor until the
-  shell does both (`core-candidate`).
+  shell does both (`core-candidate`, core issues #29 and #39).
+- **Template cards and writing statistics** are still Script's own, though the
+  core has a template chooser and a writing module: the chooser's tiles have
+  no preview, and the module keeps words only (core issues #40 and #41).
 - **Spelling and hyphenation without craft-i18n**: as before, English spelling
   uses the word list built into craft-proof (the core's `docs/UPSTREAM.md`).

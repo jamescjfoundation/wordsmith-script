@@ -1,6 +1,12 @@
 # 0017: The native format
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: accepted
+
+Since decision 0044 (2026-11-24) `.wss` is still this text format, now at
+version 5: `appData` is written as `ext` (`docs/format.md`). The core's
+container for other apps took the general ideas
+([core decision 0009](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0009-project-container.md));
+Script does not use it.
 
 `docs/format.md` is the specification. The choices behind it:
 

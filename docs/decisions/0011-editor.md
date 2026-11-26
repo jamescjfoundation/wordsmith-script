@@ -1,6 +1,14 @@
 # 0011: The first editor
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: general part moved to the core
+([core decision 0014](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0014-shell-theme-board.md))
+
+Since decision 0044 (2026-11-24) the window around the script, the key map,
+crash recovery and the egui version (0.37 now) are the core's shell
+(`jcj-shell`), and pages are laid out by the core's `jcj-layout`. Still
+Script's: the page view is the print layout, every action is a command, and the
+editor is tested without a window. One window per script ended with tabs
+(decision 0036), and saving came with decision 0020.
 
 ## Decisions
 

@@ -1,6 +1,9 @@
 # 0015: Autocomplete
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: accepted
+
+Since decision 0044 (2026-11-24) `app_data` is the document's `ext`; nothing
+else here changed.
 
 The spec gives the six lists, learning from the script, editing, rebuilding,
 switching off per list, Tab accepting, and the options (extension on Tab,

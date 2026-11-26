@@ -1,8 +1,9 @@
 # 0007: Trimming WordCraft's MCP server
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: replaced by
+[core decision 0007](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0007-engine-agents-output.md)
 
-Status: replaced by open-source-core decision 0007: the agent server is `jcj-agents` (decision 0044).
+Since decision 0044 (2026-11-24) the agent server is the core's `jcj-agents`.
 
 ## Decision
 

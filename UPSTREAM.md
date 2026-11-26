@@ -1,9 +1,9 @@
 # Upstream tracking
 
 Since 0.2, Wordsmith Script names no upstream project's code. It is built on
-[open-source-core](https://github.com/jamescjfoundation/open-source-core), the
-J. C. J. Foundation's shared base, and the core is the only place that talks to
-WordCraft and craft-libs (decision 0044). The core records which WordCraft and
+[open-source-core](https://github.com/jamescjfoundation/open-source-core), The
+James C. J. Foundation's shared base, and the core is the only place that talks
+to WordCraft and craft-libs (decision 0044). The core records which WordCraft and
 craft-libs commits it builds on, and every patch it carries, in its own
 `docs/UPSTREAM.md`.
 

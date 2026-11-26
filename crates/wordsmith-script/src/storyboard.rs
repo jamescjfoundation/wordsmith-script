@@ -7,6 +7,9 @@
 //! is undoable and saved with the script. A beat sent to the script becomes an Outline 1
 //! paragraph (its title) and a Summary paragraph (its body) at the caret; the Outline 1 paragraph
 //! is tagged with the beat (`ParaProps::beat`) so the outline can show the pages it covers.
+//!
+// core-candidate: open-source-core#12. Lanes (cards ordered in named rows) are general: the core's board has
+// none yet. The beats, their links and the boards are Script's data and stay here.
 
 use crate::keys::ScriptPara;
 

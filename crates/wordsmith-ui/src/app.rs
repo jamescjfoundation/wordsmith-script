@@ -14,7 +14,6 @@ use serde_json::{Value, json};
 use crate::commands::{custom_element, macro_slot};
 use crate::editor::{Editor, ToShell, UnsavedAnswer, has_native_file, script_name};
 use crate::ribbon::widgets::Rb;
-use crate::structure::Structure;
 
 /// The app's name.
 pub const NAME: &str = "Wordsmith Script";
@@ -210,21 +209,12 @@ impl App for Editor {
             crate::workspace::tab_bar(self, ui);
             crate::tables::panel(self, ui);
             crate::strip::panel(self, ui);
-            crate::workspace::split_panel(self, ui);
             // With neither the bar nor the Find panel showing, nothing marks matches.
             if !self.find_bar && !shell.layout.is_open("find") {
                 self.find = None;
             }
         }
-        match self.structure {
-            Some(Structure::Cards) => crate::structure::cards(self, ui),
-            Some(Structure::Scenes) => crate::structure::scene_view(self, ui),
-            Some(Structure::Board) => crate::board::view(self, ui),
-            Some(Structure::Outline) => crate::outline::view(self, ui),
-            None => {
-                egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| self.page_view(ui));
-            }
-        }
+        crate::workspace::panes(self, ui);
         self.suggestion_list(ui.ctx());
         crate::dialogs::show(self, ui.ctx());
         crate::workspace::track(self);

@@ -1,6 +1,10 @@
 # 0012: Screenplay pagination
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: accepted
+
+Since decision 0044 (2026-11-24) the planner below is still Script's own (that
+record says why). It measures with the core's `jcj-layout`, which took the
+place of `wordsmith-layout`, and `app_data` is the document's `ext`.
 
 ## How
 

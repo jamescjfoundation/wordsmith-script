@@ -1,8 +1,14 @@
 # 0040: Supply chain, release provenance and license texts in bundles
 
-Date: 2026-11-22
+Date: 2026-11-22 · Status: general part moved to the core
+([core decision 0001](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0001-licenses-and-supply-chain.md)
+and
+[core decision 0003](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0003-toolchain-gate-and-ci.md))
 
-Status: the supply-chain rules are open-source-core decisions 0001 and 0003, synced into the app; the release's own parts (provenance, license texts in bundles, privacy disclosure) stay here (decision 0044).
+Since decision 0044 (2026-11-24) the supply-chain rules (toolchain, minimum
+versions, cargo-deny, pinned actions) are the core's, carried here by `cargo
+xtask sync`. Still Script's: build provenance, license texts in bundles and the
+privacy disclosure.
 
 ## Context
 

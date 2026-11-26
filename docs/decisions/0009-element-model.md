@@ -1,6 +1,9 @@
 # 0009: The element model and its defaults
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: accepted
+
+Since decision 0044 (2026-11-24) `app_data` is the document's `ext`; nothing
+else here changed.
 
 ## Decisions
 

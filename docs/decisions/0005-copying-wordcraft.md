@@ -1,8 +1,10 @@
 # 0005: How WordCraft code is copied
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: replaced by
+[core decision 0004](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0004-follow-hold-own.md)
 
-Status: replaced by open-source-core decision 0004 (follow, hold, own): no WordCraft code is copied into the app any more (decision 0044).
+Since decision 0044 (2026-11-24) no WordCraft code is copied into the app; the
+core uses WordCraft through its adapters.
 
 ## Decision
 

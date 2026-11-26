@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! Scripts on disk: opening, importing, saving, exporting and backups. Every write goes through
-//! craft-atomic, so a failed or interrupted write never leaves a script half-written, and every
-//! path passes the automation file gateway (`jcj_engine::file_access`). Decision 0020.
+//! Scripts on disk: opening, importing, saving, exporting and backups. Every write is the core's
+//! atomic write (`jcj_project::files`), so a failed or interrupted write never leaves a script
+//! half-written, and every path passes the automation file gateway (`jcj_engine::file_access`).
+//! Decision 0020.
 //!
 //! Backups are copies of the saved file in a backups folder, named
 //! `<name> <YYYY-MM-DD HH.MM.SS> UTC.wss`; the oldest beyond the number to keep are removed.

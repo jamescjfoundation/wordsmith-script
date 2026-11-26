@@ -314,6 +314,45 @@ fn a_stored_file_of_every_version_reads_and_saves_again_without_loss() {
     let raised = styled.text.find("raised").unwrap();
     assert_eq!(styled.props_at(raised + 1).vert_align, Some(jcj_doc::props::VertAlign::Superscript));
     assert_eq!(v4.body[5].as_para().unwrap().props.dual(), Some(true));
+
+    // Version 5: the settings' `ext` (a shared feature's key and one of Script's own) and
+    // `trackChanges`; a stored scene number, a scene id, a note's anchor, escapes, an empty line
+    // inside a paragraph and a page break.
+    let v5 = resaves_without_loss("v5", include_str!("../../tests/fixtures/v5-ext.wss"));
+    assert_eq!(v5.core.title, "Harbour Lights");
+    assert!(v5.settings.track_changes, "trackChanges");
+    assert_eq!(wordsmith_script::notes::Notes::of_doc(&v5).notes.get(&1).map(|n| n.text.clone()), Some("Is the pier lit?".into()));
+    let heading = v5.body[0].as_para().unwrap();
+    assert_eq!(heading.props.scene_number().as_deref(), Some("1"));
+    assert_eq!(heading.props.scene_id(), Some(1));
+    let action = v5.body[1].as_para().unwrap();
+    assert_eq!(action.text, "Rain hammers the pier. A *star* and a {brace} show.");
+    let pier = action.text.find("pier").unwrap();
+    assert_eq!(action.props_at(pier + 1).note(), Some(1));
+    assert_eq!(v5.body[4].as_para().unwrap().text, "We go now.\n\nBefore the tide.");
+    assert_eq!(v5.body[5].as_para().unwrap().props.page_break_before, Some(true));
+}
+
+/// Every format version has its fixture, `v<N>-<what>.wss`, declaring that version. Wordsmith
+/// Manuscript's reader is tested against the same files (`docs/format.md`, "Other readers"), so a
+/// new version without one fails here first.
+#[test]
+fn every_format_version_has_a_fixture() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let mut versions = Vec::new();
+    for entry in std::fs::read_dir(&dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().and_then(|e| e.to_str()) != Some("wss") {
+            continue;
+        }
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        let text = std::fs::read_to_string(&path).unwrap();
+        let declared: u32 = text.lines().next().and_then(|l| l.strip_prefix("Wordsmith Script ")).and_then(|v| v.parse().ok()).unwrap_or(0);
+        assert!(name.starts_with(&format!("v{declared}-")), "{name} declares format {declared}");
+        versions.push(declared);
+    }
+    versions.sort_unstable();
+    assert_eq!(versions, (1..=VERSION).collect::<Vec<_>>(), "one fixture for each format 1 to {VERSION}");
 }
 
 #[test]

@@ -1,6 +1,14 @@
 # 0038: Releases, downloads and updates
 
-Date: 2026-11-20
+Date: 2026-11-20 · Status: general part moved to the core
+([core decision 0014](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0014-shell-theme-board.md))
+
+Since decision 0044 (2026-11-24) checking for, downloading and installing an
+update, and the update window, are the core's shell (`jcj-shell`, which uses
+craft-update; Script names no craft-libs crate, and the two update modules
+named below are gone). Still Script's: its identity (`wordsmith_ui::RELEASES`),
+the release files and their names, the release workflow, and the macOS limit
+below.
 
 ## Context
 

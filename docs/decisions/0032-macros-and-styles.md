@@ -1,6 +1,6 @@
 # 0032: Macros and text styles
 
-Date: 2026-11-20
+Date: 2026-11-20 · Status: accepted
 
 ## Decision
 

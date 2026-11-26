@@ -1,6 +1,11 @@
 # 0031: Editing additions from SPEC-2
 
-Date: 2026-11-20
+Date: 2026-11-20 · Status: general part moved to the core
+([core decision 0010](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0010-document-features.md))
+
+Since decision 0044 (2026-11-24) bookmarks and labels are the core's
+(`jcj-features`, `core.bookmark`). Still Script's: the Sequence element,
+structure rank, the typing options, the keys and the format checker.
 
 ## Decision
 

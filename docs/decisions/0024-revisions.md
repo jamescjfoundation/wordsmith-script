@@ -1,6 +1,12 @@
 # 0024: Revisions
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: general part moved to the core
+([core decision 0010](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0010-document-features.md))
+
+Since decision 0044 (2026-11-24) revision sets, the cycle, revision mode, the
+marks on text and rollback are the core's (`jcj-features`, `core.revised` and
+`core.revisions`). Still Script's: the margin marks and page colors, which
+belong to its pagination, and the marks in `.wss`.
 
 - **Settings** (`app_data` key `wordsmith.revisions`): the sets made so far
   (name, `#RRGGBB` color, bold, underline, strikethrough), the current set's

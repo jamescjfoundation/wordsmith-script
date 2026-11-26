@@ -1,6 +1,10 @@
 # 0025: Scene numbers
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: accepted
+
+Since decision 0044 (2026-11-24) the two paragraph fields are the extension
+keys `script.scene_number` and `script.omitted`, and `app_data` is the
+document's `ext`; the rules are unchanged.
 
 - **Unlocked numbers follow the order:** 1, 2, 3 …, worked out whenever they
   are shown, so they always match the script.

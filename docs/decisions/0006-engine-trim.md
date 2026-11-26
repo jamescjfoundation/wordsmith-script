@@ -1,8 +1,10 @@
 # 0006: Trimming WordCraft's engine to session, undo, registry and recovery
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: replaced by
+[core decision 0007](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0007-engine-agents-output.md)
 
-Status: replaced by open-source-core decision 0007: the app uses the full engine and registers its own commands (decision 0044).
+Since decision 0044 (2026-11-24) the app uses the core's full engine and
+registers its own commands beside it.
 
 ## Context
 

@@ -1,8 +1,10 @@
 # 0004: craft-libs pins without a v0.1.0 tag
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: replaced by
+[core decision 0004](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0004-follow-hold-own.md)
 
-Status: replaced by open-source-core decision 0004; the app names no craft-libs crate (decision 0044).
+Since decision 0044 (2026-11-24) the app names no craft-libs crate; the core
+holds the pins.
 
 ## Context
 

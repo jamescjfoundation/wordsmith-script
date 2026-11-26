@@ -105,6 +105,9 @@ fn new(ed: &mut Editor, ui: &mut Ui, shell: &mut Shell) {
 }
 
 /// A template's card: a little page with its first lines, its name and what it is for.
+// core-candidate: open-source-core#40. The core's template chooser (`jcj_shell::start::chooser`) draws a tile
+// with a name and a line of text, no preview. Script lists its templates through `App::templates`
+// and drops these cards once a tile can show one.
 fn template_card(ui: &mut Ui, t: &crate::theme::Tokens, id: &str, name: &str, about: &str) -> bool {
     let (r, resp) = ui.allocate_exact_size(vec2(210.0, 140.0), Sense::click());
     ui.painter().rect_filled(r, 8.0, if resp.hovered() { t.hover } else { t.surface_high });

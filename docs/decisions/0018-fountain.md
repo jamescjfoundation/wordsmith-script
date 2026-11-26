@@ -1,6 +1,6 @@
 # 0018: Fountain reading and writing
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: accepted
 
 Fountain (https://fountain.io/syntax, version 1.1) is the open plain-text
 screenplay format; the spec asks for import and export from day one. The

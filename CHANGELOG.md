@@ -4,10 +4,10 @@
 
 ### Rebuilt on open-source-core
 
-Wordsmith Script is now built on open-source-core, the J. C. J. Foundation's
-shared base, instead of its own copy of WordCraft (decision 0044). Scripts
-print exactly as before: the golden scripts' pages and PDF text are unchanged,
-and every script 0.1.2 saved opens with the same pages.
+Wordsmith Script is now built on open-source-core, The James C. J.
+Foundation's shared base, instead of its own copy of WordCraft (decision
+0044). Scripts print exactly as before: the golden scripts' pages and PDF
+text are unchanged, and every script 0.1.2 saved opens with the same pages.
 
 - **Scripts are saved in format 5.** 0.1 scripts open as they were and are
   saved in format 5 from then on, which 0.1 cannot open. Notes, revisions,
@@ -70,6 +70,12 @@ and every script 0.1.2 saved opens with the same pages.
 - File › Preferences: the auto-save fields (how many minutes, and how long
   typing must pause) are named for screen readers by the words beside them.
   Before, they were unnamed number fields.
+- Script tabs and the split view are drawn by the shared shell. Every open
+  script's tab has its own close button (closing a script with unsaved
+  changes still asks first), and the new-tab button sits at the right end of
+  the strip. A split view's two panes start at half the space each, and the
+  bar between them is dragged to give one more room; before, the second pane
+  opened at a fixed width or height.
 
 ### Inside
 

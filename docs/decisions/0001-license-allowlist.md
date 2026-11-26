@@ -1,8 +1,10 @@
 # 0001: License allowlist as SPDX ids
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: replaced by
+[core decision 0001](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0001-licenses-and-supply-chain.md)
 
-Status: replaced by open-source-core decision 0001 (licenses and supply chain), whose allowlist and `deny.toml` the app now syncs (decision 0044).
+Since decision 0044 (2026-11-24) the allowlist and `deny.toml` are the core's,
+carried here by `cargo xtask sync`.
 
 ## Context
 

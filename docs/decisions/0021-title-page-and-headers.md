@@ -1,6 +1,12 @@
 # 0021: Title page, headers and footers
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: general part moved to the core
+([core decision 0010](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0010-document-features.md))
+
+Since decision 0044 (2026-11-24) headers and footers, their fields and their
+layout are the core's (`jcj-features`, under `core.header_footer`). Still
+Script's: the title page, the `{scene}` field, and the Fountain and PDF-import
+rules for title pages.
 
 The spec names a title page and headers and footers with placeholder fields,
 but leaves the title page's fields and layout open. Both are designed from

@@ -1,6 +1,12 @@
 # 0026: Page locking and the page-label scheme
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: general part moved to the core
+([core decision 0010](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0010-document-features.md))
+
+Since decision 0044 (2026-11-24) locks, labels and letters, levels,
+placeholders and the lock commands are the core's (`jcj-features`,
+`core.page_lock` and `core.page_locks`). Still Script's: starting a page at a
+lock in its own planner, and the marks in `.wss`.
 
 The spec asks for one documented page-label scheme (sources show mixed forms
 such as 4aA). This is ours.

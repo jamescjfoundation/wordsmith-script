@@ -1,6 +1,13 @@
 # 0029: The command line, the MCP server and the release
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: general part moved to the core
+([core decision 0007](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0007-engine-agents-output.md))
+
+Since decision 0044 (2026-11-24) the MCP server is the core's `jcj-agents`:
+general tools, and each screenplay command as a tool of its own (the guide's
+"Command line and agents" page maps the old tools). Still Script's: the command
+line, the screenshots and the bundles, with file names as decision 0038 changed
+them.
 
 ## Command line
 

@@ -1,6 +1,6 @@
 # 0027: Revised pages, scene lengths and the character report
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: accepted
 
 - **Revised pages only.** Export and print take `revisedOnly` (and File ›
   Export › Export Revised Pages…, File › Print Revised Pages): only the pages

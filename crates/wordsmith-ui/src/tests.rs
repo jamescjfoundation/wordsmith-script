@@ -1199,6 +1199,24 @@ fn tabs_split_keys_templates_and_statistics() {
     ed.answer_unsaved(crate::editor::UnsavedAnswer::DontSave);
     assert_eq!(ed.tabs.len(), 1);
     assert_eq!(lines(&ed)[0].1, "EXT. YARD");
+    // The tab strip: closing another script's tab leaves the writer where they were; closing
+    // one with unsaved changes shows it and asks first.
+    ed.new_tab();
+    ed.new_tab();
+    assert_eq!((ed.tabs.len(), ed.active_tab), (3, 2));
+    crate::workspace::tab_event(&mut ed.ed, jcj_shell::split::TabEvent::Close(1));
+    assert_eq!((ed.tabs.len(), ed.active_tab), (2, 1));
+    crate::workspace::tab_event(&mut ed.ed, jcj_shell::split::TabEvent::Select(0));
+    assert_eq!(lines(&ed)[0].1, "EXT. YARD");
+    ed.session.dirty = true;
+    ed.switch_tab(1);
+    crate::workspace::tab_event(&mut ed.ed, jcj_shell::split::TabEvent::Close(0));
+    assert_eq!((ed.tabs.len(), ed.active_tab, ed.unsaved), (2, 0, Some(crate::editor::Then::CloseTab)));
+    ed.answer_unsaved(crate::editor::UnsavedAnswer::Cancel);
+    ed.session.dirty = false;
+    crate::workspace::tab_event(&mut ed.ed, jcj_shell::split::TabEvent::Close(1));
+    assert_eq!((ed.tabs.len(), ed.active_tab), (1, 0));
+    assert_eq!(lines(&ed)[0].1, "EXT. YARD");
     // A key of the writer's own runs its command; "" turns a key off.
     ed.shell.keys.bind("Mod+Shift+Y", "element.action");
     ed.shell.keys.bind("Mod+1", "");

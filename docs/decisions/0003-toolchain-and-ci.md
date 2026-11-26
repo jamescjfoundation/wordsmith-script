@@ -1,8 +1,10 @@
 # 0003: Toolchain, CI gate and lint policy
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: replaced by
+[core decision 0003](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0003-toolchain-gate-and-ci.md)
 
-Status: replaced by open-source-core decision 0003 (toolchain, gate and CI), synced into the app (decision 0044).
+Since decision 0044 (2026-11-24) the toolchain, the gate and the CI workflow
+are the core's, carried here by `cargo xtask sync`.
 
 ## Decision
 

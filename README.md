@@ -110,8 +110,8 @@ sets the rules for personal information, security problems, names and copied
 code. Report security problems privately, as [SECURITY.md](SECURITY.md) says.
 
 The app is built on
-[open-source-core](https://github.com/jamescjfoundation/open-source-core), the
-J. C. J. Foundation's shared base for its desktop apps: the document model,
+[open-source-core](https://github.com/jamescjfoundation/open-source-core), The
+James C. J. Foundation's shared base for its desktop apps: the document model,
 layout, PDF, the command engine, the shared document features (notes,
 revisions, page locks, bookmarks, watermark, headers and footers, change
 tracking, comparison), the window around the script (ribbon, panels, File
@@ -137,15 +137,17 @@ here), the privacy check, the license allowlist, the asset attribution check,
 clippy and all tests. CI also runs
 [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) (`deny.toml`, the
 core's) for licenses, security advisories and crate sources. `cargo xtask
-wasm` builds the web version on its own.
+wasm` is the web build; it fails until the core's shell builds for the web
+(`docs/gaps.md`).
 
 - `docs/SPEC.md`: the behavior spec v0.1 was built from.
 - `docs/SPEC-2.md`: the clean-room functional spec for work after v0.1 (decision 0030).
 - `docs/REUSE.md`: what we reuse, and the license and branding rules.
 - `docs/decisions/`: the choices the spec left open.
 - `docs/gaps.md`: what the app does not do yet.
+- `docs/core-candidates.md`: what the app waits for in open-source-core, and its code that is general enough to move there.
 - `docs/history/`: the plans, spec audits and spec questions from the first build, kept for the record.
-- `docs/progress.md`: one line per merge. `CHANGELOG.md`: what changed.
+- `docs/progress.md`: the log of the first build, one line per merged branch. `CHANGELOG.md`: what changed.
 - `ROADMAP.md`: what comes next.
 
 ## Acknowledgments

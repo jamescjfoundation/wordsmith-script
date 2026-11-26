@@ -372,6 +372,8 @@ pub struct Editor {
     pub active_tab: usize,
     /// A second view beside or below the main one.
     pub split: Option<crate::workspace::Split>,
+    /// Where the split view's divider sits.
+    pub split_share: jcj_shell::split::SplitState,
     /// Writing statistics, the sprint timer and goals.
     pub stats: crate::workspace::Stats,
     /// The menu bar under the quick-access row (off by default).
@@ -452,6 +454,7 @@ impl Editor {
             tabs: vec![None],
             active_tab: 0,
             split: None,
+            split_share: Default::default(),
             stats: Default::default(),
             menu_bar: false,
             print: Default::default(),
@@ -1013,6 +1016,9 @@ impl Editor {
 
     /// Turn this frame's keyboard events into commands, in the order they came. `user` holds the
     /// writer's own keys (shortcut → command id; the shell keeps them).
+    // core-candidate: open-source-core#39. The shell's own key handling runs a frame's key commands after the
+    // frame's text, whatever was typed first, so the editor takes every event itself
+    // (`ShellOptions::shortcuts` is off) until the shell keeps the order.
     pub fn handle_keys(&mut self, ui: &Ui, user: &BTreeMap<String, String>) {
         let mut keys: Option<jcj_shell::keys::KeyMap> = None;
         if !self.has_keyboard(ui) {

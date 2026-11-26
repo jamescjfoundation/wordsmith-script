@@ -1,6 +1,12 @@
 # 0016: Views, theme and writing modes
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: general part moved to the core
+([core decision 0014](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0014-shell-theme-board.md))
+
+Since decision 0044 (2026-11-24) the interface's light, dark and extra-dark
+themes are the core's (`jcj-theme`, from Script's `tokens.json`), and the shell
+hides its ribbon and bars for focus mode. Still Script's: the three views, how
+pages are drawn in the dark, typewriter scrolling and the commands below.
 
 - **Page view** (default) shows the paginated script (decision 0012).
 - **Normal view** lays the script itself out in one continuous column, the

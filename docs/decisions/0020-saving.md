@@ -1,6 +1,17 @@
 # 0020: Saving, auto-save, backups and preferences
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: general part moved to the core
+([core decision 0009](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0009-project-container.md)
+and
+[core decision 0014](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0014-shell-theme-board.md))
+
+Since decision 0044 (2026-11-24) atomic writes and backups are the core's
+(`jcj-project`); auto-save's schedule, the unsaved-changes question,
+preferences and the file dialogs are the shell's (`jcj-shell`); the personal
+dictionary is `jcj-proof`'s. Still Script's: the file commands (in
+`wordsmith-format::commands` since decision 0029), what each format opens as,
+and how backups are named and counted. The craft-libs crates named below are no
+longer named in this repository.
 
 **File commands live in the interface layer** (`wordsmith-ui::files`), since
 they need `wordsmith-format` (layer 6) and the script layer (5) cannot depend

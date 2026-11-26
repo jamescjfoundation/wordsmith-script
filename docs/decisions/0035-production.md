@@ -1,6 +1,12 @@
 # 0035: Production additions
 
-Date: 2026-11-20
+Date: 2026-11-20 · Status: general part moved to the core
+([core decision 0010](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0010-document-features.md))
+
+Since decision 0044 (2026-11-24) the watermark, the records and settling of
+tracked changes, comparison's grouping and the lock commands are the core's
+(`jcj-features`). Still Script's: dual dialogue, scene numbers, the revision
+views, the print choices, tracked typing, and matching scenes in a comparison.
 
 ## Decision
 

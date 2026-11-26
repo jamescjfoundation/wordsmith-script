@@ -1,6 +1,6 @@
 # 0033: Characters, scene data and reports
 
-Date: 2026-11-20
+Date: 2026-11-20 · Status: accepted
 
 ## Decision
 

@@ -1,6 +1,16 @@
 # 0036: Workspace and productivity
 
-Date: 2026-11-20
+Date: 2026-11-20 · Status: general part moved to the core
+([core decision 0014](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0014-shell-theme-board.md))
+
+Since decision 0044 (2026-11-24) the writer's own keys, and where they and
+the other preferences are kept, are the core's shell (`jcj-shell`). Since
+2026-11-26 the tab strip and the split view's two panes and divider are the
+shell's too (`jcj_shell::split`); which scripts are open and what the second
+pane shows are still Script's. Still Script's as well: the templates and
+their cards, text documents, the zoom steps, statistics, goals and sprints,
+and read-only files. `docs/core-candidates.md` says what the core's template
+chooser and writing module lack for Script to use them.
 
 ## Decision
 

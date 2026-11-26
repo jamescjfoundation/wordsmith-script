@@ -1,13 +1,21 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! The workspace (SPEC-2 2, 8, 17, 19): document tabs, a split view, the start window and the
-//! template chooser, writing statistics with goals and a sprint timer, and keys of the writer's
-//! own. Statistics belong to the writer, not the script: they are kept beside the preferences
-//! (`stats.json`), never in a script.
+//! The workspace (SPEC-2 2, 8, 17, 19, decision 0036): a script in each tab, a split view, and
+//! writing statistics with goals and a sprint timer.
+//!
+//! The tab strip and the two panes with their divider are the core's (`jcj_shell::split`); which
+//! scripts are open and what the second pane shows are Script's. Statistics belong to the writer,
+//! not the script: they are kept beside the preferences (`stats.json`), never in a script.
+//!
+// core-candidate: open-source-core#41. The statistics below (words, pages and writing time by
+// day and hour, counted only upward, goals in pages and minutes, the statistics window, a
+// sprint's pages) are general. The core's `jcj_shell::writing` keeps net words per day, a
+// session target and a sprint; Script moves onto it once it holds these and reads `stats.json`.
 
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
 use egui::{Color32, Context, RichText, Stroke, Ui, pos2, vec2};
+use jcj_shell::split::{TabEvent, tabs};
 use serde::{Deserialize, Serialize};
 use wordsmith_script::dates::day_number;
 
@@ -19,7 +27,8 @@ pub const MAX_DAYS: usize = 3_700;
 /// The sprint timer's default length, minutes (decision 0036).
 pub const SPRINT_MINUTES: u32 = 25;
 
-/// A second view beside (or below) the main one: what it shows (`None`: the script).
+/// A second view beside (or below) the main one: what it shows (`None`: the script). The panes
+/// and the divider are the core's ([`panes`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Split {
     pub pane: Option<Structure>,
@@ -198,58 +207,92 @@ pub fn track(ed: &mut Editor) {
     }
 }
 
-/// The tab bar, when more than one script is open.
+/// The tab bar, when more than one script is open: the core's tab strip (`jcj_shell::split::tabs`)
+/// with a button for a new tab at its end. A script with unsaved changes has a dot after its
+/// name.
 pub fn tab_bar(ed: &mut Editor, ui: &mut Ui) {
     let names = ed.tab_names();
     if names.len() < 2 {
         return;
     }
-    let mut switch = None;
-    let mut close = false;
-    egui::Panel::top("tabs").show(ui, |ui| {
-        ui.horizontal(|ui| {
-            for (i, (name, dirty)) in names.iter().enumerate() {
-                let label = if *dirty { format!("{name} •") } else { name.clone() };
-                if ui.selectable_label(i == ed.active_tab, label).clicked() {
-                    switch = Some(i);
-                }
-                if i == ed.active_tab && ui.small_button("×").on_hover_text("Close this script").clicked() {
-                    close = true;
-                }
-            }
-            if ui.small_button("+").on_hover_text("New script in a tab").clicked() {
-                switch = Some(usize::MAX);
-            }
+    let titles: Vec<String> = names.iter().map(|(name, dirty)| if *dirty { format!("{name} •") } else { name.clone() }).collect();
+    let mut event = None;
+    let mut new = false;
+    egui::Panel::top("tabs").frame(egui::Frame::NONE).show(ui, |ui| {
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            ui.add_space(4.0);
+            new = ui.small_button("+").on_hover_text("New script in a tab").clicked();
+            event = tabs(ui, egui::Id::unique("script-tabs"), &titles, ed.active_tab);
         });
     });
-    match switch {
-        Some(usize::MAX) => ed.new_tab(),
-        Some(i) => ed.switch_tab(i),
-        None => {}
+    if let Some(event) = event {
+        tab_event(ed, event);
     }
-    if close {
-        ed.close_tab(false);
+    if new {
+        ed.new_tab();
     }
 }
 
-/// The split view's second pane.
-pub fn split_panel(ed: &mut Editor, ui: &mut Ui) {
-    let Some(split) = ed.split else { return };
-    // Both panes showing the same thing is no split.
-    if split.pane == ed.structure {
-        return;
+/// What a click on the tab strip does: a tab shows its script; its close button closes it.
+/// Closing asks about unsaved changes, so that script is shown first; when another script's tab
+/// closes at once, the writer stays on the script they were in.
+pub fn tab_event(ed: &mut Editor, event: TabEvent) {
+    match event {
+        TabEvent::Select(i) => ed.switch_tab(i),
+        TabEvent::Close(i) => {
+            let was = ed.active_tab;
+            ed.switch_tab(i);
+            if ed.close_tab(false) && was != i {
+                ed.switch_tab(if was > i { was - 1 } else { was });
+            }
+        }
     }
-    let show = |ed: &mut Editor, ui: &mut Ui| match split.pane {
-        None => ed.script_pane(ui),
+}
+
+/// The main view and, when the view is split, the second pane beside or below it, with the
+/// core's divider between them (`jcj_shell::split::split`). Focus mode shows the main view alone.
+pub fn panes(ed: &mut Editor, ui: &mut Ui) {
+    // Both panes showing the same thing is no split.
+    let second = ed.split.filter(|sp| !ed.focus_mode && sp.pane != ed.structure);
+    let how = match second {
+        None => jcj_shell::split::Split::None,
+        Some(sp) if sp.below => jcj_shell::split::Split::Stacked,
+        Some(_) => jcj_shell::split::Split::Side,
+    };
+    let main = ed.structure;
+    let mut share = ed.split_share;
+    // The two panes are drawn one after the other, each with the editor.
+    let both = std::cell::RefCell::new(&mut *ed);
+    jcj_shell::split::split(
+        ui,
+        egui::Id::unique("script-split"),
+        how,
+        &mut share,
+        |ui| {
+            if let Ok(mut ed) = both.try_borrow_mut() {
+                pane(&mut ed, ui, main, false);
+            }
+        },
+        |ui| {
+            if let (Some(sp), Ok(mut ed)) = (second, both.try_borrow_mut()) {
+                pane(&mut ed, ui, sp.pane, true);
+            }
+        },
+    );
+    ed.split_share = share;
+}
+
+/// One pane: a structure view, or the script (`None`).
+fn pane(ed: &mut Editor, ui: &mut Ui, what: Option<Structure>, second: bool) {
+    match what {
         Some(Structure::Cards) => crate::structure::cards(ed, ui),
         Some(Structure::Scenes) => crate::structure::scene_view(ed, ui),
         Some(Structure::Board) => crate::board::view(ed, ui),
         Some(Structure::Outline) => crate::outline::view(ed, ui),
-    };
-    if split.below {
-        egui::Panel::bottom("split").resizable(true).default_size(320.0).show(ui, |ui| show(ed, ui));
-    } else {
-        egui::Panel::right("split").resizable(true).default_size(520.0).show(ui, |ui| show(ed, ui));
+        None if second => ed.script_pane(ui),
+        None => {
+            egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| ed.page_view(ui));
+        }
     }
 }
 

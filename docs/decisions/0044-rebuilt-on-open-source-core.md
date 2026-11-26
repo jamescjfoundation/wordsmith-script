@@ -1,12 +1,12 @@
 # 0044: Rebuilt on open-source-core
 
-Date: 2026-11-24
+Date: 2026-11-24 · Status: accepted
 
 ## Context
 
 Up to 0.1.2 Script carried its own copy of WordCraft: about 83,000 lines of
 model, layout, fonts, rendering, PDF, engine and agent-server code, trimmed and
-changed for screenplays (decisions 0005 to 0008 and 0039). The J. C. J.
+changed for screenplays (decisions 0005 to 0008 and 0039). The James C. J.
 Foundation's apps now share one base, open-source-core, which uses WordCraft
 and craft-libs through thin adapters and holds what every app needs. Its
 review of Script at `29ed4bf` decided module by module what is general (moved

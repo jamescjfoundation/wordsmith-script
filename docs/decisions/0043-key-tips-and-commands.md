@@ -1,6 +1,12 @@
 # 0043: Key tips, and every control as a command
 
-Date: 2026-11-22
+Date: 2026-11-22 · Status: general part moved to the core
+([core decision 0014](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0014-shell-theme-board.md))
+
+Since decision 0044 (2026-11-24) key tips and their letters, and controls that
+run commands with tooltips and disabled states, are the core's shell
+(`jcj-shell`). Still Script's: its own window commands, and the tests that draw
+every tab and check each control runs a command.
 
 ## Context
 

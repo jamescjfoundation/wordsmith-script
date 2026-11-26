@@ -1,6 +1,6 @@
 # 0010: Typing rules the spec leaves open
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: accepted
 
 The spec gives the Return and Tab tables and the scene-heading separators.
 These are the details it does not settle, decided here.

@@ -1,6 +1,12 @@
 # 0023: Notes
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: general part moved to the core
+([core decision 0010](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0010-document-features.md))
+
+Since decision 0044 (2026-11-24) notes are the core's (`jcj-features`): the
+anchor is the `core.note` mark on the text and the notes' texts are under
+`core.notes`. Still Script's: the scene a note is listed under, how notes go to
+Fountain, and the marks in `.wss`.
 
 SPEC: notes attached to script text, edited in a popover, listed in the
 tables. (Threaded replies belong to the other product's cloud version and are

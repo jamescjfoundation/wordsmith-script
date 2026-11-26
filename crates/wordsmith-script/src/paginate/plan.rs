@@ -13,6 +13,11 @@
 //!
 //! A paragraph taller than a whole page is split at a line break as a last resort, so pagination
 //! always ends.
+//!
+// core-candidate: open-source-core#34. The rules above are Script's and stay here. Four things this planner
+// does besides are general and wait for hooks on the core's pagination pass: room for the foot
+// line when a paragraph is kept with the next, a scene's page count for "CONTINUED: (2)", a
+// page that starts at a lock inside a paragraph, and placeholder pages (decision 0044).
 
 use crate::keys::ScriptRun;
 use jcj_doc::Document;

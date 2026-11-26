@@ -1,6 +1,11 @@
 # 0022: Index cards, scene view and tables
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: general part moved to the core
+([core decision 0014](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0014-shell-theme-board.md))
+
+Since decision 0044 (2026-11-24) the index cards are drawn by the core's
+corkboard (`jcj-board`). Still Script's: scenes and their commands, the scene
+view, the tables and CSV.
 
 All of these show the one script; none keeps its own copy (SPEC: "All views
 edit one underlying script"). They change it only through commands, so undo

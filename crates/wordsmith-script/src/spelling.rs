@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! Spelling with craft-proof (decision 0014: its public-domain Moby word list, or the system's
-//! Hunspell English). Screenplay rules on top (SPEC: "ignoring character names and scene
+//! Spelling with the core's `jcj-proof` (decision 0014; core decision 0007 says which word lists
+//! it uses). Screenplay rules on top (SPEC: "ignoring character names and scene
 //! intros"): Character paragraphs are skipped; words in capitals are taken as correct (scene
 //! headings, transitions, names on first appearance); speakers' names and the Characters list
 //! are correct wherever they appear; and the script's own word list (`Ignore`, `Add to script`)

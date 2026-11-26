@@ -1,6 +1,13 @@
 # 0037: The ribbon, side panels and what is reused for them
 
-Date: 2026-11-20
+Date: 2026-11-20 · Status: general part moved to the core
+([core decision 0014](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0014-shell-theme-board.md))
+
+Since decision 0044 (2026-11-24) the ribbon's frame with groups that fold to
+fit, the quick-access row, side rails and panels, the File page and the general
+icons are the core's shell (`jcj-shell`); no WordCraft file is copied here.
+Still Script's: its ribbon tabs and what is on them, the screenplay icons, what
+its panels hold, and its labels.
 
 ## Context
 

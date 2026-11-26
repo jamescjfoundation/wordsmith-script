@@ -1,6 +1,8 @@
 # Progress
 
-One line per merge to `main`, newest last.
+The log of the first build: one line per branch merged into `main`, newest
+last. It ends on 2026-11-22 and has not been kept since: changes now land on
+`main` directly, and what changed is in `CHANGELOG.md` and the commit history.
 
 | Date | Branch | What changed |
 | --- | --- | --- |

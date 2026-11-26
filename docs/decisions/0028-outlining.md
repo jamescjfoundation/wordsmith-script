@@ -1,6 +1,13 @@
 # 0028: Outlining
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: general part moved to the core
+([core decision 0014](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0014-shell-theme-board.md))
+
+Since decision 0044 (2026-11-24) the story board's canvas, its cards and the
+card window are drawn by the core's `jcj-board`. Still Script's: beats, links,
+lanes and boards as data (`wordsmith.storyboard` in the document's `ext`),
+every command, the outline editor, and the beat tag on a paragraph
+(`script.beat`).
 
 The story board and the outline editor are two views of one set of beats,
 stored in `app_data` (`wordsmith.storyboard`: beats, links, lanes, grid), so

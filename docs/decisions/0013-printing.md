@@ -1,6 +1,11 @@
 # 0013: PDF export and printing
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: general part moved to the core
+([core decision 0007](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0007-engine-agents-output.md))
+
+Since decision 0044 (2026-11-24) the PDF writer is the core's (`jcj-output`),
+and the file dialogs are the system's own. Still Script's: what goes on the
+pages, and printing as described below.
 
 ## PDF
 

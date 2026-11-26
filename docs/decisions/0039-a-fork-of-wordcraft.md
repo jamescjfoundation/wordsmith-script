@@ -1,8 +1,10 @@
 # 0039: A fork of WordCraft
 
-Date: 2026-11-22
+Date: 2026-11-22 · Status: replaced by
+[core decision 0004](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0004-follow-hold-own.md)
 
-Status: replaced by open-source-core decision 0004: the fork is gone; WordCraft is used through the core's adapters (decision 0044).
+Since decision 0044 (2026-11-24) the fork is gone: WordCraft is used through
+the core's adapters.
 
 ## Context
 

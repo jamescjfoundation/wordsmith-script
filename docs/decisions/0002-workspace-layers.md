@@ -1,8 +1,13 @@
 # 0002: Workspace layer order
 
-Date: 2026-11-19
+Date: 2026-11-19 · Status: general part moved to the core
+([core decision 0002](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0002-layers.md))
 
-Status: the core's layers are open-source-core decision 0002; the app's own crates keep the order below (decision 0044).
+Since decision 0044 (2026-11-24) layers 1 to 4 and 7 are the core's `jcj-`
+crates, and the core's own layers are its record. The order of the app's own
+crates still holds: the screenplay rules, then the format, then the interface,
+then the programs. `AGENTS.md`, "Layers", has today's table and says what
+checks it; `xtask/src/layers.rs` is gone.
 
 ## Context
 

@@ -1,6 +1,6 @@
 # 0041: Our names for the side panel and the compact view
 
-Date: 2026-11-22
+Date: 2026-11-22 · Status: accepted
 
 ## Context
 

@@ -2,7 +2,7 @@
 
 The files needed to use the Wordsmith Script identity, and the Wordsmith & Ink parent brand it belongs to. This folder is meant to work on its own.
 
-Wordsmith Script is a free, open-source writing app for screenplays, from Wordsmith & Ink, a project of The J. C. J. Foundation. Its logo is the name typed in Courier Prime Bold, ending in a cursor: a solid **Brad Brass** bar (#B8862B), from the brass brads that bind a script.
+Wordsmith Script is a free, open-source writing app for screenplays, from Wordsmith & Ink, a project of The James C. J. Foundation. Its logo is the name typed in Courier Prime Bold, ending in a cursor: a solid **Brad Brass** bar (#B8862B), from the brass brads that bind a script.
 
 **Ink and paper.** File names ending in `-ink` are dark artwork (Iron Gall Ink #1C2340) for light backgrounds. Names ending in `-paper` are light artwork (Page White #FAFAF7) for dark backgrounds. All SVG logos are outlined shapes, so no font needs to be installed.
 
@@ -58,4 +58,4 @@ Fonts: Courier Prime Bold for logos and short headings, Inter for everything els
 
 ## License
 
-The app's code is open source. The names and logos are trademarks of The J. C. J. Foundation. They may be used unmodified to refer to the project, but not for forks or other products. The full brand guidelines, with every logo version, icon size and palette file, are in the Wordsmith brand kit.
+The app's code is open source. The names and logos are trademarks of The James C. J. Foundation. They may be used unmodified to refer to the project, but not for forks or other products. The full brand guidelines, with every logo version, icon size and palette file, are in the Wordsmith brand kit.

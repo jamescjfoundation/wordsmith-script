@@ -1,6 +1,6 @@
 # 0042: Scope, and changes that need the maintainers first
 
-Date: 2026-11-22 · Amended 2026-11-26 (naming)
+Date: 2026-11-22 · Status: accepted · Amended 2026-11-26 (naming)
 
 Amended 2026-11-26: naming another company, program, service or file format to
 state a fact is allowed

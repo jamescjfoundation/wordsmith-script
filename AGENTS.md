@@ -7,8 +7,8 @@ the programs in `apps/`. Read `CONTRIBUTING.md`, `SECURITY.md` and `docs/decisio
 0044 says what the app takes from the core) before you start.
 
 This app is built on [open-source-core](https://github.com/jamescjfoundation/open-source-core),
-the J. C. J. Foundation's shared base. The core holds what every app needs; this repository holds
-only what is about this app.
+The James C. J. Foundation's shared base. The core holds what every app needs; this repository
+holds only what is about this app.
 
 Two kinds of text below are carried word for word and never edited here. The blocks marked
 `open-source-core` are the core's rules: `cargo xtask sync` writes them from the pinned core
@@ -264,7 +264,21 @@ the same change.
   `wordmark-mask.png` (the mark and the wordmark as white shapes the app tints; no tool here
   makes them yet). `ATTRIBUTION.md` says how each was made.
 - **`.wss` changes** get a new format version and a migration step, and a fixture of the new
-  version (`docs/format.md`).
+  version in `crates/wordsmith-format/tests/fixtures/` (`v1-short.wss`, `v2-notes.wss`,
+  `v3-revisions.wss`, `v4-styles.wss`, `v5-ext.wss`; a version with no fixture fails a test).
+  Wordsmith Manuscript also reads `.wss` files, with a reader of its own that is tested against
+  copies of the same fixtures and refuses a version it was not written for. So a format change
+  is not finished here: the same change opens an issue in wordsmith-manuscript that names the
+  new version, what changed in the text and its marks, and the fixture
+  ([Route B](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-b)).
+  Manuscript's reader is never edited from here. `docs/format.md`, "Other readers", has the
+  steps.
+- **Code that waits for the core.** `docs/core-candidates.md` lists every change Script waits
+  for in the core and every `// core-candidate:` marker here, with its core issue and state. A
+  marker is written `core-candidate: open-source-core#N` and names an open issue that names the
+  file (`cargo xtask docs` fails on a marker with no issue). A marker, its row and its issue
+  change together; when Script moves onto the core's code, the marker and the copy go and the
+  row says "used".
 - **A change users will see** updates the guide (`docs/guide/`), `docs/gaps.md` and
   `CHANGELOG.md` here; the wiki and the website follow from those
   ([Route C](https://github.com/jamescjfoundation/wordsmith/blob/main/project/README.md#route-c)).
