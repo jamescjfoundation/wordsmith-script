@@ -20,8 +20,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use crate::json::{self, Value};
-use crate::util::{TaskResult, cargo_output, git_output};
+use super::json::{self, Value};
+use super::util::{TaskResult, cargo_output, git_output};
 
 /// Files whose change can affect every package.
 const GLOBAL: &[&str] =

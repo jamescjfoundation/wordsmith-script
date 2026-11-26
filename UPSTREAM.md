@@ -11,7 +11,7 @@ craft-libs commits it builds on, and every patch it carries, in its own
 
 | Source | Pin | Crates |
 | --- | --- | --- |
-| open-source-core | tag `v0.1.19` (`Cargo.toml`, `[workspace.dependencies]`) | `jcj-doc`, `jcj-layout`, `jcj-engine`, `jcj-output`, `jcj-interchange`, `jcj-proof`, `jcj-project`, `jcj-features`, `jcj-theme`, `jcj-board`, `jcj-shell`, `jcj-agents` |
+| open-source-core | tag `v0.1.20` (`Cargo.toml`, `[workspace.dependencies]`) | `jcj-doc`, `jcj-layout`, `jcj-engine`, `jcj-output`, `jcj-interchange`, `jcj-proof`, `jcj-project`, `jcj-features`, `jcj-theme`, `jcj-board`, `jcj-shell`, `jcj-agents` |
 
 All `jcj-` crates move together, to a release tag, with `cargo xtask sync`
 afterwards (it copies the core's toolchain, lint, cargo-deny and license
@@ -19,9 +19,10 @@ settings, the shared xtask modules, the CI workflow, the git hooks and the
 `[patch]` block into this repository). `cargo xtask layers` fails if any crate
 here depends on a WordCraft or craft-libs crate, or on `jcj-upstream`.
 
-While a change in the core is not released yet, a working copy may point at a
-local checkout with `cargo xtask dev-link <core>`; `cargo xtask dev-unlink`
-removes it, and CI fails if the link is committed.
+While a change in the core is not released yet, a working copy may build
+against a local checkout with `cargo xtask dev-link <core>`; `cargo xtask
+dev-unlink` removes it. The link lives in a folder Git ignores and changes no
+tracked file, and `cargo xtask ci --linked` runs the gate against it.
 
 ## Before 0.2
 

@@ -113,7 +113,7 @@ pub fn hooks_notice(set: &str, wanted: &str) -> Option<String> {
     }
     Some(format!(
         "warning: this clone's git hooks are off (core.hooksPath is {}, not `{wanted}`). Run `cargo xtask install-hooks` once: \
-         pre-commit then checks formatting, privacy and that no dev-link is left; pre-push runs `cargo xtask ci --changed`.",
+         pre-commit then checks formatting, privacy and that no tracked file holds a dev-link; pre-push runs `cargo xtask ci --changed`.",
         if set.trim().is_empty() { "not set".to_owned() } else { format!("`{}`", set.trim()) }
     ))
 }

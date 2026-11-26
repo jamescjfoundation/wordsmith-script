@@ -16,7 +16,7 @@
 
 use std::path::Path;
 
-use crate::util::{TaskResult, git_output, report};
+use super::util::{TaskResult, git_output, report};
 
 /// Files larger than this are not scanned (they are data, checked by review).
 const MAX_SCAN_BYTES: u64 = 4 * 1024 * 1024;

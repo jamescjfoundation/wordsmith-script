@@ -24,8 +24,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use crate::sync;
-use crate::util::{TaskResult, git_output, report};
+use super::sync;
+use super::util::{TaskResult, git_output, report};
 
 /// Folders that are never read.
 const SKIP_DIRS: &[&str] = &[".git", ".private", "target", "node_modules"];

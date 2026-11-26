@@ -1,2 +1,11 @@
+# BEGIN open-source-core: cargo
+# Owned by open-source-core (template/.cargo/config.toml). Change it there, never in a copy: its tooling rewrites the copies.
+# This block opens the file. The app's own Cargo settings go after it, in tables it does not hold.
+#
+# A local dev-link, when there is one: `cargo xtask dev-link` writes that folder, which Git
+# ignores, and `cargo xtask dev-unlink` removes it. Never put a [patch] table in this file.
+include = [{ path = "dev-link/config.toml", optional = true }]
+
 [alias]
 xtask = "run --quiet --package xtask --"
+# END open-source-core: cargo

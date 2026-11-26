@@ -35,18 +35,18 @@ wordsmith-ui = { path = "crates/wordsmith-ui" }
 
 # The core, at a release tag. Apps use only jcj- interface crates (never jcj-upstream, WordCraft or
 # craft-libs); `cargo xtask layers` checks it. Move all of them together.
-jcj-doc = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.19" }
-jcj-layout = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.19" }
-jcj-engine = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.19" }
-jcj-output = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.19" }
-jcj-interchange = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.19" }
-jcj-proof = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.19" }
-jcj-project = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.19" }
-jcj-features = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.19" }
-jcj-theme = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.19" }
-jcj-board = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.19" }
-jcj-shell = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.19" }
-jcj-agents = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.19" }
+jcj-doc = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.20" }
+jcj-layout = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.20" }
+jcj-engine = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.20" }
+jcj-output = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.20" }
+jcj-interchange = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.20" }
+jcj-proof = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.20" }
+jcj-project = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.20" }
+jcj-features = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.20" }
+jcj-theme = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.20" }
+jcj-board = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.20" }
+jcj-shell = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.20" }
+jcj-agents = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.20" }
 
 # Foundation (versions as the core pins them)
 serde = { version = "1", features = ["derive", "rc"] }
@@ -61,12 +61,19 @@ raw-window-handle = "0.6.2"
 egui = { version = "0.37", default-features = false }
 eframe = { version = "0.37", default-features = false, features = ["accesskit", "glow", "wayland", "x11"] }
 
+# BEGIN open-source-core: lints-and-profiles
+# Owned by open-source-core (template/Cargo.toml). Change it there, never in a copy: its tooling rewrites the copies.
+# One lint standard and one set of build profiles for the core and every app. A lint or a profile
+# setting an app needs is asked for in the core; a table this block does not hold is the app's.
 [workspace.lints.rust]
 unsafe_code = "forbid"
-# cargo llvm-cov sets `--cfg coverage`; timing tests skip themselves under it.
+# cargo llvm-cov sets `--cfg coverage`; a timing test may skip itself under it.
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(coverage)"] }
 
 [workspace.lints.clippy]
+# The six panicking lints (unwrap_used, expect_used, panic, unimplemented, todo, unreachable) are
+# denied by attributes at every product crate root, so integration tests can unwrap.
+# `cargo xtask lint-roots` checks every root carries them.
 cognitive_complexity = "deny"
 wildcard_imports = "deny"
 too_many_arguments = "deny"
@@ -87,6 +94,7 @@ opt-level = 3
 lto = "thin"
 codegen-units = 16
 debug = 0
+# END open-source-core: lints-and-profiles
 
 # The core's patch block: written by `cargo xtask sync`, checked by `cargo xtask sync --check`.
 # Never edit it here.

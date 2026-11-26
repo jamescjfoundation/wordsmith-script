@@ -19,8 +19,8 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::licenses;
-use crate::util::{TaskResult, cargo};
+use crate::shared::licenses;
+use crate::shared::util::{TaskResult, cargo};
 
 /// Files every bundle carries beside the programs.
 const DOCS: [&str; 5] = ["LICENSE-MIT", "LICENSE-APACHE", "NOTICE", "ATTRIBUTION.md", "README.md"];
@@ -217,7 +217,7 @@ fn stem(file: &str) -> &str {
 
 pub fn bundle(root: &Path) -> TaskResult {
     cargo(root, &["build", "--release", "--locked", "-p", "wordsmith", "-p", "wordsmith-cli"])?;
-    let third_party = licenses::third_party_licenses(root, crate::SHIPPED, crate::PRODUCT)?;
+    let third_party = licenses::third_party_licenses(root, crate::APP.shipped, crate::APP.product)?;
     let fonts = font_licenses(root)?;
     let version = version(root)?;
     let release = release_dir(root, std::env::var_os("CARGO_TARGET_DIR"));

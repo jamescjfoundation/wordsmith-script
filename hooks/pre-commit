@@ -1,8 +1,9 @@
 #!/bin/sh
 # Installed by `cargo xtask install-hooks` (git config core.hooksPath). Owned by open-source-core.
-# Fast checks only: formatting, the privacy scan of the lines being committed, and that no local
-# core dev-link is about to be committed (the pre-push gate would catch it only after the commit).
+# Fast checks only: formatting, the privacy scan of the lines being committed, and that no
+# tracked file holds a dev-link (the pre-push gate would catch it only after the commit). A link
+# made by `cargo xtask dev-link` is in a folder Git ignores, so committing while linked is fine.
 set -e
 cargo fmt --all -- --check || { echo "pre-commit: run 'cargo fmt --all'"; exit 1; }
 cargo xtask privacy --staged
-cargo xtask unlinked
+cargo xtask unlinked --tracked

@@ -1,6 +1,12 @@
+# BEGIN open-source-core: ignore
+# Owned by open-source-core (template/.gitignore). Change it there, never in a copy: its tooling rewrites the copies.
+# The app's own lines go outside this block.
 /target
 /dist
+# Private working notes: reviews, audits, open security problems (CONTRIBUTING.md). Never committed.
+/.private
+# A dev-link (`cargo xtask dev-link`): this machine's paths and the lock file of the linked build.
+/.cargo/dev-link/
 .DS_Store
 *.swp
-# Private working notes: reviews, audits, open security problems (CONTRIBUTING.md).
-/.private
+# END open-source-core: ignore

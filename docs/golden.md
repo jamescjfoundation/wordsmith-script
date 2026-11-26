@@ -66,7 +66,7 @@ and checks that the pages are exactly those 0.1.2 planned.
 
 The rebuild was checked against 0.1.2's outputs before any code moved: the
 three golden files above, the page plans of every golden script and fixture,
-and the PDFs. With 0.2 on open-source-core (v0.1.19):
+and the PDFs. With 0.2 on open-source-core (v0.1.20):
 
 - the golden text files are unchanged: every page reads back line for line as
   0.1.2 printed it;

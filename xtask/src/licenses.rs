@@ -14,8 +14,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use crate::json::{self, Value};
-use crate::util::{TaskResult, cargo_output};
+use super::json::{self, Value};
+use super::util::{TaskResult, cargo_output};
 
 /// The file name in every bundle.
 pub const FILE_NAME: &str = "THIRD-PARTY-LICENSES.txt";

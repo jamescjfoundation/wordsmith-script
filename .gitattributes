@@ -1,4 +1,7 @@
-# Text files are LF on every checkout. Tests compare generated text (golden
-# pagination, the keyboard guide) with files in the repository byte for byte,
-# and Git for Windows would otherwise check them out with CRLF.
+# BEGIN open-source-core: attributes
+# Owned by open-source-core (template/.gitattributes). Change it there, never in a copy: its tooling rewrites the copies.
+# Text files are LF on every checkout: tests compare generated text with files in the repository
+# byte for byte, and Git for Windows would otherwise check them out with CRLF. The app's own
+# lines (a kind of file that is binary, say) go after this block, where they take precedence.
 * text=auto eol=lf
+# END open-source-core: attributes

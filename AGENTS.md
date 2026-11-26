@@ -59,21 +59,33 @@ Before changing a repository, read its own `AGENTS.md`. Its rules apply inside i
 ## Before you commit
 
 ```sh
-cargo xtask install-hooks   # once: pre-commit (fmt, privacy, no dev-link) and pre-push (ci --changed)
+cargo xtask install-hooks   # once: pre-commit (fmt, privacy, no dev-link in a tracked file) and pre-push (ci --changed)
 cargo xtask ci --changed    # what CI will run for your change; `cargo xtask ci` for everything
 cargo xtask sync            # after moving to a new core release: shared files, blocks and patch block
 ```
 
-What the core owns is changed in the core, never here: `rust-toolchain.toml`, `rustfmt.toml`,
-`clippy.toml`, `deny.toml`, `CODE_OF_CONDUCT.md`, the shared modules in `xtask/src/`,
-`.github/workflows/ci.yml` and `core-pin.yml`, `.github/pull_request_template.md`,
-`.github/dependabot.yml`, `hooks/`, the patch block in `Cargo.toml`, and the blocks marked
-`open-source-core` in `AGENTS.md`, `SECURITY.md` and `CONTRIBUTING.md`.
+What the core owns is changed in the core, never here:
+
+- whole files: `rust-toolchain.toml`, `rustfmt.toml`, `clippy.toml`, `deny.toml` (but for the
+  app's own sources in it, which `sync` writes from `xtask/src/main.rs`), `CODE_OF_CONDUCT.md`,
+  `xtask/Cargo.toml`, every file in `xtask/src/` but `main.rs` and the modules the app adds,
+  `.github/workflows/ci.yml` and `core-pin.yml`, `.github/pull_request_template.md`,
+  `.github/dependabot.yml` and `hooks/`;
+- the blocks marked `open-source-core` in files that are otherwise the app's: in `AGENTS.md`,
+  `SECURITY.md` and `CONTRIBUTING.md`, and in `Cargo.toml` (lints and build profiles),
+  `.cargo/config.toml`, `.gitignore` and `.gitattributes`;
+- the patch block in `Cargo.toml`.
+
 `cargo xtask sync --check` fails if any of them differs from the pinned core release.
-`xtask/src/main.rs`, any module an app adds beside it, and everything outside the marked blocks
-are the app's own. The two workflow files only say when CI runs: the jobs are the core's shared
-workflows, which they call, so a fix to CI is made in the core and reaches the app without a
-change here.
+
+`xtask/src/main.rs` is the app's own and holds only what is the app's: its data (the product's
+name, the programs it ships, the repositories it builds on besides the core) and its own tasks.
+The gate, its list of checks and how each is run are the core's (`xtask/src/gate.rs`), so a
+check the core adds runs here after `cargo xtask sync`, with no edit. The app's layers are the
+table marked `layer table` in this file: `cargo xtask app-layers` reads that table, so the table
+is the rule, and a layer is changed there in the same change as the code. The two workflow
+files only say when CI runs: the jobs are the core's shared workflows, which they call, so a fix
+to CI is made in the core and reaches the app without a change here.
 
 ## House rules for code
 
@@ -159,21 +171,34 @@ interface back out is not.
 - **Core change an app needs:**
   1. Open a core issue describing the general need, not the app's feature.
   2. Check out both side by side. In the app: `cargo xtask dev-link ../open-source-core`
-     (`cargo xtask dev-unlink` removes it). Never commit the link; the app's CI rejects it.
+     (`cargo xtask dev-unlink` removes it). The link changes no file Git tracks: it is a folder
+     Git ignores, `.cargo/dev-link/`, and `Cargo.lock` is left alone. While linked, builds,
+     tests and the editor use the local core, and `cargo xtask ci --linked` runs the gate
+     against it. The plain gate refuses to run linked, because CI builds the pinned release.
   3. Build the general part in the core with its own tests and a use in `apps/core-testbed`, so it
      is proven without any product.
   4. Build the app's use of it in the app.
-  5. Land the core change first, with the core's gate green. Then release the core.
-  6. Move the app's pin to that release (`cargo xtask sync`), then land the app change, which
-     names the core issue it needed.
+  5. To have CI check the app's half before the core is released, give the app's branch a
+     temporary pin. Push the core change (a branch will do). On the app's branch, on every
+     `jcj-` line, write `rev = "<that core commit, all 40 characters>"` in place of the tag; then
+     `cargo metadata --format-version 1 >/dev/null` and `cargo xtask sync`. The gate passes on
+     that branch and in its pull request, with a warning. It fails on `main`, on a tag and in a
+     release, so the pull request is not merged while it holds the pin.
+  6. Land the core change first, with the core's gate green. Then release the core.
+  7. Move the app's pin to that release's tag (`cargo xtask sync`), then land the app change,
+     which names the core issue it needed.
 - **Prototype first, promote later.** If the general shape is not clear yet, build it in the app,
-  mark it `// core-candidate:` and open a core issue labelled `core-candidate`. Move it once it works
-  and a second app wants it. Never copy code between app repositories.
+  mark it `// core-candidate: open-source-core#N` and open that core issue, labelled
+  `core-candidate`. Move it once it works and a second app wants it. A promotion is finished only
+  when the app the code came from uses the core's copy and its own copy is deleted: the core
+  issue stays open until then, and the marker on the app's copy names it. Never copy code
+  between app repositories.
 - **Something one app needs from another app**
   ([core decision 0015](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0015-apps-that-depend-on-apps.md)):
   open an issue in the providing app's repository. The provider's change lands and is tagged
   there first; the consumer then moves its pin. Never edit the provider as part of the consumer's
-  change.
+  change. To try the two together, the consumer names the provider in its `xtask/src/main.rs`
+  (`providers`) and links a checkout of it like the core: `cargo xtask dev-link <name>=<folder>`.
 
 ### Step 3: let it reach the other apps safely
 
@@ -224,28 +249,36 @@ interface back out is not.
 
 ### Layers
 
-| Crate or program | What it holds | Depends on |
-| --- | --- | --- |
-| `crates/wordsmith-script` | The screenplay rules: elements, typing, pagination, revisions, scene numbers, locks, reports, and the screenplay commands | Core: `jcj-doc`, `jcj-engine`, `jcj-features`, `jcj-layout`, `jcj-output`, `jcj-project`, `jcj-proof` |
-| `crates/wordsmith-format` | The `.wss` format, Fountain, imports and exports, and the file commands | `wordsmith-script`. Core: `jcj-doc`, `jcj-engine`, `jcj-features`, `jcj-interchange`, `jcj-layout`, `jcj-output`, `jcj-project` |
-| `crates/wordsmith-ui` | The interface | `wordsmith-script`, `wordsmith-format`. Core: `jcj-board`, `jcj-doc`, `jcj-engine`, `jcj-layout`, `jcj-output`, `jcj-project`, `jcj-shell`, `jcj-theme` |
-| `apps/wordsmith` | The desktop app | `wordsmith-ui`. Core: `jcj-proof`, `jcj-shell` |
-| `apps/wordsmith-cli` | The command line and the MCP server | `wordsmith-script`, `wordsmith-format`. Core: `jcj-agents`, `jcj-doc`, `jcj-engine` |
-| `apps/wordsmith-web` | The web build | `wordsmith-ui` |
+`cargo xtask app-layers` reads this table, so the table is the rule. A row is a layer, lowest
+first. A crate or program depends only on those of earlier rows, and uses a core crate only when
+its own row or an earlier one names it in backticks. Every package of the workspace but `xtask`
+is in one row.
 
-The table is what each `Cargo.toml` names today. Two things in it are checked:
+<!-- BEGIN layer table (cargo xtask app-layers reads it) -->
+| Layer | Crate or program | What it holds | May use |
+| --- | --- | --- | --- |
+| 1 | `crates/wordsmith-script` | The screenplay rules: elements, typing, pagination, revisions, scene numbers, locks, reports, and the screenplay commands | `jcj-doc`, `jcj-engine`, `jcj-features`, `jcj-layout`, `jcj-output`, `jcj-project`, `jcj-proof` |
+| 2 | `crates/wordsmith-format` | The `.wss` format, Fountain, imports and exports, and the file commands | the screenplay rules, `jcj-interchange` |
+| 3 | `apps/wordsmith-cli` | The command line and the MCP server | the two crates above, `jcj-agents` |
+| 4 | `crates/wordsmith-ui` | The interface | the two crates above, `jcj-board`, `jcj-shell`, `jcj-theme` |
+| 5 | `apps/wordsmith`, `apps/wordsmith-web` | The desktop app; the web build | the interface |
+<!-- END layer table -->
 
+What holds the layers:
+
+- `cargo xtask app-layers` fails when a crate or program depends on one of its own row or a
+  later one, or uses a core crate that its row and the rows before it do not name. So the
+  screenplay rules sit under the format and both sit under the interface (decisions 0002 and
+  0044), and nothing below `wordsmith-ui` depends on it or on `jcj-shell`, `jcj-theme` or
+  `jcj-board`: the command line and the MCP server run every command without a window. The
+  command line is its own row below the interface for that reason.
 - `cargo xtask layers` fails when any crate here depends on a `wordcraft-*` or `craft-*` crate or
   on `jcj-upstream`.
 - `cargo xtask lint-roots` fails unless `wordsmith-script` and `wordsmith-format` deny indexing
   and slicing as well as the six panicking lints.
 
-The order among Script's own crates is a rule (decisions 0002 and 0044) that no check enforces
-yet: the screenplay rules sit under the format, both sit under the interface, and nothing below
-`wordsmith-ui` depends on it or on `jcj-shell`, `jcj-theme` or `jcj-board`, so the command line
-and the MCP server run every command without a window. A new dependency that breaks the order
-is a mistake even though the gate passes; a new core crate in a row is added to this table in
-the same change.
+A new core crate in a row, or a new crate or program, is added to the table in the same change.
+A library that is neither ours nor the core's is not the table's business.
 
 ### Rules
 

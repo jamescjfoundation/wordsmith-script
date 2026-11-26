@@ -75,8 +75,11 @@ allow-wildcard-paths = true
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-# Upstream, through our forks where we carry patches (docs/UPSTREAM.md), the core itself (for app
-# repositories), and foundation apps whose published crates another app depends on (core issue #15).
+# Upstream, through our forks where we carry patches (docs/UPSTREAM.md), and the core itself (for
+# app repositories). An app that builds on another app's crates (core decision 0015) has that
+# repository's address between the two `app sources` lines: `cargo xtask sync` writes them there
+# from the providers the app's xtask/src/main.rs declares, and leaves the rest of this file as
+# the core's. In the core itself nothing stands between them.
 allow-git = [
     "https://github.com/storytold/wordcraft",
     "https://github.com/jamescjfoundation/wordcraft",
@@ -86,7 +89,9 @@ allow-git = [
     "https://github.com/storytold/winit.git",
     "https://github.com/storytold/winprint.rs",
     "https://github.com/jamescjfoundation/open-source-core",
-    "https://github.com/jamescjfoundation/wordsmith-manuscript",
+    # BEGIN app sources
+    # END app sources
 ]
-# A tag (a release) or an exact commit; never a moving branch.
+# A tag (a release) or an exact commit; never a moving branch. An exact commit of the core is a
+# temporary pin, which `cargo xtask core-pin` allows on a branch only (core decision 0013).
 required-git-spec = "tag"

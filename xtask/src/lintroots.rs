@@ -7,7 +7,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use crate::util::{TaskResult, report, workspace_members};
+use super::util::{TaskResult, report, workspace_members};
 
 /// Lints every product crate root must deny.
 pub const REQUIRED_DENIES: &[&str] =

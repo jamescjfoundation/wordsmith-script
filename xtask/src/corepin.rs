@@ -10,6 +10,12 @@
 //! - **One core in the graph.** `Cargo.lock` holds packages from one ref of the core's address. A
 //!   second one arrives when a dependency (another app's crates, say) pins a different core
 //!   release: the two cores' types do not mix, and the older one lacks the newer one's fixes.
+//! - **A temporary pin, on a branch only.** An app change that needs a core change which is not
+//!   released yet can be checked before the release: on a branch, every `jcj-` line names the
+//!   same full commit of the core (`rev = "<40 characters>"`) in place of the tag. The gate
+//!   passes there with a warning, so a pull request shows green against that commit. On `main`,
+//!   on a tag and anywhere this cannot be told to be a branch, the same pin fails: `main` and
+//!   releases build on a core release (core decision 0013).
 //! - **Distance** (`--behind`). The core's release tags are listed with `git ls-remote`, ordered
 //!   as versions, and the pin's place among them is printed. `--max-behind <n>` fails when the pin
 //!   is more than `n` releases behind. This needs the network, so it is not part of `ci`; the
@@ -24,8 +30,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use crate::link::CORE_GIT;
-use crate::util::{TaskResult, git_output, report};
+use super::link::{CORE_GIT, same_address, value_of};
+use super::util::{TaskResult, git_output, report};
+
+/// The branch that builds on releases only.
+const MAIN: &str = "main";
 
 /// A core release: `v0.1.15` is `(0, 1, 15)`. Tuples order as versions do, so `v0.1.9` comes
 /// before `v0.1.10`.
@@ -46,24 +55,7 @@ pub fn tag_of(release: Release) -> String {
 
 /// Whether a git address is the core's (a trailing `/` or `.git` and letter case aside).
 fn is_core(address: &str) -> bool {
-    address.trim_end_matches('/').trim_end_matches(".git").eq_ignore_ascii_case(CORE_GIT)
-}
-
-/// The value of `key = "..."` on a line; `key` must be a whole word.
-fn value_of<'a>(line: &'a str, key: &str) -> Option<&'a str> {
-    let mut from = 0;
-    while let Some(at) = line.get(from..).and_then(|rest| rest.find(key)).map(|i| i + from) {
-        from = at + key.len();
-        let (before, after) = (&line[..at], &line[from..]);
-        if before.chars().next_back().is_some_and(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
-            continue;
-        }
-        let Some(value) = after.trim_start().strip_prefix('=').and_then(|v| v.trim_start().strip_prefix('"')) else { continue };
-        if let Some((value, _)) = value.split_once('"') {
-            return Some(value);
-        }
-    }
-    None
+    same_address(address, CORE_GIT)
 }
 
 /// A manifest line that names the core as a git dependency.
@@ -75,6 +67,10 @@ pub struct PinLine {
     pub name: String,
     /// Its `tag`, when the line has one.
     pub tag: Option<String>,
+    /// Its `rev`, when the line has one: a commit, which only a temporary pin names.
+    pub rev: Option<String>,
+    /// Its `branch`, when the line has one. A branch moves, so it is never a pin.
+    pub branch: Option<String>,
 }
 
 /// Every line of a manifest that names the core's git address (comments aside).
@@ -86,18 +82,49 @@ pub fn pin_lines(manifest: &str) -> Vec<PinLine> {
             continue;
         }
         let name = line.split('=').next().unwrap_or_default().trim().trim_matches('"').to_owned();
-        out.push(PinLine { number: i + 1, name, tag: value_of(line, "tag").map(str::to_owned) });
+        let key = |k: &str| value_of(line, k).map(str::to_owned);
+        out.push(PinLine { number: i + 1, name, tag: key("tag"), rev: key("rev"), branch: key("branch") });
     }
     out
 }
 
+/// Whether `rev` is a whole commit id: 40 hexadecimal characters. A shorter one can come to
+/// mean another commit.
+fn is_full_commit(rev: &str) -> bool {
+    rev.len() == 40 && rev.bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+/// The commit of a temporary pin: every line names the same whole commit and none a tag or a
+/// branch. `None` for every other manifest, the usual one at a release tag included.
+pub fn temporary_pin(lines: &[PinLine]) -> Option<&str> {
+    let first = lines.first()?.rev.as_deref().filter(|rev| is_full_commit(rev))?;
+    let same = |l: &PinLine| l.tag.is_none() && l.branch.is_none() && l.rev.as_deref().is_some_and(|rev| rev.eq_ignore_ascii_case(first));
+    lines.iter().all(same).then_some(first)
+}
+
 /// What is wrong with how a manifest names the core: a line without a release tag, or lines at
-/// different tags (the lines behind the newest tag named are the ones reported).
+/// different tags (the lines behind the newest tag named are the ones reported). A temporary pin
+/// ([`temporary_pin`]) is not a problem here; where it is allowed is [`Place`]'s business.
 pub fn manifest_problems(lines: &[PinLine]) -> Vec<String> {
+    if temporary_pin(lines).is_some() {
+        return Vec::new();
+    }
     let newest = lines.iter().filter_map(|l| l.tag.as_deref().and_then(release)).max();
     let mut out = Vec::new();
     for line in lines {
         let at = format!("Cargo.toml:{}: {}", line.number, line.name);
+        if let Some(branch) = &line.branch {
+            out.push(format!("{at} follows the branch `{branch}`, which moves: name a release tag (`tag = \"vX.Y.Z\"`)"));
+            continue;
+        }
+        if let (Some(rev), None) = (&line.rev, &line.tag) {
+            out.push(if is_full_commit(rev) {
+                format!("{at} is at commit {rev} while other lines are not: every jcj- line carries the same tag, or on a branch the same commit")
+            } else {
+                format!("{at} is at `{rev}`, which is not a whole commit id: a temporary pin names all 40 characters")
+            });
+            continue;
+        }
         match (line.tag.as_deref(), line.tag.as_deref().and_then(release)) {
             (None, _) => out.push(format!("{at} names the core without a release tag on the same line (`tag = \"vX.Y.Z\"`)")),
             (Some(tag), None) => out.push(format!("{at} is at `{tag}`, which is not a core release tag (vX.Y.Z)")),
@@ -109,6 +136,54 @@ pub fn manifest_problems(lines: &[PinLine]) -> Vec<String> {
         }
     }
     out
+}
+
+/// Where a gate is running, as far as a temporary pin cares.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Place {
+    /// A pull request's run in GitHub Actions.
+    PullRequest,
+    /// A branch other than `main`, here or in GitHub Actions.
+    Branch(String),
+    /// `main`, a tag, a merge queue, or somewhere that cannot be told to be a branch. The reason.
+    Refused(String),
+}
+
+/// Where this run is: from GitHub Actions' variables when it runs there (`env` reads one), else
+/// from the branch checked out (`branch`; `None` or `HEAD` when there is none).
+pub fn place(env: &dyn Fn(&str) -> Option<String>, branch: Option<&str>) -> Place {
+    if env("GITHUB_ACTIONS").as_deref() == Some("true") {
+        let event = env("GITHUB_EVENT_NAME").unwrap_or_default();
+        let name = env("GITHUB_REF_NAME").unwrap_or_default();
+        return match (event.as_str(), env("GITHUB_REF_TYPE").as_deref()) {
+            ("pull_request" | "pull_request_target", _) => Place::PullRequest,
+            ("merge_group", _) => Place::Refused("this run is a merge queue's, about to land on main".to_owned()),
+            (_, Some("tag")) => Place::Refused(format!("this run is on the tag {name}")),
+            (_, Some("branch")) if !name.is_empty() && name != MAIN => Place::Branch(name),
+            (_, Some("branch")) if name == MAIN => Place::Refused(format!("this run is on {MAIN}")),
+            _ => Place::Refused("this run names no branch".to_owned()),
+        };
+    }
+    match branch.map(str::trim) {
+        Some(name) if name == MAIN => Place::Refused(format!("this checkout is on {MAIN}")),
+        Some(name) if !name.is_empty() && name != "HEAD" => Place::Branch(name.to_owned()),
+        _ => Place::Refused("this checkout is on no branch".to_owned()),
+    }
+}
+
+/// What to say about a temporary pin at `rev`: a warning where it is allowed, an error elsewhere.
+pub fn temporary_pin_verdict(rev: &str, place: &Place) -> Result<String, String> {
+    let rule = "main and releases build on a core release (core decision 0013)";
+    match place {
+        Place::Refused(why) => Err(format!(
+            "every jcj- line is at commit {rev}, not a release, and {why}. A temporary pin is for a branch and its pull request only: {rule}. \
+             Move every jcj- line to `tag = \"vX.Y.Z\"`"
+        )),
+        Place::PullRequest | Place::Branch(_) => Ok(format!(
+            "temporary core pin: every jcj- line is at commit {rev}, not a release. That is allowed on a branch, so this change can be checked \
+             against a core change before its release; {rule}. Move every jcj- line to the release's tag before this lands."
+        )),
+    }
 }
 
 /// A package in a lock file.
@@ -194,12 +269,22 @@ fn names(entry: &str, package: &Locked) -> bool {
 
 /// What is wrong with the cores in a lock file: a ref that is not a release tag, or more than one
 /// ref. For each ref but the newest it names the packages built from it and the packages that
-/// bring them in.
-pub fn lock_problems(packages: &[Locked]) -> Vec<String> {
+/// bring them in. `temporary` is the commit of the manifest's temporary pin, when it has one:
+/// that one ref is expected.
+pub fn lock_problems(packages: &[Locked], temporary: Option<&str>) -> Vec<String> {
     let cores = cores(packages);
+    let expected = temporary.map(|rev| format!("rev={rev}"));
     let mut out = Vec::new();
-    for (name, _) in cores.iter().filter(|(name, _)| release(name).is_none()) {
+    for (name, _) in cores.iter().filter(|(name, _)| release(name).is_none() && expected.as_deref() != Some(name.as_str())) {
         out.push(format!("Cargo.lock builds the core from `{name}`, which is not a core release tag (vX.Y.Z)"));
+    }
+    if let Some(expected) = &expected
+        && !cores.is_empty()
+        && !cores.iter().any(|(name, _)| name == expected)
+    {
+        out.push(format!(
+            "Cargo.toml pins the core at a commit and Cargo.lock does not build it from `{expected}`: `cargo metadata --format-version 1 >/dev/null` brings it in line"
+        ));
     }
     let Some(((newest, _), older)) = cores.split_last() else { return out };
     for (name, from) in older {
@@ -277,10 +362,28 @@ pub fn task(app: &Path, args: &[String]) -> TaskResult {
         println!("ok: no core pin here (this workspace is the core, or uses the core by path)");
         return Ok(());
     }
+    let temporary = temporary_pin(&lines);
     let mut failures = manifest_problems(&lines);
-    failures.extend(lock_problems(&packages));
+    failures.extend(lock_problems(&packages, temporary));
+    if let Some(rev) = temporary {
+        let branch = git_output(app, &["rev-parse", "--abbrev-ref", "HEAD"]).ok();
+        match temporary_pin_verdict(rev, &place(&|key| std::env::var(key).ok(), branch.as_deref())) {
+            Err(refused) => failures.push(refused),
+            Ok(warning) => {
+                println!("warning: {warning}");
+                if std::env::var_os("GITHUB_ACTIONS").is_some() {
+                    // Shown on the pull request's checks page, not only in the log.
+                    println!("::warning title=Temporary core pin::{warning}");
+                }
+            }
+        }
+    }
     let pin = pinned(&lines, &cores);
-    let checked = report(failures, &format!("one core release{}", pin.map(|p| format!(", {}", tag_of(p))).unwrap_or_default()));
+    let what = match (temporary, pin) {
+        (Some(rev), _) => format!("one core, at the commit {rev} (a temporary pin)"),
+        (None, pin) => format!("one core release{}", pin.map(|p| format!(", {}", tag_of(p))).unwrap_or_default()),
+    };
+    let checked = report(failures, &what);
     if !measure {
         return checked;
     }
@@ -365,6 +468,7 @@ serde = "1"
         assert_eq!(pinned(&lines, &[]), Some((0, 1, 10)));
         assert_eq!(value_of(r#"x = { legit = "no", git="yes" }"#, "git"), Some("yes"));
         assert_eq!(value_of(r#"homepage = "https://github.com/x""#, "git"), None);
+        assert!(temporary_pin(&lines).is_none());
     }
 
     #[test]
@@ -379,7 +483,7 @@ serde = "1"
         let problems = manifest_problems(&lines);
         assert_eq!(problems.len(), 4, "{problems:?}");
         assert!(problems[0].starts_with("Cargo.toml:1: jcj-doc is at v0.1.9, other lines are at v0.1.10"));
-        assert!(problems[1].starts_with("Cargo.toml:3: jcj-board names the core without a release tag"));
+        assert!(problems[1].starts_with("Cargo.toml:3: jcj-board is at `abc`, which is not a whole commit id"));
         assert!(problems[2].starts_with("Cargo.toml:4: jcj-theme is at `next`"));
         assert!(problems[3].starts_with("Cargo.toml:6: git names the core without a release tag"));
         // The distance is measured from the oldest tag named.
@@ -396,7 +500,7 @@ serde = "1"
         ]);
         let packages = locked(&one);
         assert_eq!(packages.len(), 4);
-        assert!(lock_problems(&packages).is_empty());
+        assert!(lock_problems(&packages, None).is_empty());
         let found = cores(&packages);
         assert_eq!(found.len(), 1);
         assert_eq!(pinned(&[], &found), Some((0, 1, 10)));
@@ -415,7 +519,7 @@ serde = "1"
             ("other-model", "9.9.9", OTHER, &["jcj-doc 0.1.9"]),
         ]);
         let packages = locked(&two);
-        let problems = lock_problems(&packages);
+        let problems = lock_problems(&packages, None);
         assert_eq!(problems.len(), 1, "{problems:?}");
         assert!(problems[0].starts_with("Cargo.lock holds two cores, v0.1.10 and v0.1.9. From v0.1.9: jcj-doc, jcj-upstream; used by: other-model."));
         // Two packages of one name and version are told apart by their source.
@@ -425,10 +529,84 @@ serde = "1"
             ("jcj-doc", "0.1.9", OLD, &[]),
             ("other-model", "9.9.9", OTHER, &["jcj-doc 0.1.9 (git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.9)"]),
         ]);
-        let problems = lock_problems(&locked(&same_version));
+        let problems = lock_problems(&locked(&same_version), None);
         assert_eq!(problems.len(), 2, "{problems:?}");
         assert!(problems[0].starts_with("Cargo.lock builds the core from `rev=abc`"));
         assert!(problems[1].contains("From rev=abc: jcj-doc; used by: app."));
+    }
+
+    const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
+
+    fn pinned_at_a_commit() -> (Vec<PinLine>, String) {
+        let core = "https://github.com/jamescjfoundation/open-source-core";
+        let manifest = format!("jcj-doc = {{ git = \"{core}\", rev = \"{COMMIT}\" }}\njcj-shell = {{ git = \"{core}\", rev = \"{COMMIT}\" }}\n");
+        (pin_lines(&manifest), format!("git+{core}?rev={COMMIT}#{COMMIT}"))
+    }
+
+    #[test]
+    fn a_temporary_pin_is_every_line_at_the_same_whole_commit() {
+        let (lines, source) = pinned_at_a_commit();
+        assert_eq!(temporary_pin(&lines), Some(COMMIT));
+        assert!(manifest_problems(&lines).is_empty());
+        // Its lock file builds the core from that commit and nothing else.
+        let one = locked(&lock(&[("app", "1.0.0", "", &["jcj-doc"]), ("jcj-doc", "0.1.10", &source, &[])]));
+        assert!(lock_problems(&one, Some(COMMIT)).is_empty());
+        assert_eq!(lock_problems(&one, None).len(), 1);
+        // A lock file still at the tag is stale, and a second core is as wrong as ever.
+        let stale = locked(&lock(&[("jcj-doc", "0.1.10", NEW, &[])]));
+        assert!(lock_problems(&stale, Some(COMMIT))[0].contains("does not build it from"));
+        let two = locked(&lock(&[("jcj-doc", "0.1.10", &source, &[]), ("jcj-doc", "0.1.9", OLD, &[])]));
+        assert!(lock_problems(&two, Some(COMMIT)).iter().any(|p| p.starts_with("Cargo.lock holds two cores")));
+
+        // Not a temporary pin: one line at a tag, two commits, a short commit, a branch.
+        let core = "https://github.com/jamescjfoundation/open-source-core";
+        let other = COMMIT.replace('0', "f");
+        let cases = [
+            (format!("a = {{ git = \"{core}\", rev = \"{COMMIT}\" }}\nb = {{ git = \"{core}\", tag = \"v0.1.10\" }}\n"), "while other lines are not"),
+            (format!("a = {{ git = \"{core}\", rev = \"{COMMIT}\" }}\nb = {{ git = \"{core}\", rev = \"{other}\" }}\n"), "while other lines are not"),
+            (format!("a = {{ git = \"{core}\", rev = \"0123456\" }}\n"), "not a whole commit id"),
+            (format!("a = {{ git = \"{core}\", branch = \"main\" }}\n"), "follows the branch `main`"),
+        ];
+        for (manifest, why) in cases {
+            let lines = pin_lines(&manifest);
+            assert!(temporary_pin(&lines).is_none(), "{manifest}");
+            assert!(manifest_problems(&lines).iter().any(|p| p.contains(why)), "{manifest}: {:?}", manifest_problems(&lines));
+        }
+    }
+
+    #[test]
+    fn a_temporary_pin_is_allowed_on_a_branch_and_refused_on_main() {
+        let actions = |event: &'static str, kind: &'static str, name: &'static str| {
+            move |key: &str| match key {
+                "GITHUB_ACTIONS" => Some("true".to_owned()),
+                "GITHUB_EVENT_NAME" => Some(event.to_owned()),
+                "GITHUB_REF_TYPE" => Some(kind.to_owned()),
+                "GITHUB_REF_NAME" => Some(name.to_owned()),
+                _ => None,
+            }
+        };
+        let local = |_: &str| None;
+        // In GitHub Actions the checkout of a pull request is on no branch: the event decides.
+        assert_eq!(place(&actions("pull_request", "branch", "12/merge"), Some("HEAD")), Place::PullRequest);
+        assert_eq!(place(&actions("push", "branch", "shell/tree-drag"), None), Place::Branch("shell/tree-drag".to_owned()));
+        assert_eq!(place(&actions("workflow_dispatch", "branch", "shell/tree-drag"), None), Place::Branch("shell/tree-drag".to_owned()));
+        for refused in [
+            place(&actions("push", "branch", "main"), Some("topic")),
+            place(&actions("schedule", "branch", "main"), None),
+            place(&actions("push", "tag", "v1.2.3"), None),
+            place(&actions("merge_group", "branch", "gh-readonly-queue/main/pr-12"), None),
+            place(&actions("push", "", ""), None),
+            place(&local, Some("main\n")),
+            place(&local, Some("HEAD")),
+            place(&local, None),
+        ] {
+            assert!(matches!(refused, Place::Refused(_)), "{refused:?}");
+            let err = temporary_pin_verdict(COMMIT, &refused).unwrap_err();
+            assert!(err.contains(COMMIT) && err.contains("for a branch and its pull request only"), "{err}");
+        }
+        assert_eq!(place(&local, Some("shell/tree-drag\n")), Place::Branch("shell/tree-drag".to_owned()));
+        let warning = temporary_pin_verdict(COMMIT, &Place::PullRequest).unwrap();
+        assert!(warning.contains("allowed on a branch") && warning.contains("before this lands"), "{warning}");
     }
 
     #[test]
