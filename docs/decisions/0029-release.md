@@ -9,6 +9,29 @@ general tools, and each screenplay command as a tool of its own (the guide's
 line, the screenshots and the bundles, with file names as decision 0038 changed
 them.
 
+Since 2026-11-26 the command line follows the convention every app on the core
+shares
+([core decision 0017](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0017-command-lines-and-agent-tools.md)),
+through the core's code for it: no argument is a usage error, `--version`
+prints `wordsmith-cli <version>` on its first line, `mcp` takes a file to open,
+and every tool of Script's own is named `script_<command>`. Two choices in it
+are Script's:
+
+- **A script named to `mcp` is opened by `file.openPath`**, the command the
+  window runs, with plain text and RTF read as scripts as `convert` reads them.
+  So a template starts a new script and a read-only file opens as a copy, as
+  in the app.
+- **The agent's folders still hold for a save back to that script.** The file
+  is opened before the folders hold because the person named it. A save is the
+  agent's act, and "with `--read-root` alone the agent's commands can write
+  nothing" is the promise the option makes, so `file.save` writes the script
+  back only when it lies inside the write folder.
+
+No command of `wordsmith-cli` compares two texts or runs a check, so none ends
+with the convention's exit code 3. A revised-pages export of a script with
+nothing revised stays a failure (1): nothing was checked, there was nothing to
+write.
+
 ## Command line
 
 `wordsmith-cli` reads `.wss` and Fountain scripts and imports plain text, RTF
@@ -22,10 +45,11 @@ and PDF as scripts:
 - `report characters|scenes <input> [<output.csv>]`: the character report or
   the scenes table as CSV, to the file or to standard output.
 - `info <input>`: title, pages, scenes, characters, paragraphs.
-- `mcp [--read-root <folder>] [--write-root <folder>]`: the MCP server.
+- `mcp [<file>] [--read-root <folder>] [--write-root <folder>]`: the MCP
+  server.
 
 Exit codes: 0 done, 1 failed (a file could not be read or written, nothing
-revised to export), 2 a usage error. Writes are atomic.
+revised to export), 2 a usage error, no argument included. Writes are atomic.
 
 ## MCP server
 
