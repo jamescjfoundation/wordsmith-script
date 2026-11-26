@@ -25,7 +25,7 @@ impl Rng {
 
 /// Valid files of every format, made from a golden script.
 fn seeds() -> Vec<(&'static str, Vec<u8>)> {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden");
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/golden");
     let text = std::fs::read_to_string(dir.join("timid-teddy.fountain")).expect("golden");
     let doc = fountain::read(&text).expect("reads").doc;
     let mut s = wordsmith_script_model::session_for(doc.clone());

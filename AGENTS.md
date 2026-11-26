@@ -2,9 +2,10 @@
 
 Wordsmith Script is a screenwriting app. Its screenplay rules (elements, typing, pagination with
 (MORE) and (CONT'D), Fountain, the `.wss` format, scene numbers, reports, the title page) live in
-`crates/script-model` and `crates/script-format`; its interface in `crates/script-ui`;
-the programs in `apps/`. Read `CONTRIBUTING.md`, `SECURITY.md` and `docs/decisions/` (decision
-0044 says what the app takes from the core) before you start.
+`crates/script-model` and `crates/script-format`; its interface in `crates/script-ui`; the
+programs in `apps/`; the files its tests read in `tests/`. Read `CONTRIBUTING.md`, `SECURITY.md`
+and `docs/decisions/` (decision 0044 says what the app takes from the core, decision 0045 what
+the crates and programs are called) before you start.
 
 This app is built on [open-source-core](https://github.com/jamescjfoundation/open-source-core),
 The James C. J. Foundation's shared base. The core holds what every app needs; this repository
@@ -274,18 +275,29 @@ What holds the layers:
   command line is its own row below the interface for that reason.
 - `cargo xtask layers` fails when any crate here depends on a `wordcraft-*` or `craft-*` crate or
   on `jcj-upstream`.
-- `cargo xtask lint-roots` fails unless `wordsmith-script-model` and `wordsmith-script-format` deny indexing
-  and slicing as well as the six panicking lints.
+- `cargo xtask lint-roots` fails unless `wordsmith-script-model` and `wordsmith-script-format`
+  deny indexing and slicing as well as the six panicking lints.
 
 A new core crate in a row, or a new crate or program, is added to the table in the same change.
 A library that is neither ours nor the core's is not the table's business.
 
 ### Rules
 
-- **Golden files are the judge.** `cargo test -p wordsmith-script-format --test golden` compares the
-  PDF text of three public-domain photoplays with reviewed files, and `--test migration` checks
-  that every file 0.1.2 saved opens and paginates as 0.1.2 paginated it. A change that alters
-  them is deliberate, reviewed and recorded (`docs/golden.md`).
+- **The writer's words are kept.** Opening, saving, importing and exporting never drop or
+  rewrite what the writer typed, and nothing is "cleaned up" unasked. What proves it: every
+  format fixture is saved again without loss, generated scripts go through `.wss` and Fountain
+  and come back the same (`crates/script-format/tests/round_trips.rs`), every file 0.1.2 saved
+  opens with the same pages, and the golden scripts' PDFs are read back word for word.
+  **Today:** the imports from plain text, RTF and PDF and the exports to RTF, text and HTML
+  have no word-for-word test, and a Fountain import leaves out notes written inside the text.
+- **Golden files are the judge.** The golden scripts' PDF text, the pages 0.1.2 planned for
+  every file it saved, and the guide's page of keys are compared with reviewed files
+  (`docs/golden.md` lists them and their tests). A change that alters one is deliberate:
+  rewrite it with `UPDATE_GOLDEN=1`, the one switch, read the difference, and add a row to
+  `docs/golden.md` saying what changed and why.
+- **Fixtures** are public-domain texts or written for the test. They live in `tests/fixtures/`
+  and `tests/golden/` at the root, and each is listed in `docs/fixtures.md` with where it came
+  from. A real person's script is never one (`CONTRIBUTING.md`).
 - **Names.** Code, documents, commits and fixtures may name another company, program, service
   or file format where that is a fact a reader needs: what Script opens or writes, where a
   formatting rule comes from. Labels, feature names, templates and help text in the interface
@@ -302,8 +314,8 @@ A library that is neither ours nor the core's is not the table's business.
   `wordmark-mask.png` (the mark and the wordmark as white shapes the app tints; no tool here
   makes them yet). `ATTRIBUTION.md` says how each was made.
 - **`.wss` changes** get a new format version and a migration step, and a fixture of the new
-  version in `crates/script-format/tests/fixtures/` (`v1-short.wss`, `v2-notes.wss`,
-  `v3-revisions.wss`, `v4-styles.wss`, `v5-ext.wss`; a version with no fixture fails a test).
+  version in `tests/fixtures/` (`v1-short.wss`, `v2-notes.wss`, `v3-revisions.wss`,
+  `v4-styles.wss`, `v5-ext.wss`; a version with no fixture fails a test).
   Wordsmith Manuscript also reads `.wss` files, with a reader of its own that is tested against
   copies of the same fixtures and refuses a version it was not written for. So a format change
   is not finished here: the same change opens an issue in wordsmith-manuscript that names the

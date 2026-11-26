@@ -18,7 +18,7 @@ use wordsmith_script_model::paginate::paginate;
 const SAVED: [&str; 7] = ["everybodys-girl", "timid-teddy", "salt-of-vengeance", "v1-short", "v2-notes", "v3-revisions", "v4-styles"];
 
 fn dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/saved-by-0.1.2")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/saved-by-0.1.2")
 }
 
 fn plan_of(doc: &Document) -> String {

@@ -26,7 +26,7 @@ fn main() {
 
 /// An editor on a public-domain sample with the features the pictures show.
 fn sample() -> Result<Editor, String> {
-    let golden = Path::new(env!("CARGO_MANIFEST_DIR")).join("../script-format/tests/golden/everybodys-girl.fountain");
+    let golden = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/golden/everybodys-girl.fountain");
     let text = std::fs::read_to_string(&golden).map_err(|e| format!("{}: {e}", golden.display()))?;
     let doc = wordsmith_script_format::fountain::read(&text)?.doc;
     let mut session = wordsmith_script_ui::new_session();

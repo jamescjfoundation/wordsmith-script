@@ -106,15 +106,15 @@ version is refused with a message naming both versions. A file is saved in
 the newest version, so an older file that is saved again can then be opened
 only by a version of the app that reads it.
 
-`crates/script-format/tests/fixtures` keeps one small file per version
-(the table under "Other readers" names them), each using what its version
-added. The tests read every one on every build, save it again and check that
-nothing was lost, and a version with no file fails a test.
-`tests/fixtures/saved-by-0.1.2/`
-keeps the files Wordsmith Script 0.1.2 saved for each golden script and each
-fixture, with the pages 0.1.2 planned for them: a test opens every one, saves
-it in the newest format, reopens it and checks that it paginates exactly as
-0.1.2 did (`tests/migration.rs`).
+`tests/fixtures/` keeps one small file per version (the table under "Other
+readers" names them), each using what its version added. The tests read every
+one on every build, save it again and check that nothing was lost, and a
+version with no file fails a test. `tests/fixtures/saved-by-0.1.2/` keeps the
+files Wordsmith Script 0.1.2 saved for each golden script and each fixture,
+with the pages 0.1.2 planned for them: a test opens every one, saves it in the
+newest format, reopens it and checks that it paginates exactly as 0.1.2 did
+(`crates/script-format/tests/migration.rs`). `docs/fixtures.md` lists every
+file and where it came from.
 
 | Version | Change | Migration from the one before |
 | --- | --- | --- |
@@ -146,8 +146,8 @@ A format change is therefore two changes:
    names the fixture. Manuscript's reader is changed there, never from here.
 
 Both sides test against the same files, one per format version. They live
-here, in `crates/script-format/tests/fixtures/`; Manuscript keeps unchanged
-copies in its `tests/fixtures/scripts/`. When a fixture here changes,
+here, in `tests/fixtures/`; Manuscript keeps unchanged copies in its
+`tests/fixtures/scripts/`. When a fixture here changes,
 Manuscript takes its copy again, so the issue says that too.
 
 | Version | Fixture | What it uses |

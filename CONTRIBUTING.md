@@ -34,6 +34,7 @@ the release runs it on Linux, macOS and Windows.
 | `apps/script`, `apps/script-cli`, `apps/script-web` | The desktop app, the command line and MCP server, and the web build |
 | `assets/brand` | Copies of the Wordsmith brand kit's logos, icons and palette, and Script's own theme file and derived icons (`AGENTS.md`, "Brand") |
 | `assets/fonts` | The bundled fonts, with their licenses |
+| `tests/fixtures`, `tests/golden` | The files the tests read and the reviewed results they compare with (`docs/fixtures.md`, `docs/golden.md`) |
 | `xtask` | The gate, bundling and screenshots |
 | `docs/guide` | The user guide |
 | `docs/decisions` | Why things are the way they are, one record per choice |
@@ -105,8 +106,8 @@ These add to the rules above; they hold only in this repository.
 ### Scripts and the app's own privacy
 
 - Never commit a real person's screenplay or notes. Test scripts and screenshots use
-  public-domain works (the ones in `crates/script-format/tests/golden`) or text you wrote for
-  the purpose.
+  public-domain works (the ones in `tests/golden`) or text you wrote for the purpose, and
+  every fixture is listed in `docs/fixtures.md`.
 - When someone attaches a file with personal content to an issue, a maintainer deletes or edits
   the attachment and asks for a made-up example instead.
 - The app follows the same rule. It sends no telemetry and never sends script content anywhere.

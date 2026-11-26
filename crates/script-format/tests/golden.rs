@@ -13,7 +13,7 @@ use wordsmith_script_model::paginate::paginate;
 const SCRIPTS: [&str; 3] = ["everybodys-girl", "timid-teddy", "salt-of-vengeance"];
 
 fn dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/golden")
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/golden")
 }
 
 /// Each page's text, a line per baseline, through the core's PDF reader (`jcj_output::read`).

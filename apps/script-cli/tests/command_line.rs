@@ -44,7 +44,7 @@ fn temp_dir(name: &str) -> PathBuf {
 }
 
 fn golden(name: &str) -> String {
-    format!("{}/../../crates/script-format/tests/golden/{name}.fountain", env!("CARGO_MANIFEST_DIR"))
+    format!("{}/../../tests/golden/{name}.fountain", env!("CARGO_MANIFEST_DIR"))
 }
 
 fn s(path: &Path) -> String {

@@ -98,7 +98,7 @@ fn the_file_reads_as_text() {
 
 #[test]
 fn a_stored_version_1_file_still_reads() {
-    let text = include_str!("../../tests/fixtures/v1-short.wss");
+    let text = include_str!("../../../../tests/fixtures/v1-short.wss");
     let doc = read(text).unwrap();
     assert_eq!(
         lines(&doc),
@@ -279,11 +279,11 @@ fn resaves_without_loss(name: &str, text: &str) -> Document {
 
 #[test]
 fn a_stored_file_of_every_version_reads_and_saves_again_without_loss() {
-    let v1 = resaves_without_loss("v1", include_str!("../../tests/fixtures/v1-short.wss"));
+    let v1 = resaves_without_loss("v1", include_str!("../../../../tests/fixtures/v1-short.wss"));
     assert_eq!(v1.core.title, "Fixture");
 
     // Version 2: a note anchored in the text, an escaped brace, emphasis, an empty line and a page break.
-    let v2 = resaves_without_loss("v2", include_str!("../../tests/fixtures/v2-notes.wss"));
+    let v2 = resaves_without_loss("v2", include_str!("../../../../tests/fixtures/v2-notes.wss"));
     let heading = v2.body[0].as_para().unwrap();
     assert_eq!(heading.text, "INT. HALL {B} - NIGHT");
     assert_eq!(heading.props_at(6).note(), Some(1));
@@ -293,7 +293,7 @@ fn a_stored_file_of_every_version_reads_and_saves_again_without_loss() {
     assert_eq!(v2.body[2].as_para().unwrap().props.page_break_before, Some(true));
 
     // Version 3: a locked page start, revised text with a deletion mark, stored scene numbers.
-    let v3 = resaves_without_loss("v3", include_str!("../../tests/fixtures/v3-revisions.wss"));
+    let v3 = resaves_without_loss("v3", include_str!("../../../../tests/fixtures/v3-revisions.wss"));
     let first = v3.body[0].as_para().unwrap();
     assert_eq!(first.props.scene_number().as_deref(), Some("1"));
     assert_eq!(first.props_at(1).page_lock(), Some(1));
@@ -302,7 +302,7 @@ fn a_stored_file_of_every_version_reads_and_saves_again_without_loss() {
     assert_eq!(wordsmith_script_model::scene_numbers::numbers(&v3), vec!["1".to_string(), "1A".to_string()]);
 
     // Version 4: more styles, tracked changes and their records, a bookmark and dual dialogue.
-    let v4 = resaves_without_loss("v4", include_str!("../../tests/fixtures/v4-styles.wss"));
+    let v4 = resaves_without_loss("v4", include_str!("../../../../tests/fixtures/v4-styles.wss"));
     assert_eq!(v4.revisions.len(), 2);
     assert_eq!(wordsmith_script_model::tracking::changes(&v4).len(), 2);
     let styled = v4.body[2].as_para().unwrap();
@@ -318,7 +318,7 @@ fn a_stored_file_of_every_version_reads_and_saves_again_without_loss() {
     // Version 5: the settings' `ext` (a shared feature's key and one of Script's own) and
     // `trackChanges`; a stored scene number, a scene id, a note's anchor, escapes, an empty line
     // inside a paragraph and a page break.
-    let v5 = resaves_without_loss("v5", include_str!("../../tests/fixtures/v5-ext.wss"));
+    let v5 = resaves_without_loss("v5", include_str!("../../../../tests/fixtures/v5-ext.wss"));
     assert_eq!(v5.core.title, "Harbour Lights");
     assert!(v5.settings.track_changes, "trackChanges");
     assert_eq!(wordsmith_script_model::notes::Notes::of_doc(&v5).notes.get(&1).map(|n| n.text.clone()), Some("Is the pier lit?".into()));
@@ -338,7 +338,7 @@ fn a_stored_file_of_every_version_reads_and_saves_again_without_loss() {
 /// new version without one fails here first.
 #[test]
 fn every_format_version_has_a_fixture() {
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures");
     let mut versions = Vec::new();
     for entry in std::fs::read_dir(&dir).unwrap() {
         let path = entry.unwrap().path();

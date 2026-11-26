@@ -14,8 +14,8 @@
 6. [Production](production.md): revisions, scene numbers, locked pages,
    reports.
 7. [Outlining](outlining.md): the story board and the outline.
-8. [Command line and agents](cli-and-mcp.md).
-9. [Keyboard](keyboard.md): every key.
+8. [Command line and agents](command-line-and-agents.md).
+9. [Keyboard](keys.md): every key.
 10. [Editing tools](editing.md): Go To, bookmarks, reformat, the format
     checker, typing options.
 11. [Macros and text styles](macros-and-styles.md).

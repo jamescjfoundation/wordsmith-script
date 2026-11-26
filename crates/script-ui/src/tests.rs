@@ -1094,9 +1094,10 @@ fn right_click_moves_the_caret_for_the_element_menu() {
     frame(&ctx, &mut ed, vec![]);
 }
 
-/// The keyboard page of the user guide, made from the commands the window shows, so it never
-/// disagrees with the app. `UPDATE_GUIDE=1 cargo test -p wordsmith-script-ui keyboard_guide -- --ignored`
-/// rewrites it.
+/// The keys page of the user guide (`docs/guide/keys.md`), made from the commands the window
+/// shows, so it never disagrees with the app. It is a golden file (`docs/golden.md`), rewritten
+/// with the one switch every golden file has:
+/// `UPDATE_GOLDEN=1 cargo test -p wordsmith-script-ui the_keyboard_guide_matches_the_commands`.
 #[test]
 fn the_keyboard_guide_matches_the_commands() {
     let registry = crate::registry();
@@ -1115,11 +1116,11 @@ fn the_keyboard_guide_matches_the_commands() {
         let keys = keys.split(" / ").map(|k| format!("`{k}`")).collect::<Vec<_>>().join(" or ");
         out.push_str(&format!("| {label} | {keys} |\n"));
     }
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/guide/keyboard.md");
-    if std::env::var_os("UPDATE_GUIDE").is_some() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/guide/keys.md");
+    if std::env::var_os("UPDATE_GOLDEN").is_some() {
         std::fs::write(&path, &out).unwrap();
     }
-    assert_eq!(std::fs::read_to_string(&path).unwrap_or_default(), out, "run with UPDATE_GUIDE=1 and review the change");
+    assert_eq!(std::fs::read_to_string(&path).unwrap_or_default(), out, "run with UPDATE_GOLDEN=1 and review the change");
 }
 
 /// Keys Script had before 0.2 that its commands no longer declare: they come from the shared

@@ -75,9 +75,9 @@ None since 0.2: WordCraft's code is used through open-source-core, not copied
 
 | Path | What it is | Source | License |
 | --- | --- | --- | --- |
-| `crates/script-format/tests/golden/everybodys-girl.fountain` | "Everybody's Girl" by A. Van Buren Powell (Vitagraph, 1918), transcribed into Fountain | *Writing the Photoplay* (1919), Project Gutenberg #17903 | public domain in the USA (published before 1931) |
-| `crates/script-format/tests/golden/timid-teddy.fountain` | "Timid Teddy" by Embrie Zuver, transcribed into Fountain | *How to Write Photoplays* (1915), Project Gutenberg #76829 | public domain in the USA (published before 1931) |
-| `crates/script-format/tests/golden/salt-of-vengeance.fountain` | "The Salt of Vengeance" by Henry Albert Phillips, transcribed into Fountain | *The Photodrama* (1914), Project Gutenberg #70937 | public domain in the USA (published before 1931) |
+| `tests/golden/everybodys-girl.fountain` | "Everybody's Girl" by A. Van Buren Powell (Vitagraph, 1918), transcribed into Fountain | *Writing the Photoplay* (1919), Project Gutenberg #17903 | public domain in the USA (published before 1931) |
+| `tests/golden/timid-teddy.fountain` | "Timid Teddy" by Embrie Zuver, transcribed into Fountain | *How to Write Photoplays* (1915), Project Gutenberg #76829 | public domain in the USA (published before 1931) |
+| `tests/golden/salt-of-vengeance.fountain` | "The Salt of Vengeance" by Henry Albert Phillips, transcribed into Fountain | *The Photodrama* (1914), Project Gutenberg #70937 | public domain in the USA (published before 1931) |
 | `docs/images/*.png` | Pictures of the app drawn by its own offscreen renderer (`cargo xtask screenshots`), showing "Everybody's Girl" above, in the bundled fonts | made by this project from the public-domain text above | MIT OR Apache-2.0, like the code; the script text is public domain |
 
 These are test data and are not shipped with the app. See `docs/golden.md`.

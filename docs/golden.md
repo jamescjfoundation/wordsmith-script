@@ -1,8 +1,23 @@
-# Golden scripts
+# Golden files
+
+Reviewed results the tests compare with what the app makes now. A change that
+alters one is deliberate: run the tests with `UPDATE_GOLDEN=1`, read the
+difference, and add a row under "Changes" saying what changed and why.
+
+| File | What it holds | Test |
+| --- | --- | --- |
+| `tests/golden/<name>.golden.txt`, for each of the three golden scripts | The script's PDF, read back: every page's text, line by line, with its page breaks | `crates/script-format/tests/golden.rs`, `golden_scripts_paginate_and_print_as_reviewed` |
+| `tests/fixtures/saved-by-0.1.2/<name>.plan.txt`, seven | The pages 0.1.2 planned for each script it saved (`docs/fixtures.md`). Never rewritten: no switch writes them | `crates/script-format/tests/migration.rs` |
+| `docs/guide/keys.md` | The guide's page of keys, made from the commands the window shows | `crates/script-ui/src/tests.rs`, `the_keyboard_guide_matches_the_commands` |
+
+    UPDATE_GOLDEN=1 cargo test -p wordsmith-script-format --test golden
+    UPDATE_GOLDEN=1 cargo test -p wordsmith-script-ui the_keyboard_guide_matches_the_commands
+
+## The golden scripts
 
 Three public-domain screenplays (1910s "photoplay" scenarios), transcribed into
 Fountain, are the golden corpus for pagination and PDF output
-(`crates/script-format/tests/golden/`).
+(`tests/golden/`).
 
 | Script | Author | Printed in | Pages |
 | --- | --- | --- | --- |
@@ -44,11 +59,8 @@ test's PDF reader before the golden files were committed.
 paginates it, checks that the layout engine agrees with the pagination plan
 page for page, exports the PDF, reads its text back line by line, and
 compares it with `<name>.golden.txt`. After a deliberate change to
-pagination or PDF output:
-
-    UPDATE_GOLDEN=1 cargo test -p wordsmith-script-format --test golden
-
-then read the diff of the golden files before committing it.
+pagination or PDF output, rewrite them with the switch above and read the
+diff of the golden files before committing it.
 
 The test reads the PDF back through the core's PDF reader (`jcj_output::read`,
 craft-libs' guarded interpreter underneath); before 0.2 it called that
@@ -82,3 +94,11 @@ and the PDFs. With 0.2 on open-source-core (v0.1.20):
 The scripts have little dialogue, so they exercise headings, action splits
 and keep rules more than (MORE)/(CONT'D); the unit tests in
 `wordsmith-script-model::paginate` cover those.
+
+## Changes
+
+| Date | File | What changed |
+| --- | --- | --- |
+| 2026-11-19 | the three `.golden.txt` | First version, read by eye page by page ("How they were transcribed") |
+| 2026-11-24 | none | The rebuild on open-source-core left every golden file and every page plan as it was ("The rebuild on open-source-core") |
+| 2026-11-26 | none; the files moved | The golden scripts and their results moved from `crates/wordsmith-format/tests/golden/` to `tests/golden/`, the fixtures to `tests/fixtures/`, and the guide's `keyboard.md` became `keys.md` (decisions 0045 and 0046). No byte of any of them changed. The keys page is rewritten with `UPDATE_GOLDEN=1` now; it was `UPDATE_GUIDE=1` |
