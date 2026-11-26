@@ -147,9 +147,10 @@ What the rebuild on the core left for later, each with what it waits for.
 - **Icons**: the shell draws only its general icons on the ribbon, the rails
   and the File page; Script's own icons are used in its panels and status bar
   (core issue #38).
-- **Shell keys**: Shift with a caret key extending the selection, and keys
-  typed in the same frame as text, are handled in Script's editor until the
-  shell does both (`core-candidate`, core issues #29 and #39).
+- **Shell keys**: keys typed in the same frame as text are handled in
+  Script's editor until the shell runs them in order (`core-candidate`, core
+  issue #39). Shift with a caret key extending the selection is the shell's
+  rule since core 0.1.20.
 - **Template cards and writing statistics** are still Script's own, though the
   core has a template chooser and a writing module: the chooser's tiles have
   no preview, and the module keeps words only (core issues #40 and #41).

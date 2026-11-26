@@ -76,6 +76,9 @@ text are unchanged, and every script 0.1.2 saved opens with the same pages.
   the strip. A split view's two panes start at half the space each, and the
   bar between them is dragged to give one more room; before, the second pane
   opened at a fixed width or height.
+- A shifted caret key that you turned off on the Keys page does nothing.
+  Before, Shift with an arrow, Home or End still extended the selection
+  when its own entry was turned off.
 
 ### The command line and agents
 
@@ -117,6 +120,8 @@ What changes for a script that calls it, and for an agent:
 
 ### Inside
 
+- Script uses the core's rule for shifted caret keys (`KeyMap::command_for`,
+  core issue #29), new in core 0.1.20, and its own copy is deleted.
 - The command line's exit codes, its `--help`, `--version` and `mcp`
   arguments and the names of its tools are the core's code (`jcj_agents::cli`,
   `AgentServer::tool_prefix`), and a test runs the built program and holds

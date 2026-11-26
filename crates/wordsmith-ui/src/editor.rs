@@ -1055,8 +1055,9 @@ impl Editor {
                         continue;
                     }
                     if !self.suggestion_key(&shortcut) && !self.leave_focus(&shortcut) {
-                        let cmd = map.bound_to(&shortcut).map(jcj_shell::Cmd::new).or_else(|| shifted(map, &shortcut));
-                        if let Some(cmd) = cmd {
+                        // The key's own command, or for a shifted caret key the movement that
+                        // extends the selection (the shell's rule for every app).
+                        if let Some(cmd) = map.command_for(&shortcut) {
                             self.press(cmd);
                         }
                     }
@@ -1604,26 +1605,6 @@ impl Editor {
         if let Some(c) = chosen {
             self.run("autocomplete.accept", json!({"candidate": c}));
         }
-    }
-}
-
-/// What a shifted key with no command of its own does: a caret movement's key extends the
-/// selection, and Shift+Backspace still deletes back.
-// core-candidate: open-source-core#29. The shell's keys leave caret keys to the document; every app on the engine
-// needs this rule.
-fn shifted(map: &jcj_shell::keys::KeyMap, shortcut: &str) -> Option<jcj_shell::Cmd> {
-    let mut s = jcj_shell::keys::parse_shortcut(shortcut)?;
-    if !s.shift {
-        return None;
-    }
-    s.shift = false;
-    let id = map.bound_to(&s.to_string())?;
-    if id.starts_with("caret.") {
-        Some(jcj_shell::Cmd::with(id, json!({"extend": true})))
-    } else if id == "text.backspace" {
-        Some(jcj_shell::Cmd::new(id))
-    } else {
-        None
     }
 }
 

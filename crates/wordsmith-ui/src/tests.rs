@@ -1017,6 +1017,20 @@ fn shift_extends_caret_movement_and_shift_backspace_deletes() {
 }
 
 #[test]
+fn a_shifted_caret_key_that_was_turned_off_does_nothing() {
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![key(Key::Num2, cmd()), text("Hello world")]);
+    // Shift+Left turned off on the Keys page: it runs nothing, the rule for shifted keys included.
+    assert!(ed.shell.keys.bind("Shift+Left", ""));
+    frame(&ctx, &mut ed, vec![key(Key::ArrowLeft, Modifiers::SHIFT)]);
+    assert_eq!(ed.session.selected_text(), "");
+    // The other shifted caret keys still extend the selection.
+    frame(&ctx, &mut ed, vec![key(Key::Home, Modifiers::SHIFT)]);
+    assert_eq!(ed.session.selected_text(), "Hello world");
+}
+
+#[test]
 fn the_go_to_checker_and_reformat_windows_work_through_commands() {
     let ctx = ctx();
     let mut ed = editor();

@@ -37,6 +37,10 @@
 - **Every control is a command:** anything on the ribbon, in the
   quick-access row or in the status bar is also in the command search box,
   and can be given a key on the Keys page.
+- **Shift with a key that moves the caret** (an arrow, Home, End, Page Up,
+  Page Down, with or without Mod) extends the selection, whatever key you
+  have given the movement. A shifted key you have given a command of its own
+  runs that command, and one you have turned off does nothing.
 
 ## The sides
 

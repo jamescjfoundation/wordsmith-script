@@ -19,14 +19,13 @@ app-first and copy-kept row's issue is open, labelled `core-candidate`, and
 names the file here that holds the code. A marker is written
 `core-candidate: open-source-core#N`, and `cargo xtask docs` fails on one that
 names no issue. A new marker, or a new need, gets its issue and its row in the
-same change. Last checked against the issues and core v0.1.18 on 2026-11-26.
+same change. Last checked against the issues and core v0.1.20 on 2026-11-26.
 
 ## Markers in the code
 
 | What | `// core-candidate:` location | Core issue | State |
 | --- | --- | --- | --- |
 | File dialogs in the shell (open, save, choose a folder) | `apps/wordsmith/src/files.rs` | [#28](https://github.com/jamescjfoundation/open-source-core/issues/28) | app-first. Script shows the system's dialogs itself, modally, through the `rfd` crate |
-| A shifted caret key extends the selection | `crates/wordsmith-ui/src/editor.rs` (`shifted`) | [#29](https://github.com/jamescjfoundation/open-source-core/issues/29) | app-first |
 | Keys and typed text of one frame run in the order typed | `crates/wordsmith-ui/src/editor.rs` (`Editor::handle_keys`) | [#39](https://github.com/jamescjfoundation/open-source-core/issues/39) | app-first. The editor takes every key itself, with the shell's `shortcuts` option off |
 | Pagination pass: room for a foot line, a run's page count, a forced start inside a paragraph, placeholder pages | `crates/wordsmith-script/src/paginate/plan.rs` | [#34](https://github.com/jamescjfoundation/open-source-core/issues/34) | app-first. Script's planner does all four itself; its screenplay rules stay here as a pass once the core has the hooks (decision 0044) |
 | Story board lanes | `crates/wordsmith-script/src/storyboard.rs` (`Lane`; the commands are in `outline.rs`) | [#12](https://github.com/jamescjfoundation/open-source-core/issues/12) | app-first. A second app has lanes of its own, marked for the same issue |
@@ -37,6 +36,7 @@ same change. Last checked against the issues and core v0.1.18 on 2026-11-26.
 
 | What | Core issue | State |
 | --- | --- | --- |
+| A shifted caret key extends the selection (`KeyMap::command_for`) | [#29](https://github.com/jamescjfoundation/open-source-core/issues/29) | released in core v0.1.20, used: the editor asks the key map what a key runs (`Editor::handle_keys`). Script's own `shifted` is gone |
 | Document tabs and a split view (`jcj_shell::split`) | [#4](https://github.com/jamescjfoundation/open-source-core/issues/4) | released in core v0.1.3, used: the tab strip and the two panes with their divider (`crates/wordsmith-ui/src/workspace.rs`). Which scripts are open, the new-tab button and what the second pane shows are Script's |
 | The start window (`jcj_shell::start::start_window`) | [#2](https://github.com/jamescjfoundation/open-source-core/issues/2) | released in core v0.1.2, not used: a script is always open, so Script shows the File page's New page at start instead |
 | The PDF names the app that made it | [#5](https://github.com/jamescjfoundation/open-source-core/issues/5) | open. PDFs name WordCraft as creator and producer; 0.1 wrote "Wordsmith Script" |
