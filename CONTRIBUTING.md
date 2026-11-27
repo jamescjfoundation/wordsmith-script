@@ -80,9 +80,10 @@ than "as discussed".
 
 ## Commits, pushes and pull requests
 
-- While no app built on the core has a public release, a push to `main` is allowed once the
-  repository's gate passes (`cargo xtask ci` where it has `cargo xtask`). A pull request is
-  optional; its author may merge it once its checks pass
+- Every change lands on `main` through a pull request whose required checks pass; GitHub
+  refuses a direct push. Its author, a person or an agent, merges it once they pass, and no
+  approval is required. Run the repository's gate (`cargo xtask ci` where it has
+  `cargo xtask`) before you push the branch
   ([core decision 0013](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0013-app-and-core.md)).
 - A release is cut, and in the core an upstream pin is moved, only on a commit whose full gate
   has passed; a person or an agent may do either (core decisions
