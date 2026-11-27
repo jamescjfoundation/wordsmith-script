@@ -101,6 +101,12 @@ pages.
   named Wordsmith Script (`docs/gaps.md`).
 - **Not yet**: the web build, and an update in place on Windows and macOS,
   where the app opens the release page (`docs/gaps.md`).
+- **Known in this preview, on macOS**: Option with the Left or Right arrow
+  goes to the end of the line instead of moving by word
+  ([core issue 48](https://github.com/jamescjfoundation/open-source-core/issues/48)).
+  Command with the arrows works as on any Mac. The guide's keys page lists
+  the keys of Windows and Linux; a command's tooltip shows its key on your
+  system.
 - Script tabs and the split view are drawn by the shared shell. Every open
   script's tab has its own close button (closing a script with unsaved
   changes still asks first), and the new-tab button sits at the right end of
