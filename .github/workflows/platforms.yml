@@ -1,0 +1,53 @@
+# This app's whole gate on macOS and Windows. Owned by the core
+# (template/.github/workflows/platforms.yml) and kept identical in every app by `cargo xtask sync`.
+#
+# The app's CI (ci.yml in this folder) runs on Linux. This runs `cargo xtask ci`, whole, on
+# macOS and Windows every night and when started by hand, so that a test that fails only there
+# is found before a release, whose gate runs on the three systems. A scheduled run that fails
+# opens the issue "The macOS and Windows gate failed" here, or adds to the open one.
+#
+# It runs on no push and no pull request, and is not a required check: it takes long, and a
+# pull request would wait on it. To try a branch, or one system:
+#
+#   gh workflow run platforms.yml --ref <branch>
+#   gh workflow run platforms.yml --ref <branch> -f system=macos
+#
+# This file only says when that runs. The job is the core's shared workflow, called at the tag
+# `workflows-v1`, which the core moves (ci.yml in this folder says how that works):
+# https://github.com/jamescjfoundation/open-source-core/blob/workflows-v1/.github/workflows/shared-platforms.yml
+#
+# GitHub switches a scheduled workflow off when its repository has had no activity for 60 days,
+# and tells nobody. `gh workflow list --all` shows it as `disabled_inactivity`;
+# `gh workflow enable platforms.yml` switches it back on.
+#
+# Core decisions: https://github.com/jamescjfoundation/open-source-core/tree/main/docs/decisions
+name: macOS and Windows
+
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+    inputs:
+      system:
+        description: "Which systems"
+        type: choice
+        options: [both, macos, windows]
+        default: both
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platforms-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    # The shared workflow's jobs get this token and no more: read the code; open or add to the
+    # issue of a failed scheduled run.
+    permissions:
+      contents: read
+      issues: write
+    uses: jamescjfoundation/open-source-core/.github/workflows/shared-platforms.yml@workflows-v1
+    with:
+      systems: ${{ inputs.system || 'both' }}

@@ -167,8 +167,9 @@ interface back out is not.
 
 - **How a change lands**
   ([core decision 0013](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0013-app-and-core.md)):
-  while no app has a public release, a push to `main` is allowed once the gate passes; a pull
-  request is optional and its author merges it when its checks pass.
+  every change, in the core and in an app, lands on `main` through a pull request whose
+  required checks pass, and its author, a person or an agent, merges it. GitHub refuses a direct
+  push to `main`. No approval is asked for: run the gate before you push the branch.
 - **App-only change:** one change in the app.
 - **Core change an app needs:**
   1. Open a core issue describing the general need, not the app's feature.
@@ -229,13 +230,15 @@ The gate runs first and the workflow makes the tag, as for the core.
    `CHANGELOG.md`.
 2. `cargo xtask release X.Y.Z` makes the changes of the release commit: the version in
    `Cargo.toml` and `Cargo.lock`, and the changelog heading with the date. Run `cargo xtask ci`,
-   commit, push to `main`.
+   commit, and land the commit on `main` through a pull request.
 3. `gh workflow run release.yml --ref main`. It checks the release commit, runs the whole gate
    on Linux, macOS and Windows, builds and checks the package of each system and
    `SHA256SUMS.txt`, and only then makes the tag `vX.Y.Z` and publishes. A red job leaves no
-   tag: fix the cause on `main` and start it again.
+   tag: land the fix on `main` and start it again.
 4. To try it without releasing: `gh workflow run release.yml -f dry-run=true`. The same dry run
    starts by itself every week. `cargo xtask package` makes this computer's package in `dist/`.
+   The app's whole gate also runs on macOS and Windows every night (`platforms.yml`; a failure
+   opens an issue): an issue it opened is fixed before a release.
 
 What a release carries is data in `xtask/src/main.rs` (`package`). The packaging and the
 workflow are the core's: an app has no release workflow and no packaging script of its own.

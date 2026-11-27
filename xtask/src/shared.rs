@@ -298,7 +298,7 @@ pub mod release {
         println!("{} {new} ({date}): Cargo.toml, Cargo.lock and CHANGELOG.md are changed.", app.product);
         println!("Next:");
         println!("  1. cargo xtask ci");
-        println!("  2. commit the files as \"{} {new}\" and push to main", app.product);
+        println!("  2. commit the files as \"{} {new}\" and land it on main through a pull request", app.product);
         println!("  3. gh workflow run release.yml --ref main");
         println!("     It runs the gate on Linux, macOS and Windows and builds the packages; when all of it has");
         println!("     passed it makes the tag v{new} and publishes the release. Do not make the tag by hand.");
@@ -461,7 +461,9 @@ pub mod package {
     }
 
     impl Package {
-        /// A package with nothing of its own. Write `..Package::DEFAULT` after the fields an app sets.
+        /// A package with nothing of its own. Write `..Package::DEFAULT` after the fields an app
+        /// sets; an app that sets every field leaves it out, because clippy refuses a `..` that
+        /// fills nothing (`needless_update`).
         pub const DEFAULT: Package = Package {
             id: "",
             app_id: "",

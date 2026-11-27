@@ -1,5 +1,5 @@
 <!-- Owned by open-source-core (template/.github/pull_request_template.md); `cargo xtask sync` copies it into every app. Change it there. -->
-<!-- A pull request is optional while no app has a public release; a push to main follows the same list. -->
+<!-- Every change lands through a pull request whose checks pass; its author merges it (core decision 0013). -->
 
 ## What changed, and why
 
