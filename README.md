@@ -10,6 +10,16 @@ page as it will print, and take it into production with revision colors,
 locked pages and scene numbers. Scripts are plain-text files that read well
 in `git diff`; Fountain, PDF, RTF, plain text and HTML come and go.
 
+> **A note from the founder**
+>
+> A lot of work has already gone into laying a solid foundation. The apps aren't ready for everyday use yet, but the idea is sound and the pieces are in place. From here, the plan is slow, steady development and testing.
+>
+> I've been a wannabe developer for years. AI has finally given me the tools to bring an idea like this together, but my time and resources are limited. Ideas, feedback, bug reports, fixes and feature improvements are all welcome. If you care about this as much as we do, we're also open to deeper partnerships.
+>
+> I'll keep improving the ecosystem where I can while building out the rest of the foundation.
+>
+> — Dylan J.
+
 ![The page view with the ribbon, the scenes in the Script panel and the scene at the caret in the Inspector](docs/images/page-view.png)
 
 ## What it does
