@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! Script's part of the File page (decision 0037). The shell draws the page and what every app
-//! has (new, open and recent, save, export and print headings, preferences, keys, about); Script
-//! adds its templates and first steps to New, Import to Open, templates, revert and tabs to Save,
-//! its formats to Export, its print choices to Print, and a Compare page. Every button runs a
-//! command.
+//! has (new, open and recent, save, export and print headings, preferences, keys, about, and the
+//! templates' tiles from [`templates`]); Script adds a new tab and first steps to New, Import to
+//! Open, templates, revert and tabs to Save, its formats to Export, its print choices to Print,
+//! and a Compare page. Every button runs a command.
 
-use egui::{Align2, Color32, RichText, Sense, Stroke, Ui, pos2, vec2};
+use egui::{RichText, Ui, vec2};
 use jcj_shell::backstage::{action, heading, sub};
 use jcj_shell::widgets::{self, Control};
-use jcj_shell::{Cmd, Page, Shell};
+use jcj_shell::{Cmd, Page, Shell, TemplatePreview, TemplateSpec};
 use serde_json::json;
 
 use crate::editor::Editor;
-use crate::theme::{BODY, medium, regular};
+use crate::theme::{BODY, medium};
 
 /// Draw Script's part of File page `page`.
 pub fn page_ui(ed: &mut Editor, page: &Page, ui: &mut Ui, shell: &mut Shell) {
@@ -33,52 +33,36 @@ fn act(ed: &Editor, ui: &mut Ui, shell: &mut Shell, id: &str, params: serde_json
     action(ui, shell, ed, &c)
 }
 
-/// The first lines of a template, as its preview (built once; templates never change).
-fn preview(id: &str) -> String {
-    static CACHE: std::sync::OnceLock<std::collections::HashMap<&'static str, String>> = std::sync::OnceLock::new();
-    let all = CACHE.get_or_init(|| {
+/// Script's templates as the shell's chooser draws them on the New page (`App::templates`): each
+/// under its category, with a tile showing its first lines in a fixed-width font, as a script
+/// is set (built once; templates never change).
+pub fn templates() -> Vec<TemplateSpec> {
+    static ALL: std::sync::OnceLock<Vec<TemplateSpec>> = std::sync::OnceLock::new();
+    ALL.get_or_init(|| {
         wordsmith_script_model::templates::TEMPLATES
             .iter()
             .map(|t| {
-                let text = wordsmith_script_model::templates::build(t.id).map_or(String::new(), |doc| {
-                    doc.body
-                        .iter()
-                        .filter_map(|b| b.as_para())
-                        .map(|p| p.text.clone())
-                        .filter(|x| !x.trim().is_empty())
-                        .take(3)
-                        .collect::<Vec<_>>()
-                        .join("\n")
+                let lines: Vec<String> = wordsmith_script_model::templates::build(t.id).map_or_else(Vec::new, |doc| {
+                    doc.body.iter().filter_map(|b| b.as_para()).map(|p| p.text.clone()).filter(|x| !x.trim().is_empty()).take(3).collect()
                 });
-                (t.id, if text.is_empty() { "INT. —\n\n(an empty page, ready)".to_string() } else { text })
+                let preview =
+                    if lines.is_empty() { TemplatePreview::lines(["INT. —", "", "(an empty page, ready)"]) } else { TemplatePreview::lines(lines) };
+                TemplateSpec::new(t.id, t.name, t.about).in_group(t.category).with_preview(preview.monospace())
             })
             .collect()
-    });
-    all.get(id).cloned().unwrap_or_default()
+    })
+    .clone()
 }
 
 fn new(ed: &mut Editor, ui: &mut Ui, shell: &mut Shell) {
     let t = crate::theme::get(ui.ctx());
-    let mut picked: Option<&str> = None;
-    // A new script in a tab of its own; unsaved work stays.
+    // The templates are the shell's chooser, above (`App::templates`). A new script in a tab of
+    // its own; unsaved work stays.
     let tab = ui.add(egui::Button::new(RichText::new("New tab").font(medium(BODY))).min_size(vec2(120.0, 30.0)));
     widgets::record(shell, Some("file.newTab"), tab.rect);
     if tab.on_hover_text(widgets::tip(shell, &*ed, "file.newTab", "")).clicked() {
         shell.chrome.file_page = None;
         ed.run("file.newTab", json!({}));
-    }
-    let mut cats: Vec<&str> = wordsmith_script_model::templates::TEMPLATES.iter().map(|x| x.category).collect();
-    cats.dedup();
-    for cat in cats {
-        sub(ui, cat);
-        ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing = vec2(12.0, 12.0);
-            for tpl in wordsmith_script_model::templates::TEMPLATES.iter().filter(|x| x.category == cat) {
-                if template_card(ui, &t, tpl.id, tpl.name, tpl.about) {
-                    picked = Some(tpl.id);
-                }
-            }
-        });
     }
     sub(ui, "First steps");
     for tip in [
@@ -94,35 +78,6 @@ fn new(ed: &mut Editor, ui: &mut Ui, shell: &mut Shell) {
     if ui.checkbox(&mut show, "Show this page when the app starts").changed() {
         ed.tools.show_start_on_launch = show;
     }
-    if let Some(id) = picked {
-        shell.chrome.file_page = None;
-        // Unsaved work stays: the new script opens in a tab of its own.
-        if ed.session.dirty {
-            ed.new_tab();
-        }
-        ed.run("file.newFromTemplate", json!({"template": id}));
-    }
-}
-
-/// A template's card: a little page with its first lines, its name and what it is for.
-// core-candidate: open-source-core#40. The core's template chooser (`jcj_shell::start::chooser`) draws a tile
-// with a name and a line of text, no preview. Script lists its templates through `App::templates`
-// and drops these cards once a tile can show one.
-fn template_card(ui: &mut Ui, t: &crate::theme::Tokens, id: &str, name: &str, about: &str) -> bool {
-    let (r, resp) = ui.allocate_exact_size(vec2(210.0, 140.0), Sense::click());
-    ui.painter().rect_filled(r, 8.0, if resp.hovered() { t.hover } else { t.surface_high });
-    ui.painter().rect_stroke(r, 8.0, Stroke::new(1.0, if resp.hovered() { t.accent } else { t.border }), egui::StrokeKind::Inside);
-    let page = egui::Rect::from_min_size(r.min + vec2(12.0, 12.0), vec2(r.width() - 24.0, 78.0));
-    ui.painter().rect_filled(page, 3.0, Color32::WHITE);
-    ui.painter().rect_stroke(page, 3.0, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
-    let mut job = egui::text::LayoutJob::simple(preview(id), egui::FontId::monospace(8.5), Color32::from_gray(60), page.width() - 12.0);
-    job.wrap.max_rows = 6;
-    ui.painter().galley(page.min + vec2(6.0, 6.0), ui.painter().layout_job(job), Color32::from_gray(60));
-    ui.painter().text(pos2(r.min.x + 12.0, r.min.y + 104.0), Align2::LEFT_CENTER, name, medium(13.0), t.text);
-    let mut job = egui::text::LayoutJob::simple(about.to_string(), regular(10.5), t.text_dim, r.width() - 24.0);
-    job.wrap.max_rows = 1;
-    ui.painter().galley(pos2(r.min.x + 12.0, r.min.y + 116.0), ui.painter().layout_job(job), t.text_dim);
-    resp.on_hover_text(about).clicked()
 }
 
 fn open(ed: &mut Editor, ui: &mut Ui, shell: &mut Shell) {

@@ -15,14 +15,14 @@ jcj-doc.workspace = true
 jcj-engine.workspace = true
 jcj-layout.workspace = true
 jcj-output.workspace = true
-jcj-project.workspace = true
 jcj-shell.workspace = true
 jcj-theme.workspace = true
 jcj-board.workspace = true
+# The personal dictionary, read and written by the desktop start-up (`desktop.rs`).
+jcj-proof.workspace = true
 egui.workspace = true
 serde_json.workspace = true
 serde.workspace = true
-log.workspace = true
 # PNG files of the interface drawn offscreen (README pictures, visual checks).
 image = { workspace = true, features = ["png"] }
 

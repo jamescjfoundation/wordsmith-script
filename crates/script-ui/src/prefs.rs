@@ -131,6 +131,25 @@ impl Default for Prefs {
     }
 }
 
+/// Where the core's start-up finds the two parts of Script's file (`jcj_shell::desktop`). The
+/// file is Script's own struct, not the shell's `Prefs`, because it reads 0.1's shape and a first
+/// start opens the Scenes panel.
+impl jcj_shell::prefs::Contents for Prefs {
+    type App = ScriptPrefs;
+
+    fn shell(&self) -> &ShellPrefs {
+        &self.shell
+    }
+
+    fn app(&self) -> &ScriptPrefs {
+        &self.app
+    }
+
+    fn of(shell: ShellPrefs, app: ScriptPrefs) -> Self {
+        Prefs { shell, app }
+    }
+}
+
 /// The preferences file: the shell's, for [`Prefs`].
 pub type PrefsFile = jcj_shell::prefs::PrefsFile<Prefs>;
 

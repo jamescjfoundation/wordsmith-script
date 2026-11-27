@@ -17,6 +17,8 @@ pub mod board;
 pub mod brand;
 pub mod chrome;
 pub mod commands;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod desktop;
 pub mod dialogs;
 pub mod editor;
 pub mod fonts;
@@ -38,22 +40,6 @@ pub mod workspace;
 pub use app::shell;
 pub use commands::{new_session, registry};
 pub use editor::Editor;
-
-/// Where Script's releases come from, for updates (decision 0038): this project's GitHub
-/// releases, with files named `wordsmith-script-<version>-<os>-<arch>.<ext>`.
-#[cfg(not(target_arch = "wasm32"))]
-pub const RELEASES: jcj_shell::updates::desktop::ReleaseSource = jcj_shell::updates::desktop::ReleaseSource {
-    id: app::ID,
-    name: app::NAME,
-    tagline: "Write screenplays",
-    repo: "jamescjfoundation/wordsmith-script",
-    developer: "the Wordsmith Script contributors",
-    version: wordsmith_script_model::VERSION,
-    // Not macOS: the updater (at the core's pin) accepts a new macOS app only when it carries the
-    // Developer ID of its makers' own team, which no copy of ours ever will. The writer gets the
-    // release page there instead.
-    installs_in_place: !cfg!(target_os = "macos"),
-};
 
 /// The About page's first lines: the name, version and license.
 pub fn about_summary() -> String {

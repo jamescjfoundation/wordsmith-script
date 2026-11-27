@@ -45,6 +45,17 @@ rebuild"); these files are what is left of it to test against.
 
 They are never written again: no build can make them now.
 
+## Writing statistics saved by 0.9.0 (`tests/fixtures/stats-0.9.0.json`)
+
+A writer's `stats.json` as Wordsmith Script 0.9.0 wrote it beside its
+preferences, made by 0.9.0's own statistics types (`StatsData`, `Day`,
+`Goals`) and the same `serde_json::to_string` its save used, with made-up
+numbers: ten days from 2024 to 2026 (a leap day, a year's turn, days with
+words and no writing time, whose hours 0.9.0 left empty, and days with
+writing time and no words) and every setting changed from its default.
+`crates/script-ui/tests/stats_file.rs` opens it with the core's statistics
+and checks that every day and setting survives a save.
+
 ## The golden scripts (`tests/golden/*.fountain`)
 
 Three public-domain photoplays, transcribed into Fountain by

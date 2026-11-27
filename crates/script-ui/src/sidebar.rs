@@ -854,8 +854,7 @@ fn checker(ed: &mut Editor, ui: &mut Ui) {
 
 fn goals(ed: &mut Editor, ui: &mut Ui) {
     let t = crate::theme::get(ui.ctx());
-    let today = wordsmith_script_model::reports_more::date(crate::now_secs());
-    let day = ed.stats.data.days.get(&today).cloned().unwrap_or_default();
+    let day = crate::workspace::now_moment().map(|m| ed.stats.data.on(m.day)).unwrap_or_default();
     let g = ed.stats.data.goals.clone();
     let bar = |ui: &mut Ui, label: &str, have: f32, goal: f32, unit: &str| {
         ui.label(RichText::new(format!("{label}: {have:.0} of {goal:.0} {unit}")).font(regular(12.0)));

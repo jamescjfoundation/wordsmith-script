@@ -35,18 +35,18 @@ wordsmith-script-ui = { path = "crates/script-ui" }
 
 # The core, at a release tag. Apps use only jcj- interface crates (never jcj-upstream, WordCraft or
 # craft-libs); `cargo xtask layers` checks it. Move all of them together.
-jcj-doc = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.23" }
-jcj-layout = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.23" }
-jcj-engine = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.23" }
-jcj-output = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.23" }
-jcj-interchange = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.23" }
-jcj-proof = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.23" }
-jcj-project = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.23" }
-jcj-features = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.23" }
-jcj-theme = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.23" }
-jcj-board = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.23" }
-jcj-shell = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.23" }
-jcj-agents = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.23" }
+jcj-doc = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
+jcj-layout = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
+jcj-engine = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
+jcj-output = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
+jcj-interchange = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
+jcj-proof = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
+jcj-project = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
+jcj-features = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
+jcj-theme = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
+jcj-board = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
+jcj-shell = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
+jcj-agents = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
 
 # Foundation (versions as the core pins them)
 serde = { version = "1", features = ["derive", "rc"] }
@@ -56,9 +56,9 @@ log = "0.4"
 chrono = { version = "0.4.45", default-features = false, features = ["std"] }
 proptest = "1"
 image = { version = "0.25", default-features = false }
-# The window, at the egui version the core pins (the patch block points it at the same fork).
+# egui, at the version the core pins (the patch block points it at the same fork). The window
+# itself is the core's start-up (`jcj-shell`'s `window` feature, in apps/script).
 egui = { version = "0.37", default-features = false }
-eframe = { version = "0.37", default-features = false, features = ["accesskit", "glow", "wayland", "x11"] }
 
 # BEGIN open-source-core: lints-and-profiles
 # Owned by open-source-core (template/Cargo.toml). Change it there, never in a copy: its tooling rewrites the copies.

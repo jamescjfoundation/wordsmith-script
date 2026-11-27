@@ -32,6 +32,12 @@ files' names are unchanged. Still Script's: its identity
 when it is started as the updater's helper, so a signed copy can update in
 place; an unsigned one is still sent to the release page.
 
+Amended 2026-11-27 (core v0.1.24): Script's identity is its `DESKTOP` data in
+`apps/script/src/main.rs` (`jcj_shell::desktop::Desktop`, core issue #46), in
+place of `wordsmith_script_ui::RELEASES`; the core's start-up makes the
+updater's call first in `main` and attaches the update check. The id, the
+repository, the release files' names and the macOS limit are unchanged.
+
 ## Context
 
 Downloads, releases and updates follow the pattern the ArtCraft apps use, so

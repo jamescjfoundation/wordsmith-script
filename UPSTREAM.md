@@ -11,7 +11,7 @@ craft-libs commits it builds on, and every patch it carries, in its own
 
 | Source | Pin | Crates |
 | --- | --- | --- |
-| open-source-core | tag `v0.1.23` (`Cargo.toml`, `[workspace.dependencies]`) | `jcj-doc`, `jcj-layout`, `jcj-engine`, `jcj-output`, `jcj-interchange`, `jcj-proof`, `jcj-project`, `jcj-features`, `jcj-theme`, `jcj-board`, `jcj-shell`, `jcj-agents` |
+| open-source-core | tag `v0.1.24` (`Cargo.toml`, `[workspace.dependencies]`) | `jcj-doc`, `jcj-layout`, `jcj-engine`, `jcj-output`, `jcj-interchange`, `jcj-proof`, `jcj-project`, `jcj-features`, `jcj-theme`, `jcj-board`, `jcj-shell`, `jcj-agents` |
 
 All `jcj-` crates move together, to a release tag, with `cargo xtask sync`
 afterwards (it copies the core's toolchain, lint, cargo-deny and license

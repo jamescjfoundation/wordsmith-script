@@ -109,7 +109,7 @@ pub fn open(ed: &mut Editor, what: &str, req: &Value) -> bool {
         "tool.start" | "tool.templates" => ed.to_shell.push(ToShell::FilePage(Page::New)),
         "tool.keys" => ed.to_shell.push(ToShell::FilePage(Page::Keys)),
         "tool.checkUpdates" => ed.to_shell.push(ToShell::CheckForUpdates),
-        "tool.stats" => ed.stats.window = Some(("words", "week")),
+        "tool.stats" => crate::workspace::open_stats(ed),
         "tool.sprint" => crate::workspace::toggle_sprint(ed),
         "tool.extraDark" => ed.to_shell.push(ToShell::Theme(if ed.extra_dark { Mode::Dark } else { Mode::ExtraDark })),
         "tool.newTab" => ed.new_tab(),

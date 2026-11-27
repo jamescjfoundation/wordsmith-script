@@ -10,11 +10,8 @@ publish.workspace = true
 
 [dependencies]
 wordsmith-script-ui.workspace = true
-jcj-shell.workspace = true
-jcj-proof.workspace = true
-eframe.workspace = true
-egui.workspace = true
-serde_json.workspace = true
+# With the window: the core's start-up opens it (`jcj_shell::desktop`).
+jcj-shell = { workspace = true, features = ["window"] }
 
 [lints]
 workspace = true

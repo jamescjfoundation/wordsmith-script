@@ -80,7 +80,7 @@ and checks that the pages are exactly those 0.1.2 planned.
 
 The rebuild was checked against 0.1.2's outputs before any code moved: the
 three golden files above, the page plans of every golden script and fixture,
-and the PDFs. With the rebuilt app on open-source-core (v0.1.23):
+and the PDFs. With the rebuilt app on open-source-core (v0.1.24):
 
 - the golden text files are unchanged: every page reads back line for line as
   0.1.2 printed it;

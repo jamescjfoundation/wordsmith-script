@@ -39,8 +39,8 @@ pub fn shell_options() -> ShellOptions {
     }
 }
 
-/// The shell for a Script window: its name, version, design tokens, fonts and options. The
-/// desktop app adds updates (`Shell::with_updates` with [`crate::RELEASES`]).
+/// The shell for a Script window: its name, version, design tokens, fonts and options. On the
+/// desktop the core's start-up attaches the update check to it (`apps/script`, `DESKTOP`).
 pub fn shell() -> Shell {
     Shell::new(NAME, wordsmith_script_model::VERSION, crate::theme::tokens()).with_fonts(crate::fonts::faces()).with_options(shell_options())
 }
@@ -160,6 +160,13 @@ impl Editor {
             self.run("macro.run", json!({"slot": slot}));
         } else if let Some(element) = custom_element(id) {
             self.run("element.set", json!({"element": element}));
+        } else if id == ids::NEW_FROM_TEMPLATE && cmd.params.get("discard").is_none() {
+            // A template from the New page's chooser: unsaved work stays, and the new script
+            // opens in a tab of its own.
+            if self.session.dirty {
+                self.new_tab();
+            }
+            self.run(id, cmd.params.clone());
         } else if id == ids::PRINT && empty {
             self.run(id, self.print.params());
         } else {
@@ -278,6 +285,10 @@ impl App for Editor {
             acknowledgments: crate::acknowledgments(),
             website: Some("https://github.com/jamescjfoundation/wordsmith-script".into()),
         }
+    }
+
+    fn templates(&self) -> Vec<jcj_shell::TemplateSpec> {
+        crate::backstage::templates()
     }
 
     fn mark_width(&self, height: f32) -> f32 {
