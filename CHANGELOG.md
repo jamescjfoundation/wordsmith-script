@@ -5,16 +5,25 @@ holds what the next release will bring; when that release is cut, the section
 takes its version and date (`## 0.9.0 (2026-12-01)`), and a new, empty
 `## Unreleased` opens above it.
 
-No version has been published yet. The first public release will be 0.9.0, a
-preview; 1.0.0 follows it (decision 0047). The versions under "Before the
-first release", at the end, were builds of the first version of the app and
-were never published.
+The first public release is 0.9.0, a preview; 1.0.0 follows it (decision
+0047). The versions under "Before the first release", at the end, were builds
+of the first version of the app and were never published.
 
 ## Unreleased
 
-To be released as 0.9.0. This is the app as rebuilt on open-source-core.
-Where an entry says "before", or "the first build", it compares with 0.1.2,
-the last build before the rebuild.
+## 0.9.0 (2026-11-27)
+
+The first public release of Wordsmith Script: a preview, to try the
+downloads, the app and its updates before 1.0.0. The packages are for macOS on
+Apple silicon, Windows x64 and Linux x86_64, and are not signed with a
+developer's certificate yet: the guide's
+[Installing and updating](https://github.com/jamescjfoundation/wordsmith-script/blob/main/docs/guide/installing.md) page says how to open the
+app the first time on each system. What is still missing for 1.0.0 is the
+[`v1` milestone](https://github.com/jamescjfoundation/wordsmith-script/milestone/1).
+
+This is the app as rebuilt on open-source-core. Where an entry says "before",
+or "the first build", it compares with 0.1.2, the last build before the
+rebuild, which was never published.
 
 ### Added
 
