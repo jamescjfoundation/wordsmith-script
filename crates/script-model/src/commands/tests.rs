@@ -374,6 +374,9 @@ fn every_key_of_0_1_reaches_its_command() {
     // Every key 0.1 bound (Shift with a caret key aside: the editor extends the caret's move),
     // and the command it reaches now: the same, or the one that replaced it (core decision 0007).
     let r = registry();
+    // By word: Mod with the arrow on Windows and Linux. On macOS that pair goes to the ends of
+    // the line, as everywhere on that system, and Option (Alt) with the arrow moves by word.
+    let (word_left, word_right) = if cfg!(target_os = "macos") { ("Alt+Left", "Alt+Right") } else { ("Mod+Left", "Mod+Right") };
     for (key, id) in [
         ("Mod+M", "bookmark.add"),
         ("Mod+End", "caret.docEnd"),
@@ -384,8 +387,8 @@ fn every_key_of_0_1_reaches_its_command() {
         ("Home", "caret.home"),
         ("Right", "caret.right"),
         ("Up", "caret.up"),
-        ("Mod+Left", "caret.wordLeft"),
-        ("Mod+Right", "caret.wordRight"),
+        (word_left, "caret.wordLeft"),
+        (word_right, "caret.wordRight"),
         ("Mod+Shift+D", "dialogue.dual"),
         ("Mod+2", "element.action"),
         ("Mod+8", "element.castList"),

@@ -114,8 +114,15 @@ fn l(e: &str, t: &str) -> (String, String) {
     (e.to_string(), t.to_string())
 }
 
+/// The modifiers of a `Mod` key press, as the system sends them: Command on macOS, Control
+/// elsewhere. On macOS Control is a key of its own, so a press that carried it would be
+/// `Mod+Ctrl+…` there and reach nothing.
 fn cmd() -> Modifiers {
-    Modifiers { command: true, ctrl: true, ..Modifiers::NONE }
+    if cfg!(target_os = "macos") {
+        Modifiers { command: true, mac_cmd: true, ..Modifiers::NONE }
+    } else {
+        Modifiers { command: true, ctrl: true, ..Modifiers::NONE }
+    }
 }
 
 /// Every main tab, and the contextual ones with their views.
@@ -1149,7 +1156,9 @@ fn shift_extends_caret_movement_and_shift_backspace_deletes() {
     frame(&ctx, &mut ed, vec![key(Key::Num2, cmd()), text("Hello world")]);
     frame(&ctx, &mut ed, vec![key(Key::Home, Modifiers::SHIFT)]);
     assert_eq!(ed.session.selected_text(), "Hello world");
-    frame(&ctx, &mut ed, vec![key(Key::End, Modifiers::NONE), key(Key::ArrowLeft, Modifiers { shift: true, ..cmd() })]);
+    // By word: Mod with the arrow, and on macOS Option (Mod with the arrow is the line's end there).
+    let by_word = if cfg!(target_os = "macos") { Modifiers::ALT } else { cmd() };
+    frame(&ctx, &mut ed, vec![key(Key::End, Modifiers::NONE), key(Key::ArrowLeft, Modifiers { shift: true, ..by_word })]);
     assert_eq!(ed.session.selected_text(), "world");
     frame(&ctx, &mut ed, vec![key(Key::End, Modifiers::NONE), key(Key::Backspace, Modifiers::SHIFT)]);
     assert_eq!(lines(&ed)[0].1, "Hello worl");
