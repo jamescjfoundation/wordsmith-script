@@ -17,11 +17,36 @@ of the first version of the app and were never published.
   Wordsmith brand kit's own file, in place of one scaled down here, and the
   palette card is the kit's current one. The brand files in `assets/brand/`
   are held to the kit's by `cargo xtask brand`, in the gate.
+- **Templates on the File page's New page** are the tiles every Wordsmith app
+  draws: each still shows the template's first lines on a small page, in the
+  script's fixed-width font, with its name and what it is for, under its kind
+  (screenplays, television, stage, audio and prose, outlines). They now come
+  right after New document, above the recent scripts. Picking one while a
+  script has unsaved changes still opens it in a tab of its own.
+- **The Writing Statistics window** is the one the Wordsmith apps share. It
+  shows what it showed: your current and longest streaks, your best day and
+  hours (UTC), and words, pages or minutes by days, weeks, months or years
+  with your goal as a line, and your goals and settings to change. The bars
+  take the theme's accent color, and the average reads "Average a day, the
+  last 7 days". **Your statistics are kept**: the `stats.json` 0.9.0 wrote
+  beside your preferences is read as it is, and every day, goal and setting in
+  it is written back.
+- **A sprint counts the words you write**, as the statistics do: deleting
+  during a sprint takes none away. In 0.9.0 it gave the change in the script's
+  length.
+- **Starting and closing** are the steps every Wordsmith app shares. The
+  command line, `--version` and the window's title are as before. A
+  preference changed within a second of another is written without waiting
+  for your next key or click, and with no settings folder at all a first start
+  opens the Scenes panel as it does with one.
 
 ### Fixed
 
-- **On macOS, Option with the Left or Right arrow moves by word** again, as
-  on any Mac; it went to the end of the line in 0.9.0 (core issue 48, fixed
+- **A statistics file that cannot be read is kept**, as `stats.json.damaged`
+  beside it, and the window says so; 0.9.0 started again without a word and
+  wrote over it.
+- **On macOS, Option with the Left or Right arrow moves by word**, as on any
+  Mac; it went to the end of the line in 0.9.0 (core issue 48, fixed
   in open-source-core 0.1.24). Command with the arrows still goes to the
   line's ends.
 

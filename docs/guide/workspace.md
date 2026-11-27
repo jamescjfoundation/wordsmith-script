@@ -2,8 +2,11 @@
 
 ## Starting
 
-The Welcome window (File › Welcome…) lists recent scripts and the templates by
-category, with a few first steps. In Preferences you can have the app reopen
+The Welcome window (File › Welcome…) is the File page's New page: New
+document, then the templates by kind, each a tile with its first lines on a
+small page, then your recent scripts, a New tab button and a few first steps.
+Picking a template while a script has unsaved changes opens it in a tab of its
+own. In Preferences you can have the app reopen
 the scripts that were open when you last closed it, or skip the Welcome window.
 
 **New from Template…** (Mod+Shift+O) starts from a screenplay, a TV episode, a
@@ -37,13 +40,16 @@ quick switches for focus mode and the theme, and a zoom slider from 75 % to
 Tools › Writing Statistics shows your current and longest streaks, your best
 day of the week and hours, and words, pages or minutes by day, week, month or
 year with your goal as a line. Set goals in pages a day (on so many days a
-week) and minutes a day. Writing time stops counting after a few idle minutes.
-Statistics are kept on your computer, not in your scripts; turn them off in
-Preferences.
+week) and minutes a day. Words and pages count as you write them: deleting
+takes none away. Writing time stops counting after a few idle minutes. Days
+and hours are counted in UTC. Statistics are kept on your computer, beside
+your preferences (`stats.json`), not in your scripts; turn them off in
+Preferences. If the file is ever damaged, it is kept as `stats.json.damaged`
+and the statistics start again.
 
 Click **Sprint** in the status bar to write against the clock (25 minutes
-unless you choose another length in Preferences); when it ends you see what you
-wrote.
+unless you choose another length in Preferences); when it ends you see the
+words you wrote and the pages the script grew by.
 
 ## Keys
 

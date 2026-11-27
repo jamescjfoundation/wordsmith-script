@@ -56,9 +56,9 @@ log = "0.4"
 chrono = { version = "0.4.45", default-features = false, features = ["std"] }
 proptest = "1"
 image = { version = "0.25", default-features = false }
-# The window, at the egui version the core pins (the patch block points it at the same fork).
+# egui, at the version the core pins (the patch block points it at the same fork). The window
+# itself is the core's start-up (`jcj-shell`'s `window` feature, in apps/script).
 egui = { version = "0.37", default-features = false }
-eframe = { version = "0.37", default-features = false, features = ["accesskit", "glow", "wayland", "x11"] }
 
 # BEGIN open-source-core: lints-and-profiles
 # Owned by open-source-core (template/Cargo.toml). Change it there, never in a copy: its tooling rewrites the copies.

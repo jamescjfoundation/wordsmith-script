@@ -6,26 +6,25 @@
 //! scripts are open and what the second pane shows are Script's. Statistics belong to the writer,
 //! not the script: they are kept beside the preferences (`stats.json`), never in a script.
 //!
-// core-candidate: open-source-core#41. The statistics below (words, pages and writing time by
-// day and hour, counted only upward, goals in pages and minutes, the statistics window, a
-// sprint's pages) are general. The core's `jcj_shell::writing` keeps net words per day, a
-// session target and a sprint; Script moves onto it once it holds these and reads `stats.json`.
+//! The statistics are the core's (`jcj_shell::writing::stats`): the days, the goals, the counting
+//! (words and pages added, never taken away, and writing time while input keeps coming) and the
+//! statistics window. What is Script's is what it counts (its word rule and its pages), its
+//! starting goals ([`fresh_stats`]), its days and hours in UTC, and the sprint's window.
 
-use std::collections::BTreeMap;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
-use egui::{Color32, Context, RichText, Stroke, Ui, pos2, vec2};
+use egui::{Context, Ui};
 use jcj_shell::split::{TabEvent, tabs};
-use serde::{Deserialize, Serialize};
-use wordsmith_script_model::dates::day_number;
+use jcj_shell::writing::stats::{Goals, Metric, Moment, Range, Statistics, StatsView, Tracker, Unit, statistics_window};
+use jcj_shell::writing::{Counting, Writing};
 
 use crate::editor::Editor;
 use crate::structure::Structure;
 
-/// Most days of statistics kept (about ten years).
-pub const MAX_DAYS: usize = 3_700;
 /// The sprint timer's default length, minutes (decision 0036).
-pub const SPRINT_MINUTES: u32 = 25;
+pub const SPRINT_MINUTES: u32 = jcj_shell::writing::stats::SPRINT_MINUTES;
+/// How often the statistics are written while they change.
+pub const SAVE_INTERVAL: Duration = Duration::from_secs(60);
 
 /// A second view beside (or below) the main one: what it shows (`None`: the script). The panes
 /// and the divider are the core's ([`panes`]).
@@ -35,108 +34,78 @@ pub struct Split {
     pub below: bool,
 }
 
-/// One day's writing.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Day {
-    pub words: u64,
-    /// Pages added (whole pages, as the script grew).
-    pub pages: u64,
-    /// Seconds spent writing.
-    pub seconds: u64,
-    /// Seconds by hour of the day (UTC).
-    pub hours: Vec<u64>,
+/// The statistics of a writer who has none yet: SPEC-2 17's beginner goals, a page and 25
+/// minutes a day.
+pub fn fresh_stats() -> Statistics {
+    Statistics { goals: Goals { pages_per_day: 1.0, days_per_week: 7, minutes_per_day: 25, words_per_day: 0 }, ..Statistics::default() }
 }
 
-/// Goals: pages on so many days a week, and minutes a day.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Goals {
-    pub pages_per_day: f32,
-    /// Days a week the page goal is for.
-    pub days_per_week: u32,
-    pub minutes_per_day: u32,
+/// The statistics window as Script opens it: its unit is the page, it shows words by weeks first,
+/// and its hours are UTC, as Script counts them.
+pub fn stats_view() -> StatsView {
+    StatsView { metric: Metric::Words, range: Range::Weeks, zone: "UTC".into(), ..StatsView::new(Unit::Pages) }
 }
 
-impl Default for Goals {
-    fn default() -> Self {
-        // SPEC-2 17's beginner suggestion: a page and 25 minutes a day.
-        Goals { pages_per_day: 1.0, days_per_week: 7, minutes_per_day: 25 }
-    }
+/// The day and hour writing counts toward: Script's clock (which tests fix), in UTC. `None`
+/// before the clock is read.
+pub fn now_moment() -> Option<Moment> {
+    let secs = crate::now_secs();
+    (secs > 0).then(|| Moment::of(SystemTime::UNIX_EPOCH + Duration::from_secs(secs), 0))
 }
 
-/// The writer's statistics, kept between runs.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct StatsData {
-    pub enabled: bool,
-    /// Writing time stops counting after this many minutes without input.
-    pub idle_minutes: u32,
-    pub sprint_minutes: u32,
-    pub goals: Goals,
-    /// By date, `YYYY-MM-DD` (UTC).
-    pub days: BTreeMap<String, Day>,
-}
-
-impl Default for StatsData {
-    fn default() -> Self {
-        StatsData { enabled: true, idle_minutes: 3, sprint_minutes: SPRINT_MINUTES, goals: Goals::default(), days: BTreeMap::new() }
-    }
-}
-
-impl StatsData {
-    /// Bring values read from a file within bounds.
-    pub fn repaired(mut self) -> Self {
-        self.idle_minutes = self.idle_minutes.clamp(1, 120);
-        self.sprint_minutes = self.sprint_minutes.clamp(1, 240);
-        self.goals.pages_per_day = if self.goals.pages_per_day.is_finite() { self.goals.pages_per_day.clamp(0.0, 100.0) } else { 1.0 };
-        self.goals.days_per_week = self.goals.days_per_week.clamp(1, 7);
-        self.goals.minutes_per_day = self.goals.minutes_per_day.min(24 * 60);
-        while self.days.len() > MAX_DAYS {
-            let Some(first) = self.days.keys().next().cloned() else { break };
-            self.days.remove(&first);
-        }
-        for d in self.days.values_mut() {
-            d.hours.resize(24, 0);
-        }
-        self
-    }
-}
-
-/// A sprint under way, or just ended.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Sprint {
-    pub ends: Instant,
+/// A sprint's result, once its time is up.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SprintResult {
     pub minutes: u32,
-    pub start_words: usize,
-    pub start_pages: usize,
-    /// Set when the time is up: words and pages written.
-    pub result: Option<(i64, i64)>,
+    /// Words written in it (deleting takes none away).
+    pub words: i64,
+    /// Pages the script grew by.
+    pub pages: i64,
 }
 
 /// Statistics, the sprint, and what was counted last.
-#[derive(Default)]
 pub struct Stats {
-    pub data: StatsData,
+    /// The writer's statistics (the core's), kept in `stats.json`.
+    pub data: Statistics,
     /// Changed since last saved.
     pub dirty: bool,
-    pub sprint: Option<Sprint>,
-    /// The statistics window: metric ("words", "pages", "time") and range ("day", "week",
-    /// "month", "year").
-    pub window: Option<(&'static str, &'static str)>,
-    last_counts: Option<(u64, usize, usize)>,
-    last_tick: Option<Instant>,
-    last_input: Option<Instant>,
-    /// Writing time not yet a whole second, milliseconds.
-    carry_ms: u64,
+    /// When the statistics were last written.
+    pub saved: Option<Instant>,
+    /// Counts writing into [`Stats::data`].
+    pub tracker: Tracker,
+    /// The statistics window.
+    pub view: StatsView,
+    /// The session's words, counted upward, for the sprint.
+    pub writing: Writing,
+    /// The sprint's result, once its time is up, until the writer closes it.
+    pub sprint_result: Option<SprintResult>,
+    /// The revision last counted; `None`: the next count is the base.
+    last_rev: Option<u64>,
     /// The script's words now, and the revision they were counted at (the status bar shows them).
     pub words_now: (u64, usize),
+}
+
+impl Default for Stats {
+    fn default() -> Self {
+        Stats {
+            data: fresh_stats(),
+            dirty: false,
+            saved: None,
+            tracker: Tracker::new(),
+            view: stats_view(),
+            writing: Writing::new(0).counting(Counting::UpOnly),
+            sprint_result: None,
+            last_rev: None,
+            words_now: (0, 0),
+        }
+    }
 }
 
 impl Stats {
     /// Forget the last counts (another script came into view), so its words do not count.
     pub fn forget_counts(&mut self) {
-        self.last_counts = None;
+        self.last_rev = None;
+        self.tracker.forget();
     }
 }
 
@@ -145,65 +114,45 @@ pub fn word_count(doc: &jcj_doc::Document) -> usize {
     doc.body.iter().filter_map(|b| b.as_para()).map(|p| p.text.split_whitespace().filter(|w| w.chars().any(char::is_alphanumeric)).count()).sum()
 }
 
-/// Count writing: words and pages added and time spent, once a frame.
+/// Count writing, once a frame: words and pages added when the script changed, and the time
+/// spent while input keeps coming (the core's [`Tracker`]); the sprint's end.
 pub fn track(ed: &mut Editor) {
     let now = Instant::now();
-    let since = ed.stats.last_tick.map_or(Duration::ZERO, |t| now - t).min(Duration::from_secs(5));
-    ed.stats.last_tick = Some(now);
     let rev = ed.session.rev();
-    let changed = ed.stats.last_counts.is_none_or(|(r, _, _)| r != rev);
-    if changed {
-        ed.stats.last_input = Some(now);
-    }
     if ed.stats.words_now.0 != rev || rev == 0 {
         ed.stats.words_now = (rev, word_count(&ed.session.doc));
     }
-    // The sprint ends.
-    if let Some(sp) = ed.stats.sprint.as_mut()
-        && sp.result.is_none()
-        && now >= sp.ends
-    {
-        let words = word_count(&ed.session.doc) as i64;
-        let pages = ed.paginated().pages.len() as i64;
-        if let Some(sp) = ed.stats.sprint.as_mut() {
-            sp.result = Some((words - sp.start_words as i64, pages - sp.start_pages as i64));
-        }
-    }
-    if !ed.stats.data.enabled {
-        return;
-    }
-    let secs = crate::now_secs();
-    let date = wordsmith_script_model::reports_more::date(secs);
-    if date.is_empty() {
-        return;
-    }
-    let idle = Duration::from_secs(u64::from(ed.stats.data.idle_minutes.max(1)) * 60);
-    let active = ed.stats.last_input.is_some_and(|t| now - t < idle);
-    let hour = ((secs % 86_400) / 3_600) as usize;
-    if changed {
+    let moment = now_moment();
+    if ed.stats.last_rev != Some(rev) {
         let words = ed.stats.words_now.1;
         let pages = ed.paginated().pages.len();
-        if let Some((_, w0, p0)) = ed.stats.last_counts {
-            let day = ed.stats.data.days.entry(date.clone()).or_default();
-            day.words += words.saturating_sub(w0) as u64;
-            day.pages += pages.saturating_sub(p0) as u64;
-            ed.stats.dirty = true;
+        let stats = &mut ed.stats;
+        // The first count after another script came into view is only the base.
+        if stats.last_rev.is_none() {
+            stats.writing.rebase(words);
+        } else if let Some(m) = moment {
+            stats.writing.observe(words, m.day);
         }
-        ed.stats.last_counts = Some((rev, words, pages));
+        if let Some(m) = moment {
+            stats.dirty |= stats.tracker.count(&mut stats.data, words, Some(pages), m, now);
+        }
+        stats.last_rev = Some(rev);
     }
-    if active && !since.is_zero() {
-        ed.stats.carry_ms += since.as_millis() as u64;
-        let whole = ed.stats.carry_ms / 1_000;
-        if whole > 0 {
-            ed.stats.carry_ms %= 1_000;
-            let day = ed.stats.data.days.entry(date).or_default();
-            day.hours.resize(24, 0);
-            day.seconds += whole;
-            if let Some(h) = day.hours.get_mut(hour) {
-                *h += whole;
-            }
-            ed.stats.dirty = true;
-        }
+    if let Some(m) = moment {
+        let stats = &mut ed.stats;
+        stats.dirty |= stats.tracker.tick(&mut stats.data, m, now);
+    }
+    // The sprint ends.
+    if let Some(sp) = ed.stats.writing.sprint
+        && ed.stats.sprint_result.is_none()
+        && sp.finished(now)
+    {
+        let pages = ed.paginated().pages.len();
+        let stats = &mut ed.stats;
+        let minutes = u32::try_from(sp.length.as_secs() / 60).unwrap_or(u32::MAX);
+        stats.sprint_result =
+            Some(SprintResult { minutes, words: stats.writing.sprint_words(), pages: stats.writing.sprint_pages(pages).unwrap_or(0) });
+        stats.writing.sprint = None;
     }
 }
 
@@ -326,236 +275,62 @@ pub fn set_split(ed: &mut Editor, what: &str) {
     }
 }
 
-fn stats_window(ed: &mut Editor, ctx: &Context) {
-    let Some((mut metric, mut range)) = ed.stats.window else { return };
-    let mut open = true;
-    let today = wordsmith_script_model::reports_more::date(crate::now_secs());
-    let today_n = day_number(&today).unwrap_or(0);
-    let data = ed.stats.data.clone();
-    let value = |d: &Day| match metric {
-        "pages" => d.pages as f32,
-        "time" => d.seconds as f32 / 60.0,
-        _ => d.words as f32,
-    };
-    let by_day: BTreeMap<i64, &Day> = data.days.iter().filter_map(|(k, d)| day_number(k).map(|n| (n, d))).collect();
-    let wrote = |n: i64| by_day.get(&n).is_some_and(|d| d.words > 0 || d.seconds >= 60);
-    // Streaks of days with writing.
-    let mut current = 0;
-    let mut n = today_n;
-    while wrote(n) || (n == today_n && wrote(n - 1)) {
-        if wrote(n) {
-            current += 1;
-        }
-        n -= 1;
-    }
-    let mut longest = 0;
-    let mut run = 0;
-    let mut last = None;
-    for (&k, d) in &by_day {
-        if d.words > 0 || d.seconds >= 60 {
-            run = if last == Some(k - 1) { run + 1 } else { 1 };
-            longest = longest.max(run);
-            last = Some(k);
-        }
-    }
-    let mut weekdays = [0f32; 7];
-    let mut hours = [0u64; 24];
-    for (&k, d) in &by_day {
-        // 1970-01-01 was a Thursday.
-        weekdays[((k + 3).rem_euclid(7)) as usize] += value(d);
-        for (h, s) in d.hours.iter().enumerate().take(24) {
-            hours[h] += s;
-        }
-    }
-    const DAYS: [&str; 7] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-    let peak_day = weekdays.iter().enumerate().max_by(|a, b| a.1.total_cmp(b.1)).filter(|(_, v)| **v > 0.0).map_or("—", |(i, _)| DAYS[i]);
-    let peak_hour = hours
-        .iter()
-        .enumerate()
-        .max_by_key(|(_, s)| **s)
-        .filter(|(_, s)| **s > 0)
-        .map(|(h, _)| format!("{h:02}:00 to {:02}:00 UTC", (h + 1) % 24))
-        .unwrap_or_else(|| "—".into());
-    let (span, bars): (i64, i64) = match range {
-        "day" => (1, 14),
-        "month" => (30, 12),
-        "year" => (365, 5),
-        _ => (7, 12),
-    };
-    let sums: Vec<f32> = (0..bars)
-        .rev()
-        .map(|b| {
-            let end = today_n - b * span;
-            (end - span + 1..=end).map(|k| by_day.get(&k).map_or(0.0, |d| value(d))).sum()
-        })
-        .collect();
-    let goal_per_day = match metric {
-        "pages" => data.goals.pages_per_day * data.goals.days_per_week as f32 / 7.0,
-        "time" => data.goals.minutes_per_day as f32,
-        _ => 0.0,
-    };
-    let goal = goal_per_day * span as f32;
-    let average = sums.last().copied().unwrap_or(0.0) / span as f32;
-    egui::Window::new("Writing Statistics").open(&mut open).default_width(520.0).show(ctx, |ui| {
-        ui.horizontal(|ui| {
-            for (label, v) in [
-                ("Current streak", format!("{current} days")),
-                ("Longest streak", format!("{longest} days")),
-                ("Best day", peak_day.to_string()),
-                ("Best hours", peak_hour.clone()),
-            ] {
-                egui::Frame::group(ui.style()).show(ui, |ui| {
-                    ui.vertical(|ui| {
-                        ui.label(RichText::new(label).small());
-                        ui.strong(v);
-                    });
-                });
-            }
-        });
-        ui.horizontal(|ui| {
-            for (k, l) in [("words", "Words"), ("pages", "Pages"), ("time", "Minutes")] {
-                if ui.selectable_label(metric == k, l).clicked() {
-                    metric = k;
-                }
-            }
-            ui.separator();
-            for (k, l) in [("day", "Days"), ("week", "Weeks"), ("month", "Months"), ("year", "Years")] {
-                if ui.selectable_label(range == k, l).clicked() {
-                    range = k;
-                }
-            }
-        });
-        ui.label(format!("Average a day this {range}: {average:.1}"));
-        // The bars, with the goal as a line across them.
-        let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width().min(500.0), 160.0), egui::Sense::hover());
-        let painter = ui.painter_at(rect);
-        let top = sums.iter().copied().fold(goal.max(1.0), f32::max);
-        let w = rect.width() / bars as f32;
-        for (i, v) in sums.iter().enumerate() {
-            let h = rect.height() * (v / top);
-            let r = egui::Rect::from_min_max(
-                pos2(rect.min.x + i as f32 * w + 2.0, rect.max.y - h),
-                pos2(rect.min.x + (i + 1) as f32 * w - 2.0, rect.max.y),
-            );
-            painter.rect_filled(r, 2.0, Color32::from_rgb(90, 140, 210));
-        }
-        if goal > 0.0 {
-            let y = rect.max.y - rect.height() * (goal / top);
-            painter.line_segment([pos2(rect.min.x, y), pos2(rect.max.x, y)], Stroke::new(1.5, Color32::from_rgb(220, 120, 40)));
-        }
-        ui.separator();
-        let g = &mut ed.stats.data.goals;
-        let mut changed = false;
-        ui.horizontal(|ui| {
-            ui.label("Goals:");
-            changed |= ui.add(egui::DragValue::new(&mut g.pages_per_day).range(0.0..=100.0).speed(0.25).suffix(" pages")).changed();
-            ui.label("on");
-            changed |= ui.add(egui::DragValue::new(&mut g.days_per_week).range(1..=7).suffix(" days a week")).changed();
-            changed |= ui.add(egui::DragValue::new(&mut g.minutes_per_day).range(0..=1440).suffix(" minutes a day")).changed();
-        });
-        ui.horizontal(|ui| {
-            changed |= ui.checkbox(&mut ed.stats.data.enabled, "Keep statistics").changed();
-            ui.label("Stop counting time after");
-            changed |= ui.add(egui::DragValue::new(&mut ed.stats.data.idle_minutes).range(1..=120).suffix(" idle minutes")).changed();
-        });
-        if changed {
-            ed.stats.dirty = true;
-        }
-    });
-    ed.stats.window = open.then_some((metric, range));
-}
-
 fn sprint_window(ed: &mut Editor, ctx: &Context) {
-    let Some(sp) = ed.stats.sprint.clone() else { return };
-    let Some((words, pages)) = sp.result else {
+    if ed.stats.writing.sprint.is_some() {
         ctx.request_repaint_after(Duration::from_secs(1));
-        return;
-    };
+    }
+    let Some(result) = ed.stats.sprint_result else { return };
     let mut done = false;
     egui::Window::new("Sprint Finished").collapsible(false).resizable(false).show(ctx, |ui| {
-        ui.label(format!("{} minutes: {words} words and {pages} pages written.", sp.minutes));
+        ui.label(format!("{} minutes: {} words and {} pages written.", result.minutes, result.words, result.pages));
         if ui.button("OK").clicked() {
             done = true;
         }
     });
     if done {
-        ed.stats.sprint = None;
+        ed.stats.sprint_result = None;
     }
 }
 
 /// Start a sprint of the set length, or stop the one under way.
 pub fn toggle_sprint(ed: &mut Editor) {
-    if ed.stats.sprint.as_ref().is_some_and(|s| s.result.is_none()) {
-        ed.stats.sprint = None;
+    if ed.stats.writing.sprint.take().is_some() {
         return;
     }
-    let minutes = ed.stats.data.sprint_minutes.clamp(1, 240);
-    let words = word_count(&ed.session.doc);
+    ed.stats.sprint_result = None;
+    let minutes = ed.stats.data.sprint_minutes.clamp(1, jcj_shell::writing::stats::MAX_SPRINT_MINUTES);
     let pages = ed.paginated().pages.len();
-    ed.stats.sprint = Some(Sprint {
-        ends: Instant::now() + Duration::from_secs(u64::from(minutes) * 60),
-        minutes,
-        start_words: words,
-        start_pages: pages,
-        result: None,
-    });
+    ed.stats.writing.start_sprint_with_pages(Duration::from_secs(u64::from(minutes) * 60), Instant::now(), pages);
 }
 
 /// The sprint's time left, for the status bar.
 pub fn sprint_left(ed: &Editor) -> Option<Duration> {
-    ed.stats.sprint.as_ref().filter(|s| s.result.is_none()).map(|s| s.ends.saturating_duration_since(Instant::now()))
+    ed.stats.writing.sprint.map(|s| s.remaining(Instant::now()))
 }
 
+/// Open the statistics window, showing words by weeks.
+pub fn open_stats(ed: &mut Editor) {
+    ed.stats.view = StatsView { open: true, ..stats_view() };
+}
+
+/// The statistics window (the core's) and the sprint's result.
 pub fn show(ed: &mut Editor, ctx: &Context) {
-    stats_window(ed, ctx);
+    if let Some(m) = now_moment() {
+        let stats = &mut ed.stats;
+        stats.dirty |= statistics_window(ctx, &mut stats.data, &mut stats.view, m.day);
+    }
     sprint_window(ed, ctx);
 }
 
-/// The statistics file beside the preferences.
-#[cfg(not(target_arch = "wasm32"))]
-pub mod file {
-    use super::StatsData;
-
-    pub const NAME: &str = "stats.json";
-
-    /// The statistics in `dir`, or new ones.
-    pub fn load(dir: &std::path::Path) -> StatsData {
-        let path = dir.join(NAME);
-        let text = match std::fs::metadata(&path) {
-            Ok(m) if m.len() <= 8 << 20 => std::fs::read_to_string(&path).ok(),
-            _ => None,
-        };
-        text.and_then(|t| serde_json::from_str::<StatsData>(&t).ok()).unwrap_or_default().repaired()
+/// Write the statistics into the settings folder `dir` when they changed: at most once every
+/// [`SAVE_INTERVAL`], or now with `force`.
+pub fn save_stats(ed: &mut Editor, dir: &std::path::Path, force: bool) -> Result<(), String> {
+    let stats = &mut ed.stats;
+    if !stats.dirty || (!force && stats.saved.is_some_and(|t| t.elapsed() < SAVE_INTERVAL)) {
+        return Ok(());
     }
-
-    pub fn save(dir: &std::path::Path, data: &StatsData) -> Result<(), String> {
-        let text = serde_json::to_string(data).map_err(|e| e.to_string())?;
-        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-        jcj_project::files::write_atomic(&dir.join(NAME), text.as_bytes()).map_err(|e| e.to_string())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn dates_count_days() {
-        assert_eq!(day_number("1970-01-01"), Some(0));
-        assert_eq!(day_number("2000-03-01").map(|d| d - day_number("2000-02-28").unwrap_or(0)), Some(2));
-        assert_eq!(day_number("nope"), None);
-    }
-
-    #[test]
-    fn hostile_stats_are_bounded() {
-        let mut d = StatsData { idle_minutes: 0, sprint_minutes: 10_000, ..StatsData::default() };
-        d.goals.pages_per_day = f32::NAN;
-        for i in 0..4_000 {
-            d.days.insert(format!("{:04}-01-01", 1000 + i), Day::default());
-        }
-        let d = d.repaired();
-        assert_eq!((d.idle_minutes, d.sprint_minutes, d.goals.pages_per_day), (1, 240, 1.0));
-        assert!(d.days.len() <= MAX_DAYS);
-        assert!(d.days.values().all(|x| x.hours.len() == 24));
-    }
+    stats.data.save(dir)?;
+    stats.dirty = false;
+    stats.saved = Some(Instant::now());
+    Ok(())
 }

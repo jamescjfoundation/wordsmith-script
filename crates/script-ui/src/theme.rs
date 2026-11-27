@@ -22,24 +22,18 @@ pub fn get(ctx: &Context) -> Tokens {
     jcj_theme::Theme::get(ctx)
 }
 
-/// Wordsmith Script's design tokens.
+/// Wordsmith Script's design tokens ([`crate::brand::BRAND`]; the neutral set if the file does
+/// not read, which a test rules out), read once.
 pub fn tokens() -> jcj_theme::Tokens {
     static TOKENS: std::sync::OnceLock<jcj_theme::Tokens> = std::sync::OnceLock::new();
-    TOKENS
-        .get_or_init(|| {
-            jcj_theme::Tokens::from_json(include_str!("../../../assets/brand/script/tokens.json")).unwrap_or_else(|e| {
-                log::error!("the design tokens could not be read ({e}); the neutral ones are used");
-                jcj_theme::Tokens::default()
-            })
-        })
-        .clone()
+    TOKENS.get_or_init(|| crate::brand::BRAND.tokens()).clone()
 }
 
 #[cfg(test)]
 mod tests {
     #[test]
     fn the_tokens_read_and_carry_the_brand() {
-        let t = jcj_theme::Tokens::from_json(include_str!("../../../assets/brand/script/tokens.json")).unwrap();
+        let t = crate::brand::BRAND.read_tokens().unwrap();
         let light = t.theme(jcj_theme::Mode::Light);
         assert_eq!(light.brand, crate::brand::INK);
         assert_eq!(light.highlight, crate::brand::BRASS);

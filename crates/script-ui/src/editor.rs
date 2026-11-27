@@ -359,6 +359,9 @@ pub struct Editor {
     discard_ok: bool,
     /// The writer agreed to close the window; the app closes it.
     pub close_confirmed: bool,
+    /// The settings folder, when the desktop app has one: statistics, the personal dictionary,
+    /// crash recovery and the default backups folder are kept there.
+    pub settings_dir: Option<std::path::PathBuf>,
     pub backups: Backups,
     /// The title page fields being edited, while the title page window is open.
     pub title_page: Option<Value>,
@@ -485,6 +488,7 @@ impl Editor {
             split: None,
             split_share: Default::default(),
             stats: Default::default(),
+            settings_dir: None,
             menu_bar: false,
             print: Default::default(),
             panels: Default::default(),

@@ -1405,7 +1405,7 @@ fn tabs_split_keys_templates_and_statistics() {
     assert!(crate::workspace::sprint_left(&ed.ed).is_some());
     ed.run("view.stats", json!({}));
     frame(&ctx, &mut ed, vec![]);
-    assert!(ed.stats.window.is_some());
+    assert!(ed.stats.view.open);
 }
 
 /// Every control drawn with every tab, the menu bar and every File page showing (drop-downs
@@ -1981,4 +1981,30 @@ fn recovery_copies_are_offered_through_the_shell() {
     frame(&ctx, &mut ed, vec![]);
     assert!(ed.shell.dialogs.show_recovery, "the shell's recovery window opens");
     assert!(ed.shell.dialogs.can_restore, "a new script can take a copy");
+}
+
+#[test]
+fn the_templates_are_the_shells_tiles_with_their_first_lines() {
+    let all = crate::backstage::templates();
+    let built_in = wordsmith_script_model::templates::TEMPLATES;
+    assert_eq!(all.len(), built_in.len());
+    for (spec, info) in all.iter().zip(built_in) {
+        assert_eq!((spec.id.as_str(), spec.name.as_str(), spec.about.as_str(), spec.group.as_str()), (info.id, info.name, info.about, info.category));
+        let preview = spec.preview.as_ref().unwrap_or_else(|| panic!("{} has no preview", info.id));
+        assert!(preview.is_monospace(), "{}: a script's lines are set in a fixed-width font", info.id);
+        assert!(preview.text_lines().iter().any(|l| !l.trim().is_empty()), "{}: an empty preview", info.id);
+    }
+    // The New page shows them through the shell (`App::templates`).
+    let ctx = ctx();
+    let mut ed = editor();
+    frame(&ctx, &mut ed, vec![]);
+    assert_eq!(jcj_shell::App::templates(&ed.ed), all);
+    ed.shell.open_file_page(Page::New);
+    frame(&ctx, &mut ed, vec![]);
+    // A tile runs the template command through the shell; with unsaved work the new script opens
+    // in a tab of its own, and the work stays.
+    ed.session.dirty = true;
+    ed.ed.run_cmd(&jcj_shell::Cmd::with("file.newFromTemplate", json!({"template": "stage"})));
+    assert_eq!((ed.tabs.len(), ed.active_tab), (2, 1));
+    assert_eq!(crate::editor::script_name(&ed.session), "Stage play");
 }

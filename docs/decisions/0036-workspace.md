@@ -9,8 +9,14 @@ the other preferences are kept, are the core's shell (`jcj-shell`). Since
 shell's too (`jcj_shell::split`); which scripts are open and what the second
 pane shows are still Script's. Still Script's as well: the templates and
 their cards, text documents, the zoom steps, statistics, goals and sprints,
-and read-only files. `docs/core-candidates.md` says what the core's template
-chooser and writing module lack for Script to use them.
+and read-only files. Since 2026-11-27 (core v0.1.24) the template tiles and
+the statistics are the core's too: Script lists its templates with their
+first lines for the shell's chooser (`App::templates`), and keeps its
+statistics in the core's `jcj_shell::writing::stats`, in the same `stats.json`,
+read as 0.9.0 wrote it. Still Script's there: the templates themselves, what
+is counted (its word rule and its pages), the starting goals below, its days
+and hours in UTC, and the sprint, whose words now count only upward as the
+statistics do (`docs/core-candidates.md`).
 
 ## Decision
 
