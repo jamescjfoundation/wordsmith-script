@@ -15,8 +15,8 @@ craft-libs commits it builds on, and every patch it carries, in its own
 
 All `jcj-` crates move together, to a release tag, with `cargo xtask sync`
 afterwards (it copies the core's toolchain, lint, cargo-deny and license
-settings, the shared xtask modules, the CI workflow, the git hooks and the
-`[patch]` block into this repository). `cargo xtask layers` fails if any crate
+settings, the shared xtask modules, the CI, core-pin and release workflows, the
+git hooks and the `[patch]` block into this repository). `cargo xtask layers` fails if any crate
 here depends on a WordCraft or craft-libs crate, or on `jcj-upstream`.
 
 While a change in the core is not released yet, a working copy may build
