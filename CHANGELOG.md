@@ -11,6 +11,13 @@ of the first version of the app and were never published.
 
 ## Unreleased
 
+### Changed
+
+- The app icon at 256 and 512 px, the window's and the packages', is the
+  Wordsmith brand kit's own file, in place of one scaled down here, and the
+  palette card is the kit's current one. The brand files in `assets/brand/`
+  are held to the kit's by `cargo xtask brand`, in the gate.
+
 ## 0.9.0 (2026-11-27)
 
 The first public release of Wordsmith Script: a preview, to try the

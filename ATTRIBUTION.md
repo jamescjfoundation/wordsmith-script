@@ -35,34 +35,40 @@ texts are kept here, for the release packages' `licenses` folder.
 
 The Wordsmith Script mark, wordmark and app icon, and the parent brand's
 files, are the project's own artwork (`assets/brand/README.md` says what each
-is for). `wordsmith-script-ui` (`src/brand.rs`) draws the mark and wordmark from the
-masks and sets the window icon; `cargo xtask package` puts the icon in the
-macOS and Linux packages. The icon sizes and masks are rendered from the
+is for). The logos, icons and palette card are the Wordsmith brand kit's files
+(the `brand/` folder of the wordsmith repository), written here unchanged by
+the kit's tool; the kit's `brand/LICENSE.md` says how the names and logos may
+be used. `assets/brand/kit.json` records the kit commit they were taken at,
+and `cargo xtask brand` fails when one differs from that record.
+`wordsmith-script-ui` (`src/brand.rs`) draws the mark and wordmark from the
+masks and sets the window icon; `cargo xtask package` puts the icons in the
+macOS and Linux packages. The masks are rendered here from the kit's
 artwork.
 
 | Path | What it is | Source | License | Added |
 | --- | --- | --- | --- | --- |
 | `assets/brand/README.md` | What the brand files are for, and the rules for using them | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/favicon.svg` | The app icon tuned for small sizes: the mark in Page White and Brad Brass on an Iron Gall Ink tile | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/icon-1024.png` | The app icon at 1024 px (macOS and Linux packages); the source for the smaller sizes | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/icon-512.png` | The app icon at 512 px (macOS and Linux packages), scaled from `icon-1024.png` | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/icon-256.png` | The app icon at 256 px (the window icon; macOS and Linux packages), scaled from `icon-1024.png` | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-mark-ink.svg` | The mark: an S and a brass caret bar, in Iron Gall Ink | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-mark-paper.svg` | The mark, in Page White, for dark backgrounds | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-script-wordmark-ink.svg` | The wordmark, in Iron Gall Ink with the brass caret bar | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-script-wordmark-paper.svg` | The wordmark, in Page White, for dark backgrounds | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-script-stacked-ink.svg` | The name on two lines, in Iron Gall Ink | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-script-stacked-paper.svg` | The name on two lines, in Page White | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-script-palette.svg` | The app's colors, as a swatch card | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-and-ink-icon.svg` | The parent brand's icon | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-and-ink-mark-ink.svg` | The parent brand's mark, in Iron Gall Ink | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-and-ink-mark-paper.svg` | The parent brand's mark, in Page White | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-and-ink-imprint-ink.svg` | The parent brand's name on two lines, in Iron Gall Ink | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-and-ink-imprint-paper.svg` | The parent brand's name on two lines, in Page White | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-and-ink-family-ink.svg` | The parent brand above the three app icons, on a light background | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordsmith-and-ink-family-paper.svg` | The parent brand above the three app icons, on a dark background | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/mark-mask.png` | The mark's S alone, white, for the app to tint (rendered from `wordsmith-mark-ink.svg`) | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/wordmark-mask.png` | The wordmark's letters alone, white, for the app to tint (rendered from `wordsmith-script-wordmark-ink.svg`) | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
+| `assets/brand/kit.json` | The record the brand kit's tool writes: the kit commit the brand files were taken at, and what the folder holds | Written by the Wordsmith brand kit's tool (`brand/` in the wordsmith repository) | MIT OR Apache-2.0 | 2026-11-27 |
+| `assets/brand/favicon.svg` | The app icon tuned for small sizes: the mark in Page White and Brad Brass on an Iron Gall Ink tile | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/icon-1024.png` | The app icon at 1024 px (macOS and Linux packages) | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/icon-512.png` | The app icon at 512 px (macOS and Linux packages), from the brand kit | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/icon-256.png` | The app icon at 256 px (the window icon; macOS and Linux packages), from the brand kit | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-mark-ink.svg` | The mark: an S and a brass caret bar, in Iron Gall Ink | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-mark-paper.svg` | The mark, in Page White, for dark backgrounds | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-script-wordmark-ink.svg` | The wordmark, in Iron Gall Ink with the brass caret bar | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-script-wordmark-paper.svg` | The wordmark, in Page White, for dark backgrounds | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-script-stacked-ink.svg` | The name on two lines, in Iron Gall Ink | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-script-stacked-paper.svg` | The name on two lines, in Page White | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-script-palette.svg` | The app's colors, as a swatch card | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-and-ink-icon.svg` | The parent brand's icon | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-and-ink-mark-ink.svg` | The parent brand's mark, in Iron Gall Ink | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-and-ink-mark-paper.svg` | The parent brand's mark, in Page White | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-and-ink-imprint-ink.svg` | The parent brand's name on two lines, in Iron Gall Ink | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-and-ink-imprint-paper.svg` | The parent brand's name on two lines, in Page White | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-and-ink-family-ink.svg` | The parent brand above the three app icons, on a light background | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordsmith-and-ink-family-paper.svg` | The parent brand above the three app icons, on a dark background | The Wordsmith brand kit (`brand/` in the wordsmith repository) | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/mark-mask.png` | The mark's S alone, white, for the app to tint (rendered from `wordsmith-mark-ink.svg`) | Made here from the brand kit's artwork | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
+| `assets/brand/wordmark-mask.png` | The wordmark's letters alone, white, for the app to tint (rendered from `wordsmith-script-wordmark-ink.svg`) | Made here from the brand kit's artwork | Trademark of The James C. J. Foundation; use unmodified (`assets/brand/README.md`) | 2026-11-24 |
 | `assets/brand/script/tokens.json` | The interface's design tokens (colors in three themes, fonts, sizes), in the shape of open-source-core's `jcj-theme` | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
 
 ## Copied code

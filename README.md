@@ -157,8 +157,8 @@ screenplay crates), a check that no local core link is left, a check that every
 blocks shared with the core match the pinned core release (`cargo xtask
 sync --check`), the layers check (no WordCraft or craft-libs crate is named
 here), the privacy check, the license allowlist, the asset attribution check,
-clippy and all tests. CI also runs
-[cargo-deny](https://github.com/EmbarkStudios/cargo-deny) (`deny.toml`, the
+the brand files against the brand kit's record, clippy and all tests. CI also
+runs [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) (`deny.toml`, the
 core's) for licenses, security advisories and crate sources. `cargo xtask
 wasm` is the web build; it fails until the core's shell builds for the web
 (`docs/core-candidates.md`).
