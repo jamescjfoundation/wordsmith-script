@@ -24,7 +24,7 @@ Wordsmith is five repositories and two forks, all under [jamescjfoundation](http
 
 | Repository | Owns |
 | --- | --- |
-| [wordsmith](https://github.com/jamescjfoundation/wordsmith) | The project map and rules (`project/`), the brand kit (`brand/`), the website (`website/`), the wiki (`website/wiki/`), the launcher (planned) |
+| [wordsmith](https://github.com/jamescjfoundation/wordsmith) | The project map and rules (`project/`), the brand kit (`brand/`), the website (`website/`), the wiki (`website/wiki/`), and Wordsmith Launcher (`launcher/`), which installs and updates the apps from their releases |
 | [wordsmith-script](https://github.com/jamescjfoundation/wordsmith-script) | Wordsmith Script, the screenplay app, and the `.wss` file format |
 | [wordsmith-manuscript](https://github.com/jamescjfoundation/wordsmith-manuscript) | Wordsmith Manuscript, the novel and long-form app, the `.wsm` project format, and the book view that Book reads |
 | [wordsmith-book](https://github.com/jamescjfoundation/wordsmith-book) | Wordsmith Book, the book design and typesetting app, and the `.wsbk` project format |
@@ -33,6 +33,7 @@ Wordsmith is five repositories and two forks, all under [jamescjfoundation](http
 
 - Each app builds on open-source-core at one release tag and carries its shared files (`cargo xtask sync`). Only the core reaches the forks.
 - Wordsmith Book also builds on Wordsmith Manuscript's model and format crates, at a book-view tag. Wordsmith Manuscript reads Wordsmith Script's `.wss` files.
+- The launcher reads each app's public releases by the core's release contract, so what an app's release holds must keep to that contract.
 - Each app takes its logos, icons and palette from the brand kit, unchanged, by the kit's tool. Each app's `docs/guide/` is its one user guide: the wiki's pages for the app are built from it. The website and the wiki read each app's latest release from its GitHub releases.
 
 | The change | Where it goes | Route |
