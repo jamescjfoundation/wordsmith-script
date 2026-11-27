@@ -1,6 +1,8 @@
 # Keyboard
 
 Every key that runs a command, by menu. `Mod` is Command on macOS and Control elsewhere.
+The keys are those of Windows and Linux; on macOS a few general commands have other keys, which
+the command's tooltip and the Keys page of the File page show.
 This page is made from the app's command list (`the_keyboard_guide_matches_the_commands` keeps it
 current). Custom elements can have keys of their own (Format › Element Settings).
 

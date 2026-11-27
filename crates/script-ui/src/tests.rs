@@ -173,8 +173,8 @@ fn copy_and_cut_go_through_commands() {
 fn a_custom_element_shortcut_reaches_it() {
     let ctx = ctx();
     let mut ed = editor();
-    ed.session.run("element.create", &json!({"name": "Lyrics", "shortcut": "Mod+Alt+L"})).unwrap();
-    frame(&ctx, &mut ed, vec![key(Key::L, Modifiers { alt: true, ..cmd() })]);
+    ed.session.run("element.create", &json!({"name": "Lyrics", "shortcut": "Mod+Alt+Y"})).unwrap();
+    frame(&ctx, &mut ed, vec![key(Key::Y, Modifiers { alt: true, ..cmd() })]);
     assert_eq!(lines(&ed)[0].0, "Custom1");
 }
 
@@ -1099,14 +1099,21 @@ fn right_click_moves_the_caret_for_the_element_menu() {
 /// shows, so it never disagrees with the app. It is a golden file (`docs/golden.md`), rewritten
 /// with the one switch every golden file has:
 /// `UPDATE_GOLDEN=1 cargo test -p wordsmith-script-ui the_keyboard_guide_matches_the_commands`.
+///
+/// The page holds the keys of Windows and Linux. On macOS some general commands have other keys
+/// (the system keeps the usual ones for itself, or has a convention of its own), so the page is
+/// neither compared nor rewritten there.
 #[test]
 fn the_keyboard_guide_matches_the_commands() {
+    if cfg!(target_os = "macos") {
+        return;
+    }
     let registry = crate::registry();
     let mut rows: Vec<(&str, &str, &str)> =
         registry.all().iter().filter(|s| !s.shortcut.is_empty() && crate::commands::shown(s.id)).map(|s| (s.location, s.label, s.shortcut)).collect();
     rows.sort_by(|a, b| a.0.cmp(b.0).then(a.2.cmp(b.2)));
     let mut out = String::from(
-        "# Keyboard\n\nEvery key that runs a command, by menu. `Mod` is Command on macOS and Control elsewhere.\nThis page is made from the app's command list (`the_keyboard_guide_matches_the_commands` keeps it\ncurrent). Custom elements can have keys of their own (Format › Element Settings).\n",
+        "# Keyboard\n\nEvery key that runs a command, by menu. `Mod` is Command on macOS and Control elsewhere.\nThe keys are those of Windows and Linux; on macOS a few general commands have other keys, which\nthe command's tooltip and the Keys page of the File page show.\nThis page is made from the app's command list (`the_keyboard_guide_matches_the_commands` keeps it\ncurrent). Custom elements can have keys of their own (Format › Element Settings).\n",
     );
     let mut last = "";
     for (location, label, keys) in rows {
@@ -1945,10 +1952,10 @@ fn unsaved_changes_ask_through_the_shell_and_its_answer_comes_back() {
 fn custom_element_and_macro_keys_are_commands_of_their_own() {
     use jcj_shell::Commands;
     let mut ed = editor();
-    ed.session.run("element.create", &json!({"name": "Lyrics", "shortcut": "Mod+Alt+L"})).unwrap();
+    ed.session.run("element.create", &json!({"name": "Lyrics", "shortcut": "Mod+Alt+Y"})).unwrap();
     let all = ed.all_commands();
     let lyrics = all.iter().find(|c| c.id == crate::commands::element_id("Custom1")).expect("listed");
-    assert_eq!((lyrics.label.as_str(), lyrics.shortcut.as_str()), ("Lyrics", "Mod+Alt+L"));
+    assert_eq!((lyrics.label.as_str(), lyrics.shortcut.as_str()), ("Lyrics", "Mod+Alt+Y"));
     assert!(all.iter().any(|c| crate::commands::macro_slot(&c.id).is_some()), "the macros are listed");
     ed.run(&crate::commands::element_id("Custom1"), json!({}));
     assert_eq!(lines(&ed)[0].0, "Custom1");

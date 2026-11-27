@@ -284,7 +284,7 @@ fn configure(s: &mut Session, v: &Value) -> CmdResult {
                 }
                 Some(k.clone())
             }
-            _ => return Err(CmdError::Params("`shortcut` is a key such as `Mod+Alt+L`, or null".into())),
+            _ => return Err(CmdError::Params("`shortcut` is a key such as `Mod+Alt+Y`, or null".into())),
         };
     }
 
@@ -590,14 +590,14 @@ mod tests {
     fn custom_elements_start_from_action_and_can_be_deleted() {
         let mut s = new_session();
         s.run("element.configure", &json!({"element": "Action", "left": 1.75, "spaceBefore": 2})).unwrap();
-        let made = s.run("element.create", &json!({"name": "Lyrics", "shortcut": "Mod+Alt+L"})).unwrap();
+        let made = s.run("element.create", &json!({"name": "Lyrics", "shortcut": "Mod+Alt+Y"})).unwrap();
         let id = made["id"].as_str().unwrap().to_string();
         assert_eq!(id, "Custom1");
         let action = get(&mut s, "Action");
         for key in ["font", "size", "left", "right", "spaceBefore", "lineSpacing", "align"] {
             assert_eq!(made[key], action[key], "{key} starts from Action");
         }
-        assert_eq!(made["shortcut"], "Mod+Alt+L");
+        assert_eq!(made["shortcut"], "Mod+Alt+Y");
         assert!(matches!(s.run("element.create", &json!({"name": "lyrics"})), Err(CmdError::Params(_))));
         // A paragraph of the custom element turns into Action when it is deleted.
         s.run("element.set", &json!({"element": id})).unwrap();

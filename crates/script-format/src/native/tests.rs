@@ -25,7 +25,7 @@ fn rich() -> Document {
     s.run("text.newParagraph", &json!({})).unwrap();
     s.run("text.insert", &json!({"text": "Line one"})).unwrap();
     s.run("element.configure", &json!({"element": "Dialogue", "spaceBefore": 1.0, "bold": true})).unwrap();
-    s.run("element.create", &json!({"name": "Lyrics", "shortcut": "Mod+Alt+L"})).unwrap();
+    s.run("element.create", &json!({"name": "Lyrics", "shortcut": "Mod+Alt+Y"})).unwrap();
     s.run("autocomplete.add", &json!({"list": "locations", "term": "ROOFTOP"})).unwrap();
     s.run("moresContinueds.configure", &json!({"more": "(MORE TO COME)"})).unwrap();
     let mut doc = s.doc.clone();

@@ -520,7 +520,7 @@ mod tests {
         custom.id = e.new_custom_id();
         custom.name = "Lyrics".into();
         custom.kind = ElementKind::Custom;
-        custom.shortcut = Some("Mod+Alt+L".into());
+        custom.shortcut = Some("Mod+Alt+Y".into());
         e.push(custom).unwrap();
         e.store(&mut doc);
         assert_eq!(Elements::of_doc(&doc), e);

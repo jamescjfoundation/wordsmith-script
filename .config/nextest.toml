@@ -1,0 +1,8 @@
+# Settings for cargo-nextest, which runs the gate's tests where it is installed (CI, a release).
+# This file is the app's own.
+
+[profile.default]
+# Run every test even after one has failed. The whole gate runs on macOS and Windows only at a
+# release, so a failure there should name every test that fails on that system in one run, not
+# the first.
+fail-fast = false
