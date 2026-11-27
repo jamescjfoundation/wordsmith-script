@@ -32,10 +32,10 @@ the release runs it on Linux, macOS and Windows.
 | `crates/script-format` | The native `.wss` format, Fountain, imports and exports, and the file commands |
 | `crates/script-ui` | The egui interface |
 | `apps/script`, `apps/script-cli`, `apps/script-web` | The desktop app, the command line and MCP server, and the web build |
-| `assets/brand` | Copies of the Wordsmith brand kit's logos, icons and palette, and Script's own theme file and derived icons (`AGENTS.md`, "Brand") |
+| `assets/brand` | The Wordsmith brand kit's files, written by the kit's tool with their record `kit.json`, Script's own theme file, and the two masks made from the kit's artwork (`AGENTS.md`, "Brand") |
 | `assets/fonts` | The bundled fonts, with their licenses |
 | `tests/fixtures`, `tests/golden` | The files the tests read and the reviewed results they compare with (`docs/fixtures.md`, `docs/golden.md`) |
-| `xtask` | The gate, packaging and screenshots: the core's shared tasks, with Script's data in `main.rs` |
+| `xtask` | The gate, packaging and screenshots: the core's shared tasks, with Script's data in `main.rs`; `brand.rs` is the check of the brand files |
 | `docs/guide` | The user guide |
 | `docs/decisions` | Why things are the way they are, one record per choice |
 | `docs/history` | The first build's plans, log and audits, kept for the record and not maintained |

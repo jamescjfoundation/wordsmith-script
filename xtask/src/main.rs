@@ -1,20 +1,23 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! `cargo xtask <task>` for Wordsmith Script, built on open-source-core.
 //!
-//! This file is the app's own. It holds only what is Script's: its data (`APP`) and its own
-//! tasks (`TASKS`). The gate, every shared task and the list of them are in the modules under
-//! `shared`, which the core owns and `cargo xtask sync` keeps identical in every app;
+//! This file and `brand.rs` are the app's own. They hold only what is Script's: its data
+//! (`APP`) and its own tasks (`TASKS`): `brand`, which holds the files in `assets/brand/` to the
+//! brand kit's, and `wasm`. The gate, every shared task and the list of them are in the modules
+//! under `shared`, which the core owns and `cargo xtask sync` keeps identical in every app;
 //! `cargo xtask help` lists them.
 //!
 //! Script's part of the gate is data: `lint-roots` also requires `clippy::indexing_slicing` in
-//! the crates that may not index, and `assets` also wants `UPSTREAM.md`. What a release carries
-//! is data too (`package`): `cargo xtask package` and the release workflow are the core's (core
-//! decision 0019). Outside the gate: `package` (this computer's release package), `wasm` (the
-//! web build) and `screenshots` (the README's pictures).
+//! the crates that may not index, and `assets` also wants `UPSTREAM.md`; and one task of its
+//! own, `brand`. What a release carries is data too (`package`): `cargo xtask package` and the
+//! release workflow are the core's (core decision 0019). Outside the gate: `package` (this
+//! computer's release package), `wasm` (the web build), `screenshots` (the README's pictures)
+//! and `brand --kit` (whether the brand kit has moved).
 
 #![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
+mod brand;
 mod shared;
 
 use std::path::Path;
@@ -70,8 +73,17 @@ const APP: App = App {
     ..App::DEFAULT
 };
 
-/// Script's own task. It is not part of the gate: slow builds stay out of it.
-const TASKS: &[Task] = &[Task::other("wasm", "build wordsmith-script-web for wasm32-unknown-unknown", |root, _| wasm(root))];
+/// Script's own tasks. `brand` is in the gate and reads only files; `brand --kit` asks the
+/// wordsmith repository whether the kit has moved, and a workflow runs it every week. `wasm` is
+/// not part of the gate: slow builds stay out of it.
+const TASKS: &[Task] = &[
+    Task::check(
+        "brand",
+        "the files in assets/brand/ are the brand kit's, unchanged, and the theme holds its palette (--kit: the kit has not moved)",
+        brand::task,
+    ),
+    Task::other("wasm", "build wordsmith-script-web for wasm32-unknown-unknown", |root, _| wasm(root)),
+];
 
 fn main() -> ExitCode {
     gate::main(&APP)
@@ -91,7 +103,7 @@ mod tests {
     fn the_task_table_is_sound_and_slow_builds_stay_out_of_the_gate() {
         assert_eq!(gate::table_problems(&APP), Vec::<String>::new());
         let in_gate = gate::gate_names(&APP);
-        for check in ["lint-roots", "app-layers", "assets"] {
+        for check in ["lint-roots", "app-layers", "assets", "brand"] {
             assert!(in_gate.contains(&check), "{check} is not in ci");
         }
         for slow in ["package", "release", "wasm", "screenshots"] {

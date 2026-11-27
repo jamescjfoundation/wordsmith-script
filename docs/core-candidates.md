@@ -32,6 +32,7 @@ Which of these 1.0.0 needs is decided in Script's own plan:
 | Story board lanes | `crates/script-model/src/storyboard.rs` (`Lane`; the commands are in `outline.rs`) | [#12](https://github.com/jamescjfoundation/open-source-core/issues/12) | app-first. A second app has lanes of its own, marked for the same issue |
 | Template tiles with a preview | `crates/script-ui/src/backstage.rs` (`template_card`) | [#40](https://github.com/jamescjfoundation/open-source-core/issues/40) | copy kept. The core's chooser ([#2](https://github.com/jamescjfoundation/open-source-core/issues/2), core v0.1.2) draws a tile with a name and a line of text; Script's cards show each template's first lines |
 | Writing statistics: pages and writing time per day, counting that only goes up, goals, the statistics window | `crates/script-ui/src/workspace.rs` | [#41](https://github.com/jamescjfoundation/open-source-core/issues/41) | copy kept. The core's module ([#3](https://github.com/jamescjfoundation/open-source-core/issues/3), core v0.1.2) keeps net words per day, a session target and a sprint; moving onto it would change what writers see and the shape of `stats.json` |
+| A check for files an app carries from elsewhere, against a record with checksums (the brand kit's files in `assets/brand/`) | `xtask/src/brand.rs` | [#47](https://github.com/jamescjfoundation/open-source-core/issues/47) | app-first: `cargo xtask brand`, in the gate since 2026-11-27. Wordsmith Manuscript and Wordsmith Book hold the same check for their own folders |
 
 ## Core changes with no code here
 

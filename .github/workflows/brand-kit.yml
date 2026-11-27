@@ -1,0 +1,63 @@
+# Has the brand kit moved since this repository took its copies? Script's own workflow: the core
+# owns ci.yml, core-pin.yml and release.yml, and an app's own jobs go in a file of its own.
+#
+# The logos, icons and palette card in assets/brand/ are files of the Wordsmith brand kit (the
+# brand/ folder of the wordsmith repository), written here by the kit's tool with a record,
+# assets/brand/kit.json (AGENTS.md, "Brand"). The gate checks the files against that record
+# with no network (`cargo xtask brand`). This workflow asks the other question: is the record
+# still what the kit gives? It compares the record's list with this app's entry in the kit's
+# own list, brand/apps.json on the wordsmith repository's main (`cargo xtask brand --kit`).
+#
+# It is red from the moment the kit changes a file this app carries until the files are taken
+# again: with the wordsmith repository checked out beside this one,
+# `npm run brand -- --app script` in its website/wiki, and the result committed here.
+#
+# When it runs: every Monday, by hand, and on a push to main that touches the brand files, the
+# check or this file. It opens no issue: look at the run.
+#
+# GitHub switches a scheduled workflow off when its repository has had no activity for 60 days,
+# and tells nobody: `gh workflow enable brand-kit.yml` switches it back on.
+#
+# Only GitHub's own actions, pinned to full commit SHAs, as in the core's workflows. The token
+# can read and nothing else.
+name: Brand kit
+
+on:
+  schedule:
+    - cron: "53 6 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "assets/brand/**"
+      - "xtask/src/brand.rs"
+      - ".github/workflows/brand-kit.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brand-kit
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  CARGO_NET_RETRY: "10"
+
+jobs:
+  kit:
+    name: The brand kit's list is the one recorded here
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out Wordsmith Script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: The files are the record's
+        run: cargo xtask brand
+      - name: The record is the kit's
+        run: cargo xtask brand --kit
