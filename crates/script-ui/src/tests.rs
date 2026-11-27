@@ -1156,13 +1156,12 @@ fn shift_extends_caret_movement_and_shift_backspace_deletes() {
     frame(&ctx, &mut ed, vec![key(Key::Num2, cmd()), text("Hello world")]);
     frame(&ctx, &mut ed, vec![key(Key::Home, Modifiers::SHIFT)]);
     assert_eq!(ed.session.selected_text(), "Hello world");
-    // By word: Mod with the arrow. Not pressed on macOS, where Option with the arrow should do
-    // it and goes to the line's end instead: the shell and the engine both translate that
-    // system's text keys (open-source-core#48).
-    if !cfg!(target_os = "macos") {
-        frame(&ctx, &mut ed, vec![key(Key::End, Modifiers::NONE), key(Key::ArrowLeft, Modifiers { shift: true, ..cmd() })]);
-        assert_eq!(ed.session.selected_text(), "world");
-    }
+    // By word: Option with the arrow on macOS (open-source-core#48, fixed in core 0.1.24), Mod
+    // with it elsewhere.
+    let by_word =
+        if cfg!(target_os = "macos") { Modifiers { alt: true, shift: true, ..Modifiers::NONE } } else { Modifiers { shift: true, ..cmd() } };
+    frame(&ctx, &mut ed, vec![key(Key::End, Modifiers::NONE), key(Key::ArrowLeft, by_word)]);
+    assert_eq!(ed.session.selected_text(), "world");
     frame(&ctx, &mut ed, vec![key(Key::End, Modifiers::NONE), key(Key::Backspace, Modifiers::SHIFT)]);
     assert_eq!(lines(&ed)[0].1, "Hello worl");
 }

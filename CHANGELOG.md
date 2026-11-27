@@ -18,6 +18,13 @@ of the first version of the app and were never published.
   palette card is the kit's current one. The brand files in `assets/brand/`
   are held to the kit's by `cargo xtask brand`, in the gate.
 
+### Fixed
+
+- **On macOS, Option with the Left or Right arrow moves by word** again, as
+  on any Mac; it went to the end of the line in 0.9.0 (core issue 48, fixed
+  in open-source-core 0.1.24). Command with the arrows still goes to the
+  line's ends.
+
 ## 0.9.0 (2026-11-27)
 
 The first public release of Wordsmith Script: a preview, to try the
