@@ -178,11 +178,26 @@ impl eframe::App for Window {
 }
 
 fn main() -> ExitCode {
-    let first = std::env::args().nth(1);
-    if first.as_deref() == Some("--version") {
+    // First, before the program reads its own arguments: on Windows an update is finished by a
+    // copy of this program, started with the updater's arguments. It is not an ordinary start.
+    let args: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
+    if let Some(done) = wordsmith_script_ui::RELEASES.finish_update(&args) {
+        return match done {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("wordsmith-script: the update could not be finished: {e}");
+                ExitCode::FAILURE
+            }
+        };
+    }
+    let first = args.into_iter().next();
+    if first.as_deref() == Some(std::ffi::OsStr::new("--version")) {
         println!("{}", wordsmith_script_ui::about_text());
         return ExitCode::SUCCESS;
     }
+    // A file to open. Commands take a path as text, so a name that is not Unicode is not found
+    // and the window says so; reading it never stops the program.
+    let first = first.map(|path| path.to_string_lossy().into_owned());
     let mut viewport = egui::ViewportBuilder::default()
         .with_title(wordsmith_script_ui::app::NAME)
         .with_app_id(wordsmith_script_ui::app::APP_ID)

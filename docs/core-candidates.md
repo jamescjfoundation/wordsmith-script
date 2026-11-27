@@ -44,7 +44,7 @@ Which of these 1.0.0 needs is decided in Script's own plan:
 | The start window (`jcj_shell::start::start_window`) | [#2](https://github.com/jamescjfoundation/open-source-core/issues/2) | released in core v0.1.2, not used: a script is always open, so Script shows the File page's New page at start instead |
 | The PDF names the app that made it | [#5](https://github.com/jamescjfoundation/open-source-core/issues/5) | open. PDFs name WordCraft as creator and producer; 0.1 wrote "Wordsmith Script" |
 | A shell that builds for the web | [#35](https://github.com/jamescjfoundation/open-source-core/issues/35) | open. `apps/script-web` builds for the desktop only and `cargo xtask wasm` fails |
-| The updater's finishing step on Windows | [#36](https://github.com/jamescjfoundation/open-source-core/issues/36) | open. An update cannot finish in place on Windows; the download is offered |
+| The updater's finishing step on Windows | [#36](https://github.com/jamescjfoundation/open-source-core/issues/36) | released in core v0.1.21, used: the desktop program calls `RELEASES.finish_update` first in `main` (`apps/script/src/main.rs`), so a copy started as the updater's helper finishes the update. An unsigned copy is still offered the download: the updater replaces only a signed one |
 | Engine commands in groups an app can choose from | [#37](https://github.com/jamescjfoundation/open-source-core/issues/37) | open. Every registry holds the engine's whole catalog; agents see it through `list_commands` |
 | An app's own icons on the shell's controls | [#38](https://github.com/jamescjfoundation/open-source-core/issues/38) | open. The ribbon, the rails and the File page show the shell's general icons; Script's own icons show in its panels and status bar |
 
