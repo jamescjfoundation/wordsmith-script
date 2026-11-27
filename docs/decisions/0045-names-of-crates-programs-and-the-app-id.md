@@ -48,6 +48,9 @@ Script takes the pattern of the other two apps.
   `xtask/src/bundle.rs` for the bundle (the gate has no dependencies). A Linux
   desktop joins a window to its menu entry by this id, so a test in the bundle
   task fails when the two differ.
+  *Amended 2026-11-27:* the second place is now the package data in
+  `xtask/src/main.rs` (`app_id`, beside the release id `id`, which is
+  `app::ID`); the test is there and holds both pairs.
 - **The profile variable** carries the app's name because a variable called
   after the family would send every Wordsmith program started with it to one
   folder, where each would overwrite the others' preferences.

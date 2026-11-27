@@ -216,6 +216,29 @@ interface back out is not.
   `jcj-` line names one tag. `cargo xtask core-pin` says how far behind an app is, and a
   scheduled check opens an issue when it is more than three releases behind.
 
+### Releasing an app
+
+One contract and one workflow for every app
+([core decision 0019](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0019-app-releases.md);
+the contract, with what each release file is named and holds, is the core's
+[`docs/app-releases.md`](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/app-releases.md)).
+The gate runs first and the workflow makes the tag, as for the core.
+
+1. Move the app to the newest core. Write what the release changes under `## Unreleased` of
+   `CHANGELOG.md`.
+2. `cargo xtask release X.Y.Z` makes the changes of the release commit: the version in
+   `Cargo.toml` and `Cargo.lock`, and the changelog heading with the date. Run `cargo xtask ci`,
+   commit, push to `main`.
+3. `gh workflow run release.yml --ref main`. It checks the release commit, runs the whole gate
+   on Linux, macOS and Windows, builds and checks the package of each system and
+   `SHA256SUMS.txt`, and only then makes the tag `vX.Y.Z` and publishes. A red job leaves no
+   tag: fix the cause on `main` and start it again.
+4. To try it without releasing: `gh workflow run release.yml -f dry-run=true`. The same dry run
+   starts by itself every week. `cargo xtask package` makes this computer's package in `dist/`.
+
+What a release carries is data in `xtask/src/main.rs` (`package`). The packaging and the
+workflow are the core's: an app has no release workflow and no packaging script of its own.
+
 ### Things agents must not do
 
 - Name WordCraft or craft-libs types in an app repository. Use the `jcj-` interfaces; if one is
@@ -229,6 +252,8 @@ interface back out is not.
   [0004](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0004-follow-hold-own.md)
   and
   [0011](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0011-releases-and-versioning.md)).
+- Push a `v*` tag, or create or edit a release, by hand: in the core and in an app the release
+  workflow makes both, after the gate. A tag cannot be taken back.
 - Edit WordCraft or craft-libs code anywhere but our forks' topic branches.
 - Edit a file or a marked block the core owns anywhere but in the core.
 - Commit personal details, private files or secrets.

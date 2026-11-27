@@ -51,8 +51,8 @@ Decision 0045 has the table of what each is called now.
 | [0010](0010-typing-rules.md) | Typing rules the spec leaves open | accepted |
 | [0011](0011-editor.md) | The first editor (egui, page view, focus, recovery) | general part moved to the core (core decision 0014) |
 | [0012](0012-pagination.md) | Screenplay pagination | accepted |
-| [0013](0013-printing.md) | PDF export and printing | general part moved to the core (core decision 0007) |
-| [0014](0014-spelling-data.md) | Spelling data (Moby list, no SCOWL) | general part moved to the core (core decision 0007) |
+| [0013](0013-printing.md) | PDF export and printing | general part moved to the core (core decision 0007); the bundles replaced by core decision 0019 |
+| [0014](0014-spelling-data.md) | Spelling data (Moby list, no SCOWL) | general part moved to the core (core decision 0007); the bundles replaced by core decision 0019 |
 | [0015](0015-autocomplete.md) | Autocomplete | accepted |
 | [0016](0016-views.md) | Views, theme and writing modes | general part moved to the core (core decision 0014) |
 | [0017](0017-native-format.md) | The native format | accepted |
@@ -67,7 +67,7 @@ Decision 0045 has the table of what each is called now.
 | [0026](0026-page-locking.md) | Page locking and the page-label scheme | general part moved to the core (core decision 0010) |
 | [0027](0027-reports-and-revised-pages.md) | Revised pages, scene lengths and the character report | accepted |
 | [0028](0028-outlining.md) | Outlining: story board, lanes, outline elements | general part moved to the core (core decision 0014) |
-| [0029](0029-release.md) | The command line, the MCP server and the release | general part moved to the core (core decision 0007) |
+| [0029](0029-release.md) | The command line, the MCP server and the release | general part moved to the core (core decision 0007); the bundles replaced by core decision 0019 |
 | [0030](0030-spec-2.md) | SPEC-2 and what v0.1 built | accepted |
 | [0031](0031-editing-additions.md) | Editing additions from SPEC-2 (Sequence, typing options, keys, bookmarks, checker) | general part moved to the core (core decision 0010) |
 | [0032](0032-macros-and-styles.md) | Macros and text styles (keys, starter set, aliases, native format 4) | accepted |
@@ -76,9 +76,9 @@ Decision 0045 has the table of what each is called now.
 | [0035](0035-production.md) | Production additions (dual dialogue, locks, numbers, printing, watermark, tracking, comparison) | general part moved to the core (core decision 0010) |
 | [0036](0036-workspace.md) | Workspace and productivity (templates, tabs, split, statistics, sprints, keys) | general part moved to the core (core decision 0014) |
 | [0037](0037-ribbon-and-panels.md) | The ribbon, side panels and what is reused for them | general part moved to the core (core decision 0014) |
-| [0038](0038-releases-and-updates.md) | Releases, downloads and updates (craft-update, release files, draft releases) | general part moved to the core (core decision 0014) |
+| [0038](0038-releases-and-updates.md) | Releases, downloads and updates (craft-update, release files, draft releases) | general part moved to the core (core decision 0014); the release files and workflow replaced by core decision 0019 |
 | [0039](0039-a-fork-of-wordcraft.md) | A fork of WordCraft: the copied crates are trimmed to what a screenplay uses | replaced by core decision 0004 |
-| [0040](0040-supply-chain-and-licenses.md) | Supply chain and licenses: exact toolchain, minimum-version check, cargo-deny, Dependabot, SHA-pinned actions, build provenance, license texts in bundles, privacy disclosure | general part moved to the core (core decisions 0001 and 0003) |
+| [0040](0040-supply-chain-and-licenses.md) | Supply chain and licenses: exact toolchain, minimum-version check, cargo-deny, Dependabot, SHA-pinned actions, build provenance, license texts in bundles, privacy disclosure | general part moved to the core (core decisions 0001, 0003 and 0019) |
 | [0041](0041-our-names-for-panel-and-view.md) | Our names for the side panel and the compact view (Script panel, Draft view) | accepted |
 | [0042](0042-scope-and-asking-first.md) | Scope, and changes that need the maintainers first | accepted |
 | [0043](0043-key-tips-and-commands.md) | Key tips that reach every control and keep their letters; every ribbon and status bar control runs a command | general part moved to the core (core decision 0014) |

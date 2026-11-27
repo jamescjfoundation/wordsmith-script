@@ -22,8 +22,8 @@
 #   font, a fixture, a golden file, a page a test compares) counts as that package's. Manifests,
 #   the lock file or the toolchain changing means everything.
 #
-# A newer push cancels an older run. Release builds and other platforms belong in the app's own
-# workflows.
+# A newer push cancels an older run. The app's release, with the gate and the builds on the other
+# systems, is release.yml in this folder; other app-only jobs go in a workflow file of the app's.
 #
 # Core decisions: https://github.com/jamescjfoundation/open-source-core/tree/main/docs/decisions
 name: CI

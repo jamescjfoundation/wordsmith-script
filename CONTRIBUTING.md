@@ -35,7 +35,7 @@ the release runs it on Linux, macOS and Windows.
 | `assets/brand` | Copies of the Wordsmith brand kit's logos, icons and palette, and Script's own theme file and derived icons (`AGENTS.md`, "Brand") |
 | `assets/fonts` | The bundled fonts, with their licenses |
 | `tests/fixtures`, `tests/golden` | The files the tests read and the reviewed results they compare with (`docs/fixtures.md`, `docs/golden.md`) |
-| `xtask` | The gate, bundling and screenshots |
+| `xtask` | The gate, packaging and screenshots: the core's shared tasks, with Script's data in `main.rs` |
 | `docs/guide` | The user guide |
 | `docs/decisions` | Why things are the way they are, one record per choice |
 | `docs/history` | The first build's plans, log and audits, kept for the record and not maintained |

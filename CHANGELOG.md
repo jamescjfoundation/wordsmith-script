@@ -19,12 +19,25 @@ the last build before the rebuild.
 ### Added
 
 - The app has its own mark, wordmark, icon and colors. The window and the
-  macOS and Linux bundles carry the icon (an S and a brass caret on ink);
+  macOS and Linux packages carry the icon (an S and a brass caret on ink);
   the quick-access row starts with the mark, the File page's column is ink
   with the wordmark at its foot and a brass caret at the current page, and
   About shows the mark. The three themes take their colors from the
   palette: Iron Gall Ink, Page White, Brad Brass, Margin Blue, Slate and
   Night.
+- **Downloads.** A release has one file for each system: a disk image for
+  macOS on Apple silicon (`wordsmith-script-<version>-macos-aarch64.dmg`), a
+  portable zip for Windows x64 (`...-windows-x64-portable.zip`) and an archive
+  for Linux x86_64 (`...-linux-x86_64.tar.gz`), with `SHA256SUMS.txt` beside
+  them. Each holds the app, the command line and the license texts. There is
+  no file for a Mac with an Intel processor. The programs are not signed with
+  a developer's certificate yet, so macOS and Windows ask before the first
+  start; the guide's new page, Installing and updating, says how to go on.
+- **Scripts open with a double-click.** On Linux the package's `install.sh`
+  installs the app for your account with its menu entry, icon and the `.wss`
+  file type; on Windows `register-file-types.cmd` registers `.wss`; on macOS
+  the app declares `.wss` as its own type. Fountain files (`.fountain`,
+  `.spmd`) are offered Wordsmith Script and not taken from another program.
 - Drop-downs (More, Highlight, All Macros, the revision set, folded groups)
   have key tips that open them; their items have letters too.
 - Paste is on the Write tab beside Cut and Copy, and in the Edit menu.
@@ -77,8 +90,8 @@ pages.
 - **RTF export** is written by the shared RTF writer (same layout, different
   file text). PDFs name WordCraft as their creator; the first build's
   named Wordsmith Script (`docs/gaps.md`).
-- **Not yet**: the web build, and finishing an update in place on Windows
-  (`docs/gaps.md`).
+- **Not yet**: the web build, and an update in place on Windows and macOS,
+  where the app opens the release page (`docs/gaps.md`).
 - Script tabs and the split view are drawn by the shared shell. Every open
   script's tab has its own close button (closing a script with unsaved
   changes still asks first), and the new-tab button sits at the right end of
@@ -211,11 +224,24 @@ For people who work on the code.
 - The checks that every control runs a registered command, and that every
   menu command is on the ribbon or the File page, read what the window draws
   instead of lists kept by hand (decision 0043).
-- Built on open-source-core 0.1.21 (before, 0.1.1), so new work starts from
+- Built on open-source-core 0.1.22 (before, 0.1.1), so new work starts from
   the newest shared base. The releases between add interfaces Script does not
   call yet and one fix it shows (the Preferences fields above); no code of
   Script's changed. The golden scripts' PDF text and the page plans of every
   file 0.1.2 saved are unchanged (`docs/golden.md`).
+- The release packages and the release workflow are the core's, the same for
+  every app built on it (core decision 0019). `cargo xtask package` makes this
+  computer's package from data in `xtask/src/main.rs`, and
+  `.github/workflows/release.yml` only calls the core's shared workflow: it
+  runs the whole gate on Linux, macOS and Windows, builds and checks the
+  three packages and `SHA256SUMS.txt`, and only then makes the tag and
+  publishes, with this file's section as the release's text. Script's own
+  `cargo xtask bundle`, its release workflow and the `release` branch are
+  gone. The files' names are unchanged. A file's attestation is checked with
+  `--signer-repo jamescjfoundation/open-source-core`.
+- The desktop program finishes an update when Windows starts it as the
+  updater's helper, and a file name that is not Unicode on the command line
+  no longer stops it.
 - `cargo xtask core-pin` joins the gate: every `jcj-` line names one core
   release and `Cargo.lock` holds one core. A weekly workflow opens an issue
   when the pin is more than three core releases behind.

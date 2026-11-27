@@ -15,6 +15,23 @@ Amended 2026-11-26 (decision 0045): the macOS bundle's id is
 and the identity is `wordsmith_script_ui::RELEASES`. The id
 `wordsmith-script` and the release files' names are unchanged.
 
+Amended 2026-11-27: the release files and the release workflow are the
+core's, for every app
+([core decision 0019](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0019-app-releases.md);
+the contract is the core's [`docs/app-releases.md`](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/app-releases.md)).
+Replaced below: "Release files" (`cargo xtask bundle`) and "The release
+workflow". There is no `release` branch, no draft and no "publish" to tick: a
+release is started by hand for a release commit on `main`, the whole gate runs
+on Linux, macOS and Windows first, and only then is the tag made and the
+release published, with the changelog section as its text. A release has
+three packages (macOS on Apple silicon, Windows x64, Linux x86_64) and
+`SHA256SUMS.txt`; no Intel macOS and no Windows arm64 file is built. The
+files' names are unchanged. Still Script's: its identity
+(`wordsmith_script_ui::RELEASES`) and the data the packages are made from
+(`xtask/src/main.rs`). On Windows the desktop program now finishes an update
+when it is started as the updater's helper, so a signed copy can update in
+place; an unsigned one is still sent to the release page.
+
 ## Context
 
 Downloads, releases and updates follow the pattern the ArtCraft apps use, so

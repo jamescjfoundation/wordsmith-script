@@ -59,6 +59,7 @@ pub const MANAGED: &[(&str, &str)] = &[
     ("template/xtask/Cargo.toml", "xtask/Cargo.toml"),
     ("template/.github/workflows/ci.yml", ".github/workflows/ci.yml"),
     ("template/.github/workflows/core-pin.yml", ".github/workflows/core-pin.yml"),
+    ("template/.github/workflows/release.yml", ".github/workflows/release.yml"),
     ("template/.github/pull_request_template.md", ".github/pull_request_template.md"),
     ("template/.github/dependabot.yml", ".github/dependabot.yml"),
     ("template/hooks/pre-commit", "hooks/pre-commit"),

@@ -62,17 +62,20 @@ answered by the maintainers before any work starts.
 
 ## Downloads and updates
 
-- The downloads are a disk image for macOS, a portable zip for Windows and a
-  `.tar.gz` for Linux: no installer and no package for a system's own
-  software manager.
+- The downloads are a disk image for macOS on Apple silicon, a portable zip
+  for Windows x64 and a `.tar.gz` for Linux x86_64: no installer, no package
+  for a system's own software manager, and no file for a Mac with an Intel
+  processor or for Windows or Linux on ARM
+  ([issue 26](https://github.com/jamescjfoundation/wordsmith-script/issues/26)).
 - The macOS app is signed ad hoc and not notarized, and the Windows programs
   are not signed, so each system asks before it opens them the first time.
   Signing needs a developer's certificate, which the project does not have
   yet.
 - An update installs itself only on Linux, from the `.tar.gz` in a folder the
   app may write to. On macOS and Windows the app opens the release page
-  (decision 0038; Windows waits for
-  [core issue 36](https://github.com/jamescjfoundation/open-source-core/issues/36)).
+  (decision 0038). On Windows the updater replaces only a copy signed with
+  the publisher's certificate, so that waits for signing; on macOS the
+  updater underneath replaces only its own project's apps.
 - The update check trusts GitHub and the file's checksum. It does not read
   the build provenance attestation each release file has; `gh attestation
   verify` does (the README, "Checking a download").

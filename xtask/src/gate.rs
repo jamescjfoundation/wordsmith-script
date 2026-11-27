@@ -4,7 +4,8 @@
 //! An app's `xtask/src/main.rs` holds what is the app's and nothing else: its data ([`App`]: the
 //! product's name, the programs it ships, the repositories it builds on besides the core) and
 //! its own tasks ([`Task`]: a name, a line of help, a function). It ends in
-//! `gate::main(&APP)`. The list of shared tasks, their order and how each is run are here, so a
+//! `gate::main(&APP)`. What a release of the app carries is data too ([`App::package`]), read by
+//! `cargo xtask package` and `cargo xtask release`. The list of shared tasks, their order and how each is run are here, so a
 //! core release that adds a check to the gate, or a field to [`App`], needs no edit in an app:
 //! `cargo xtask sync` brings this file, and `..App::DEFAULT` in the app fills what is new.
 //!
@@ -20,8 +21,9 @@ use std::process::ExitCode;
 
 use super::changed::{self, Affected};
 use super::link::{self, Provider};
+use super::package::{self, Package};
 use super::util::{self, TaskResult, cargo, cargo_output, report};
-use super::{applayers, assets, corepin, docs, licenses, lintroots, privacy, spdx, sync};
+use super::{applayers, assets, corepin, docs, licenses, lintroots, privacy, release, spdx, sync};
 
 /// What the shared tasks need to know about one app. An app writes the fields it has and takes
 /// the rest from [`App::DEFAULT`], so a field added later breaks no app.
@@ -29,7 +31,9 @@ use super::{applayers, assets, corepin, docs, licenses, lintroots, privacy, spdx
 pub struct App {
     /// The product's name, for generated files.
     pub product: &'static str,
-    /// The programs the app ships: the packages `THIRD-PARTY-LICENSES.txt` is written for.
+    /// The programs the app ships, as the workspace packages that build them, the desktop
+    /// program first: the packages `THIRD-PARTY-LICENSES.txt` is written for, and the programs a
+    /// release package carries.
     pub shipped: &'static [&'static str],
     /// The repositories the app builds on besides the core (core decision 0015). `dev-link` links
     /// one by its name, `sync` writes their addresses into `deny.toml` as the app's own sources,
@@ -42,6 +46,10 @@ pub struct App {
     /// The package whose `screenshots` example draws the app's pictures into `docs/images/`.
     /// `None`: the app has no `screenshots` task.
     pub screenshots: Option<&'static str>,
+    /// What a release of the app carries besides its programs: its ids, icons, file types and
+    /// license texts (`cargo xtask package`; the core's `docs/app-releases.md`). `None`: the app
+    /// publishes no release.
+    pub package: Option<Package>,
     /// The app's own tasks.
     pub tasks: &'static [Task],
 }
@@ -49,7 +57,7 @@ pub struct App {
 impl App {
     /// An app with nothing of its own. Write `..App::DEFAULT` after the fields an app sets.
     pub const DEFAULT: App =
-        App { product: "This app", shipped: &[], providers: &[], no_indexing: &[], legal_files: &[], screenshots: None, tasks: &[] };
+        App { product: "This app", shipped: &[], providers: &[], no_indexing: &[], legal_files: &[], screenshots: None, package: None, tasks: &[] };
 }
 
 /// One task of an app's own.
@@ -88,6 +96,7 @@ pub const CHECKS: &[(&str, &str)] = &[
     ("app-layers", "each package uses only what the layer table in AGENTS.md puts under it"),
     ("docs", "links in Markdown lead somewhere, decision references name a record, core-candidate markers name an issue"),
     ("assets", "every file under assets/ is listed in ATTRIBUTION.md; the legal files exist"),
+    ("release-data", "what a release ships is there: the programs under their names, icons, license files, a changelog to take the notes from"),
     ("privacy", "no personal details or secrets in files or commit identities"),
     ("licenses", "every dependency's license is on the allowlist"),
 ];
@@ -108,6 +117,13 @@ const OTHER: &[(&str, &str)] = &[
     ("third-party-licenses [file]", "write the dependency license texts (default dist/THIRD-PARTY-LICENSES.txt)"),
     ("privacy [--staged] [--range <git range>]", "the privacy check on staged lines, or on a range of commits"),
     ("prune-target <older lock file> [--target <folder>]", "remove the build output that a move from that lock file made stale (CI's cache)"),
+    ("package [<platform>] [--out <folder>] [--no-build]", "build the release package of this system into dist/ (nothing is published)"),
+    (
+        "package --sums <folder> [--complete] | --describe",
+        "write SHA256SUMS.txt for a folder of release files; print the release's id, version and file names",
+    ),
+    ("release <version> [--date YYYY-MM-DD]", "the changes of a release commit: the version in Cargo.toml and Cargo.lock, the changelog's heading"),
+    ("release --check | --notes", "whether the checkout is a release commit; the changelog section that is the release's text"),
 ];
 
 /// Names an app's own task may not take: the shared tasks, and the words `main` reads itself.
@@ -121,6 +137,7 @@ pub fn table_problems(app: &App) -> Vec<String> {
     let reserved = reserved();
     let mut seen = BTreeSet::new();
     let mut out = Vec::new();
+    out.extend(package::data_problems(app));
     for (i, provider) in app.providers.iter().enumerate() {
         if provider.name.is_empty() || provider.name == link::CORE_NAME || provider.name.contains(['=', ' ']) {
             out.push(format!("'{}' cannot be a provider's name", provider.name));
@@ -193,6 +210,8 @@ fn run(root: &Path, app: &App, task: &str, rest: &[String]) -> TaskResult {
         "third-party-licenses" => licenses::task(root, app.shipped, app.product, rest.first().map(String::as_str)),
         "privacy" => privacy::task(root, rest),
         "prune-target" => changed::prune_task(root, rest),
+        "package" => package::task(root, app, rest),
+        "release" => release::task(root, app, rest),
         "screenshots" if app.screenshots.is_some() => screenshots(root, app),
         name => {
             if let Some(own) = app.tasks.iter().find(|t| t.name == name) {
@@ -314,6 +333,7 @@ fn run_task(name: &str, root: &Path, app: &App, scope: &Affected) -> TaskResult 
         "app-layers" => applayers::task(root, app.providers),
         "docs" => docs::app_task(root),
         "assets" => assets::task(root, app.legal_files),
+        "release-data" => package::check(root, app),
         "privacy" => privacy::task(root, &[]),
         "licenses" => check_licenses(root),
         "clippy" => scoped(root, scope, &["clippy", "--locked", "--all-targets"], &["--", "-D", "warnings"]),
@@ -467,7 +487,8 @@ mod tests {
 
     #[test]
     fn an_apps_task_may_not_take_a_shared_name() {
-        for name in ["fmt", "clippy", "ci", "sync", "dev-link", "affected", "screenshots", "privacy", "third-party-licenses", "prune-target"] {
+        let shared = ["fmt", "clippy", "ci", "sync", "dev-link", "affected", "screenshots", "privacy", "third-party-licenses", "prune-target"];
+        for name in shared.into_iter().chain(["package", "release", "release-data"]) {
             let tasks = [Task::other(name, "", nothing)];
             let found = table_problems(&App { tasks: Box::leak(Box::new(tasks)), ..App::DEFAULT });
             assert!(found.iter().any(|p| p.contains("shared task's name")), "{name}: {found:?}");

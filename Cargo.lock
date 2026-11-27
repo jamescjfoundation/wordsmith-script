@@ -2093,8 +2093,8 @@ checksum = "3bd1574e617a9a6c1f8f8181bd7e841e1f20e4277607ef28945765188d6284d4"
 
 [[package]]
 name = "jcj-agents"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "jcj-engine",
  "jcj-upstream",
@@ -2103,8 +2103,8 @@ dependencies = [
 
 [[package]]
 name = "jcj-board"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "egui",
  "jcj-theme",
@@ -2114,8 +2114,8 @@ dependencies = [
 
 [[package]]
 name = "jcj-doc"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "jcj-upstream",
  "serde",
@@ -2124,8 +2124,8 @@ dependencies = [
 
 [[package]]
 name = "jcj-engine"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "jcj-doc",
  "jcj-proof",
@@ -2136,8 +2136,8 @@ dependencies = [
 
 [[package]]
 name = "jcj-features"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "chrono",
  "jcj-doc",
@@ -2149,16 +2149,16 @@ dependencies = [
 
 [[package]]
 name = "jcj-i18n"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "toml",
 ]
 
 [[package]]
 name = "jcj-interchange"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "chrono",
  "jcj-doc",
@@ -2170,8 +2170,8 @@ dependencies = [
 
 [[package]]
 name = "jcj-layout"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "jcj-doc",
  "jcj-upstream",
@@ -2181,8 +2181,8 @@ dependencies = [
 
 [[package]]
 name = "jcj-output"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "jcj-doc",
  "jcj-layout",
@@ -2192,8 +2192,8 @@ dependencies = [
 
 [[package]]
 name = "jcj-project"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "chrono",
  "jcj-doc",
@@ -2208,16 +2208,16 @@ dependencies = [
 
 [[package]]
 name = "jcj-proof"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "jcj-upstream",
 ]
 
 [[package]]
 name = "jcj-shell"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "egui",
  "image",
@@ -2232,8 +2232,8 @@ dependencies = [
 
 [[package]]
 name = "jcj-theme"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "egui",
  "image",
@@ -2245,8 +2245,8 @@ dependencies = [
 
 [[package]]
 name = "jcj-upstream"
-version = "0.1.21"
-source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.21#c45c92ef3521a9ddcb0fa147803484c4ebc1c815"
+version = "0.1.22"
+source = "git+https://github.com/jamescjfoundation/open-source-core?tag=v0.1.22#2cf4dc159eb7727f2b49489d800ee2a6bac16b45"
 dependencies = [
  "craft-atomic 0.1.0 (git+https://github.com/storytold/craft-libs?rev=6e03f65bf45181db77ba6229716e6624db9eb25b)",
  "craft-dialogs",

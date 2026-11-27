@@ -27,6 +27,11 @@ are Script's:
   nothing" is the promise the option makes, so `file.save` writes the script
   back only when it lies inside the write folder.
 
+Amended 2026-11-27: "Bundles" below is replaced by [core decision 0019](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0019-app-releases.md).
+The packages are made by the core's `cargo xtask package` from data in
+`xtask/src/main.rs`; `cargo xtask bundle` and `xtask/src/bundle.rs` are gone.
+What each package holds is the core's contract ([`docs/app-releases.md`](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/app-releases.md)).
+
 Amended 2026-11-26 (decision 0045): the command line is `wordsmith-script-cli`
 and the desktop program `wordsmith-script`; this record names them
 `wordsmith-cli` and `wordsmith` throughout, as they were.
@@ -86,7 +91,8 @@ into `docs/images`. Looking at them found two layout bugs in the index cards
 ## Bundles
 
 (File names, the macOS disk image and the release workflow changed in
-decision 0038.)
+decision 0038. Since 2026-11-27 this section is history: [core decision 0019](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0019-app-releases.md)
+replaces it.)
 
 `cargo xtask bundle` builds the app and the command-line tool in release mode
 and packs them for the computer it runs on, in `dist/` (ignored by git):

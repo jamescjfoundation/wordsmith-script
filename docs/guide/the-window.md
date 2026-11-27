@@ -100,7 +100,8 @@ whenever you like.
 When it starts, the app asks GitHub whether a newer version has been
 released. **About** on the File page has **Check for Updates** and shows the
 result; Help › Check for Updates… does the same. When an update is available
-you can install it (on Linux) or open its release page.
+you can install it (on Linux) or open its release page
+([Installing and updating](installing.md#updating)).
 
 What the check sends, and how to stop it:
 

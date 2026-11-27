@@ -68,22 +68,45 @@ several dependencies come from (pinned to one commit). The command line:
 cargo run --release -p wordsmith-script-cli -- export-pdf script.fountain script.pdf
 ```
 
-`cargo xtask bundle` builds a release bundle for your computer in `dist/`,
-with the license texts of every dependency (`licenses/THIRD-PARTY-LICENSES.txt`)
-and of the fonts.
+`cargo xtask package` builds the release package for your computer in
+`dist/`, with the license texts of every dependency
+(`THIRD-PARTY-LICENSES.txt`) and of the fonts. The packaging and the release
+workflow are open-source-core's, the same for every app built on it
+([the release contract](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/app-releases.md));
+what Script's packages carry is data in `xtask/src/main.rs`.
+
+### Downloads
+
+Release files come only from this repository's
+[GitHub releases](https://github.com/jamescjfoundation/wordsmith-script/releases).
+The first public release is 0.9.0, a preview (`CHANGELOG.md`). A release has
+three packages and their checksums:
+
+| System | File |
+| --- | --- |
+| macOS, Apple silicon | `wordsmith-script-<version>-macos-aarch64.dmg` |
+| Windows, x64 | `wordsmith-script-<version>-windows-x64-portable.zip` |
+| Linux, x86_64 | `wordsmith-script-<version>-linux-x86_64.tar.gz` |
+| | `SHA256SUMS.txt` |
+
+The programs are not signed with a developer's certificate yet, so macOS and
+Windows ask before they open the app the first time. The guide's
+[Installing and updating](docs/guide/installing.md) page says how to open it
+on each system.
 
 ### Checking a download
 
-No version has been published yet; the first will be 0.9.0, a preview
-(`CHANGELOG.md`). Release files come only from this repository's GitHub
-releases. Each one has a build provenance attestation, which shows it was
-built from this repository by its release workflow. With the GitHub CLI:
+`SHA256SUMS.txt` on the same release lists every file's checksum
+(`sha256sum --check --ignore-missing SHA256SUMS.txt`). Each file also has a
+build provenance attestation, which shows it was built from this repository
+by the release workflow. The workflow's jobs are open-source-core's, so the
+check names it as the signer. With the GitHub CLI:
 
 ```sh
-gh attestation verify wordsmith-script-<version>-linux-x86_64.tar.gz --repo jamescjfoundation/wordsmith-script
+gh attestation verify wordsmith-script-<version>-linux-x86_64.tar.gz \
+  --repo jamescjfoundation/wordsmith-script \
+  --signer-repo jamescjfoundation/open-source-core
 ```
-
-`SHA256SUMS.txt` on the same release lists every file's checksum.
 
 ## Privacy
 
@@ -184,8 +207,9 @@ It is also built on these open-source projects:
   use.
 
 `ATTRIBUTION.md` lists every asset and copied file with its license, and
-`NOTICE` carries the notices the licenses ask for. Every release bundle has
-the license text of each library and font in its `licenses` folder.
+`NOTICE` carries the notices the licenses ask for. Every release package has
+the license text of each library (`THIRD-PARTY-LICENSES.txt`) and of each
+font (its `licenses` folder).
 
 ## License
 

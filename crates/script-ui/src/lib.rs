@@ -62,7 +62,7 @@ pub fn about_summary() -> String {
 
 /// The open-source work the app is built on, for the About page's Acknowledgments.
 pub fn acknowledgments() -> String {
-    "Built on open-source-core, and with craft-libs, egui, AccessKit, HarfRust, Skrifa, Vello CPU and kurbo. The fonts (Courier Prime, Inter, JetBrains Mono, Source Sans 3 and Source Serif 4) are under the SIL Open Font License 1.1. Spelling uses the public-domain Moby word list by Grady Ward. The license texts of the fonts and of every library the app is built from are in the licenses folder that comes with it.".to_string()
+    "Built on open-source-core, and with craft-libs, egui, AccessKit, HarfRust, Skrifa, Vello CPU and kurbo. The fonts (Courier Prime, Inter, JetBrains Mono, Source Sans 3 and Source Serif 4) are under the SIL Open Font License 1.1. Spelling uses the public-domain Moby word list by Grady Ward. The license text of every library the app is built from is in THIRD-PARTY-LICENSES.txt, which comes with the app, and the fonts' are in the licenses folder beside it.".to_string()
 }
 
 /// Text for `--version`: the summary, the credit, then the acknowledgments.

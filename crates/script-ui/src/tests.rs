@@ -260,8 +260,9 @@ fn about_carries_the_credit() {
     assert!(text.starts_with("Wordsmith Script "));
     assert!(text.contains("Based on WordCraft by the ArtCraft team."));
     assert!(text.contains("\n\nAcknowledgments\n"));
-    // Release bundles carry the license texts in this folder (`cargo xtask bundle`).
-    assert!(text.contains("licenses folder"));
+    // Release packages carry the libraries' license texts in this file and the fonts' in this
+    // folder beside it (`cargo xtask package`, the core's).
+    assert!(text.contains("THIRD-PARTY-LICENSES.txt") && text.contains("licenses folder"));
 }
 
 #[test]

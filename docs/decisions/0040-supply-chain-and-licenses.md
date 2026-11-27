@@ -10,6 +10,16 @@ versions, cargo-deny, pinned actions) are the core's, carried here by `cargo
 xtask sync`. Still Script's: build provenance, license texts in bundles and the
 privacy disclosure.
 
+Amended 2026-11-27: build provenance and the license texts in a package are
+the core's too
+([core decision 0019](https://github.com/jamescjfoundation/open-source-core/blob/main/docs/decisions/0019-app-releases.md)).
+The attestation is signed by the core's shared workflow, so the check names it:
+`gh attestation verify <file> --repo jamescjfoundation/wordsmith-script
+--signer-repo jamescjfoundation/open-source-core`. `cargo xtask package` puts
+`THIRD-PARTY-LICENSES.txt` beside the license files of every package and the
+fonts' license texts under `licenses/` there; `cargo xtask bundle` is gone.
+Still Script's: the privacy disclosure.
+
 ## Context
 
 The repository is public and ships binaries. Several gaps remained:

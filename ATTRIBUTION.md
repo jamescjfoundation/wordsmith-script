@@ -13,7 +13,7 @@ Courier Prime is the script font: `wordsmith-script-model` adds it to the core's
 set. Inter and JetBrains Mono are the interface fonts: `wordsmith-script-ui` gives
 them to the core's shell. Source Sans 3 and Source Serif 4 come with the
 core's bundled fonts (WordCraft's) and are in the app; only their license
-texts are kept here, for the release bundles' `licenses` folder.
+texts are kept here, for the release packages' `licenses` folder.
 
 | Path | What it is | Source | License | Added |
 | --- | --- | --- | --- | --- |
@@ -36,17 +36,17 @@ texts are kept here, for the release bundles' `licenses` folder.
 The Wordsmith Script mark, wordmark and app icon, and the parent brand's
 files, are the project's own artwork (`assets/brand/README.md` says what each
 is for). `wordsmith-script-ui` (`src/brand.rs`) draws the mark and wordmark from the
-masks and sets the window icon; `cargo xtask bundle` puts the icon in the
-macOS and Linux bundles. The icon sizes and masks are rendered from the
+masks and sets the window icon; `cargo xtask package` puts the icon in the
+macOS and Linux packages. The icon sizes and masks are rendered from the
 artwork.
 
 | Path | What it is | Source | License | Added |
 | --- | --- | --- | --- | --- |
 | `assets/brand/README.md` | What the brand files are for, and the rules for using them | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
 | `assets/brand/favicon.svg` | The app icon tuned for small sizes: the mark in Page White and Brad Brass on an Iron Gall Ink tile | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/icon-1024.png` | The app icon at 1024 px (macOS bundle); the source for the smaller sizes | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/icon-512.png` | The app icon at 512 px (macOS and Linux bundles), scaled from `icon-1024.png` | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
-| `assets/brand/icon-256.png` | The app icon at 256 px (the window icon; macOS and Linux bundles), scaled from `icon-1024.png` | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
+| `assets/brand/icon-1024.png` | The app icon at 1024 px (macOS and Linux packages); the source for the smaller sizes | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
+| `assets/brand/icon-512.png` | The app icon at 512 px (macOS and Linux packages), scaled from `icon-1024.png` | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
+| `assets/brand/icon-256.png` | The app icon at 256 px (the window icon; macOS and Linux packages), scaled from `icon-1024.png` | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
 | `assets/brand/wordsmith-mark-ink.svg` | The mark: an S and a brass caret bar, in Iron Gall Ink | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
 | `assets/brand/wordsmith-mark-paper.svg` | The mark, in Page White, for dark backgrounds | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
 | `assets/brand/wordsmith-script-wordmark-ink.svg` | The wordmark, in Iron Gall Ink with the brass caret bar | Wordsmith Script contributors | MIT OR Apache-2.0 | 2026-11-24 |
@@ -88,7 +88,7 @@ These are test data and are not shipped with the app. See `docs/golden.md`.
 
 Rust crate dependencies are not copied into the repository. Their licenses
 are checked on every CI run by `cargo xtask licenses` and by cargo-deny
-(`deny.toml`), against the pinned `Cargo.lock`. Every release bundle carries
-their license texts in `licenses/THIRD-PARTY-LICENSES.txt`, made by
-`cargo xtask third-party-licenses` (decision 0040), beside the fonts'
-`OFL-*.txt` files.
+(`deny.toml`), against the pinned `Cargo.lock`. Every release package carries
+their license texts in `THIRD-PARTY-LICENSES.txt`, made by
+`cargo xtask third-party-licenses` (decision 0040), with the fonts'
+`OFL-*.txt` files in the `licenses` folder beside it.

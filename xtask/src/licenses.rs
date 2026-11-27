@@ -281,8 +281,8 @@ fn render(packages: &[Package], standard: &Standard, product: &str) -> Result<St
         "{product} is built from the {} Rust packages listed below, besides its own code\n\
          (LICENSE-MIT, LICENSE-APACHE and NOTICE). Each is listed with the license its manifest\n\
          states. Their license texts follow, each written once with the packages that carry it.\n\
-         The fonts built into the app are under the SIL Open Font License 1.1; their licenses are\n\
-         the OFL-*.txt files beside this one.\n\n\
+         The fonts built into the programs are under the SIL Open Font License 1.1; in a release\n\
+         package their license texts are in the `licenses` folder beside this file.\n\n\
          Made by `cargo xtask third-party-licenses` from the project's Cargo.lock.\n\n",
         packages.len()
     ));

@@ -1,5 +1,8 @@
 # Wordsmith Script user guide
 
+First, [Installing and updating](installing.md): which file is for your
+computer, how to open the app the first time, and how it updates.
+
 0. [The window](the-window.md): the ribbon, the side panels, the File page,
    updates and privacy.
 1. [Getting started](getting-started.md): your first scene.
