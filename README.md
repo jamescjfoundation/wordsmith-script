@@ -2,6 +2,13 @@
 
 # Wordsmith Script
 
+[![CI status](https://img.shields.io/github/actions/workflow/status/jamescjfoundation/wordsmith-script/ci.yml?branch=main&label=CI&style=flat-square&labelColor=1C2340)](https://github.com/jamescjfoundation/wordsmith-script/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/jamescjfoundation/wordsmith-script?label=release&color=8A6418&style=flat-square&labelColor=1C2340)](https://github.com/jamescjfoundation/wordsmith-script/releases/latest)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-3B4FA8?style=flat-square&labelColor=1C2340)](#license)
+![Platforms: macOS, Windows, Linux](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-5A6080?style=flat-square&labelColor=1C2340)
+[![Written in Rust](https://img.shields.io/badge/written%20in-Rust-5A6080?logo=rust&style=flat-square&labelColor=1C2340)](https://www.rust-lang.org)
+[![User guide on the Wordsmith wiki](https://img.shields.io/badge/guide-wordsmithand.ink-8A6418?style=flat-square&labelColor=1C2340)](https://wordsmithand.ink/wiki/script/)
+
 Licensed under MIT OR Apache-2.0, at your option ([License](#license)).
 
 An open-source screenwriting app for macOS, Windows and Linux, written in
