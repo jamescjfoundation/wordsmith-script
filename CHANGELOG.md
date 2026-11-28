@@ -9,7 +9,7 @@ The first public release is 0.9.0, a preview; 1.0.0 follows it (decision
 0047). The versions under "Before the first release", at the end, were builds
 of the first version of the app and were never published.
 
-## Unreleased
+## 0.9.1 (2026-11-28)
 
 ### Fixed
 
