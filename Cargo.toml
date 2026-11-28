@@ -35,18 +35,18 @@ wordsmith-script-ui = { path = "crates/script-ui" }
 
 # The core, at a release tag. Apps use only jcj- interface crates (never jcj-upstream, WordCraft or
 # craft-libs); `cargo xtask layers` checks it. Move all of them together.
-jcj-doc = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
-jcj-layout = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
-jcj-engine = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
-jcj-output = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
-jcj-interchange = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
-jcj-proof = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
-jcj-project = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
-jcj-features = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
-jcj-theme = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
-jcj-board = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
-jcj-shell = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
-jcj-agents = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.24" }
+jcj-doc = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.25" }
+jcj-layout = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.25" }
+jcj-engine = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.25" }
+jcj-output = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.25" }
+jcj-interchange = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.25" }
+jcj-proof = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.25" }
+jcj-project = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.25" }
+jcj-features = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.25" }
+jcj-theme = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.25" }
+jcj-board = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.25" }
+jcj-shell = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.25" }
+jcj-agents = { git = "https://github.com/jamescjfoundation/open-source-core", tag = "v0.1.25" }
 
 # Foundation (versions as the core pins them)
 serde = { version = "1", features = ["derive", "rc"] }

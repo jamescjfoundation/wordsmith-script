@@ -987,6 +987,9 @@ pub mod package {
     }
 
     /// The `Info.plist` of the macOS app: its name, id, program, version, icon and file types.
+    /// The icon is named with its `.icns` extension: macOS adds the extension only to a name that
+    /// has none, and it reads the last part of a dotted app id (`.sample`) as one, so without it the
+    /// icon is not found and the app shows the blank one.
     pub fn info_plist(product: &str, package: &Package, program: &str, version: &str) -> String {
         let mut out = format!(
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \
@@ -996,7 +999,7 @@ pub mod package {
              <key>CFBundlePackageType</key><string>APPL</string>\n  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>\n  \
              <key>CFBundleShortVersionString</key><string>{version}</string>\n  <key>CFBundleVersion</key><string>{version}</string>\n  \
              <key>LSMinimumSystemVersion</key><string>{MACOS_MINIMUM}</string>\n  <key>NSHighResolutionCapable</key><true/>\n  \
-             <key>CFBundleIconFile</key><string>{id}</string>\n",
+             <key>CFBundleIconFile</key><string>{id}.icns</string>\n",
             name = xml(product),
             id = package.app_id,
         );
@@ -2146,7 +2149,7 @@ pub mod package {
                 "<key>CFBundleIdentifier</key><string>org.example.sample</string>",
                 "<key>CFBundleExecutable</key><string>sample-app</string>",
                 "<key>CFBundleShortVersionString</key><string>1.2.3</string>",
-                "<key>CFBundleIconFile</key><string>org.example.sample</string>",
+                "<key>CFBundleIconFile</key><string>org.example.sample.icns</string>",
                 "<key>LSItemContentTypes</key><array><string>org.example.sample.smp</string></array>",
                 "<key>LSTypeIsPackage</key><true/>",
                 "<key>UTTypeConformsTo</key><array><string>com.apple.package</string><string>public.composite-content</string></array>",

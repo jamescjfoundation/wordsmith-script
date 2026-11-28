@@ -11,6 +11,12 @@ of the first version of the app and were never published.
 
 ## Unreleased
 
+### Fixed
+
+- **The app icon shows on macOS.** In 0.9.0 the app carried its icon but named it so that macOS
+  could not find it, and Finder, the Dock and Launchpad showed a blank icon for Wordsmith Script.
+  Fixed by moving to open-source-core v0.1.25.
+
 ### Changed
 
 - The app icon at 256 and 512 px, the window's and the packages', is the
